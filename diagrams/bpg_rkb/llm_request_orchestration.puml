@@ -1,0 +1,141 @@
+@startuml LLM_Request_Orchestration
+!theme aws-orange
+title LLM Request Orchestration: Smart Routing + Caching + Function Calling
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 20
+
+actor User as U
+participant "Smart Routing\nController" as SRC
+participant "Prompt Cache\nController" as PCC
+participant "RAG Prompt\nAssembly" as RPA
+participant "Multimodal\nReasoning Agent" as MRA
+participant "Structured\nPlanning Agent" as SPA
+participant "Function Calling\nAgent" as FCA
+database "Redis Cache" as RC
+database "Vector DB" as VDB
+database "Neo4j" as NEO
+control "OpenAI GPT-4V" as GPT4V
+control "OpenAI GPT-4" as GPT4
+control "Claude-3.5" as CLAUDE
+
+U -> SRC : User Request\n"Add milk to shopping cart"
+
+SRC -> SRC : Analyze Request Complexity\ncomplexity_score = 0.6
+
+note right of SRC
+**Complexity Analysis:**
+• Text complexity: 0.3 (simple instruction)
+• Visual requirements: 0.8 (GUI interaction)
+• Business logic: 0.7 (e-commerce domain)
+• **Final score: 0.6** (medium complexity)
+end note
+
+SRC -> PCC : Check Cached Response\nprompt_hash + context_hash
+PCC -> RC : Query Cache\n"prompt_cache:{hash1}:{hash2}"
+RC --> PCC : Cache Miss
+PCC --> SRC : No Cached Response
+
+SRC -> RPA : Assemble RAG-Enhanced Prompt\nquery + context
+RPA -> VDB : Semantic Search\n"shopping cart patterns"
+VDB --> RPA : Similar Patterns (5 results)
+RPA -> NEO : Graph Traversal\n"product → cart relationships"
+NEO --> RPA : Business Rules & Constraints
+
+RPA -> RPA : Compress Context\n3000 → 1500 tokens (50% reduction)
+
+note right of RPA
+**Context Compression Example:**
+- Retrieved patterns: 1200 → 600 tokens
+- Business rules: 800 → 400 tokens
+- Current context: 1000 → 500 tokens
+- **Total: 3000 → 1500 tokens**
+end note
+
+RPA --> SRC : RAG-Enhanced Prompt\n+ Compressed Context
+
+SRC -> SRC : Route Based on Complexity\nScore 0.6 → Multi-Agent Workflow
+
+par Multi-Agent Processing
+  SRC -> MRA : Visual Analysis Request\n+ Screenshot + Business Context
+  MRA -> GPT4V : Multimodal Analysis\nStructured Output Request
+  GPT4V --> MRA : Structured Visual Analysis
+  MRA --> SRC : Visual Understanding Result
+
+  SRC -> SPA : Request Structured Plan\nwith RAG + Visual Context
+  SPA -> GPT4 : Generate Action Plan\n(Structured Output)
+  GPT4 --> SPA : JSON Plan\n{steps, dependencies}
+  SPA --> SRC : Structured Plan
+end
+
+SRC -> FCA : Execute Functions\nbased on Plan
+FCA -> CLAUDE : Validate Plan Steps\n(explainability)
+CLAUDE --> FCA : Validated Plan
+
+alt Function Calls
+  FCA -> "E-commerce API" : add_to_cart(product="milk", qty=1)
+  "E-commerce API" --> FCA : {status: "success", cart_id: 987}
+end
+
+FCA --> SRC : Function Call Result
+
+SRC -> GPT4 : Final Response Generation\nw/ Context + Results
+GPT4 --> SRC : Natural Language Answer
+
+SRC -> PCC : Store in Cache\n"prompt_cache:{hash1}:{hash2}" → response
+PCC -> RC : Save Cached Response
+RC --> PCC : OK
+
+SRC --> U : "Milk has been added to your cart ✅"
+
+note over SPA
+📄 **Structured Plan Example:**
+```json
+{
+  "steps": [
+    {"id": 1, "action": "detect_ui", "target": "shopping_cart"},
+    {"id": 2, "action": "locate_product", "target": "milk"},
+    {"id": 3, "action": "function_call", "api": "add_to_cart", "params": {"product": "milk", "qty": 1}}
+  ],
+  "dependencies": [[2,3]]
+}
+````
+
+end note
+
+note over FCA
+⚙️ **Function Call Schema:**
+
+```json
+{
+  "name": "add_to_cart",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "product": {"type": "string"},
+      "qty": {"type": "integer"}
+    },
+    "required": ["product", "qty"]
+  }
+}
+```
+
+end note
+
+note over PCC
+🗄️ **Cache Storage Example:**
+Key: `prompt_cache:d41d8cd:ab56b4d`
+Value:
+
+```json
+{
+  "query": "Add milk to shopping cart",
+  "context": "E-commerce session #123",
+  "response": "Milk has been added to your cart ✅",
+  "timestamp": "2025-09-25T12:00:00Z"
+}
+```
+
+TTL: 2 minutes
+end note
+
+@enduml

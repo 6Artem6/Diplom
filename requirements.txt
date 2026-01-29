@@ -1,0 +1,35 @@
+# BPG Construction Pipeline - Requirements
+# Research PoC for GUI-only Business Process Graph
+
+# FastAPI
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.5.0
+
+# Vector Storage
+chromadb>=0.4.15
+
+# Image Processing (placeholders - not used in skeleton)
+opencv-python>=4.8.0
+Pillow>=10.0.0
+
+# OCR (placeholders - not used in skeleton)
+pytesseract>=0.3.10
+# paddleocr>=2.7.0
+
+# ML Models (REAL implementations)
+torch>=2.0.0  # PyTorch for CLIP
+torchvision>=0.15.0  # For image transforms
+ultralytics>=8.0.0  # YOLO
+transformers>=4.35.0  # CLIP
+numpy>=1.24.0  # For numerical operations
+huggingface_hub>=0.22.0  # For Hugging Face models
+
+# Utilities
+python-multipart>=0.0.6  # For file uploads
+
+# Logging
+# (logging is built-in, but we use structured logging)
+
+# Optional: HDBSCAN for alternative line→block clustering (layout/block_builder)
+hdbscan>=0.8.33

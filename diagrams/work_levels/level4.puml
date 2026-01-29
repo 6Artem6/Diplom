@@ -1,0 +1,192 @@
+@startuml
+!theme plain
+skinparam linetype ortho
+
+skinparam rectangle {
+  Shadowing false
+  BorderColor black
+  FontSize 9
+  FontName Arial
+}
+skinparam arrow {
+  Color darkblue
+  FontSize 8
+}
+skinparam package {
+  BorderColor darkblue
+  FontColor darkblue
+  FontSize 11
+  FontStyle bold
+}
+
+title Уровень 4: Технические модули SiteGPT\nДетальная техническая реализация (обновленная архитектура)
+skinparam packageStyle rectangle
+
+' =======================
+' CORE DISCOVERY MODULES
+' =======================
+package "CORE DISCOVERY MODULES" #E6F3FF {
+  rectangle "URLNormalizer\n\n- normalize_url()\n- extract_domain()\n- canonicalize_path()\n- handle_parameters()" as UN #B3D9FF
+  rectangle "RobustCrawler\n\n- adaptive_crawl()\n- respect_robots_txt()\n- handle_auth()\n- manage_sessions()\n- extract_links()" as RC #B3D9FF
+  rectangle "CMSDetector\n\n- detect_cms_type()\n- analyze_framework()\n- identify_patterns()\n- score_confidence()" as CMSD #B3D9FF
+  rectangle "SiteComplexityAnalyzer\n\n- assess_js_complexity()\n- analyze_spa_patterns()\n- detect_ajax_usage()\n- calculate_score()" as SCA #B3D9FF
+}
+
+' =======================
+' ADAPTIVE GRAPH MODULES
+' =======================
+package "ADAPTIVE GRAPH CONSTRUCTION" #E6FFE6 {
+  rectangle "MultiLevelGraphBuilder\n\n- build_site_graph()\n- create_page_nodes()\n- extract_modules()\n- map_relationships()" as MLGB #B3FFB3
+  rectangle "DOMSemanticAnalyzer\n\n- parse_dom_tree()\n- extract_semantics()\n- classify_elements()\n- generate_embeddings()" as DSA #B3FFB3
+  rectangle "ModuleExtractor\n\n- detect_ui_modules()\n- extract_components()\n- identify_boundaries()\n- create_hierarchy()" as ME #B3FFB3
+  rectangle "CrossReferenceResolver\n\n- resolve_links()\n- map_dependencies()\n- handle_redirects()\n- validate_references()" as CRR #B3FFB3
+}
+
+' =======================
+' SEMANTIC PROCESSING MODULES
+' =======================
+package "SEMANTIC PROCESSING MODULES" #FFE6F3 {
+  rectangle "TransformerEmbedding\n\n- encode_dom_elements()\n- generate_embeddings()\n- compute_similarities()\n- cache_vectors()" as TE #FFB3D9
+  rectangle "SemanticClassifier\n\n- classify_ui_elements()\n- predict_interactions()\n- assign_roles()\n- validate_predictions()" as SC #FFB3D9
+  rectangle "ContextAggregator\n\n- aggregate_contexts()\n- merge_information()\n- resolve_conflicts()\n- maintain_consistency()" as CA #FFB3D9
+  rectangle "KnowledgeFusion\n\n- fuse_multi_modal()\n- integrate_knowledge()\n- update_beliefs()\n- propagate_changes()" as KF #FFB3D9
+}
+
+' =======================
+' EXECUTION & RECOVERY MODULES
+' =======================
+package "EXECUTION & RECOVERY MODULES" #F3E6FF {
+  rectangle "ActionGraphBuilder\n\n- build_action_graph()\n- map_interactions()\n- create_workflows()\n- optimize_paths()" as AGB #D9B3FF
+  rectangle "ResilientLocatorManager\n\n- generate_locators()\n- create_fallbacks()\n- test_reliability()\n- update_strategies()" as RLM #D9B3FF
+  rectangle "SelfHealingExecutor\n\n- execute_actions()\n- handle_failures()\n- attempt_recovery()\n- learn_from_errors()" as SHE #D9B3FF
+  rectangle "FailureAnalyzer\n\n- analyze_failures()\n- classify_errors()\n- suggest_fixes()\n- update_models()" as FA #D9B3FF
+}
+
+' =======================
+' LEARNING & ADAPTATION MODULES
+' =======================
+package "LEARNING & ADAPTATION MODULES" #FFFDE6 {
+  rectangle "PatternMiner\n\n- mine_patterns()\n- cluster_behaviors()\n- identify_anomalies()\n- validate_patterns()" as PM #FFF9B3
+  rectangle "FewShotLearner\n\n- few_shot_adapt()\n- meta_learning()\n- quick_adaptation()\n- transfer_knowledge()" as FSL #FFF9B3
+  rectangle "ContinualLearner\n\n- incremental_learning()\n- avoid_forgetting()\n- consolidate_memory()\n- update_continuously()" as CL #FFF9B3
+  rectangle "ModelUpdater\n\n- update_models()\n- validate_improvements()\n- manage_versions()\n- rollback_if_needed()" as MU #FFF9B3
+}
+
+' =======================
+' INTEGRATION & ORCHESTRATION MODULES
+' =======================
+package "INTEGRATION & ORCHESTRATION MODULES" #F0F8FF {
+  rectangle "WorkflowOrchestrator\n\n- orchestrate_workflows()\n- manage_dependencies()\n- allocate_resources()\n- monitor_progress()" as WO #E0F0FF
+  rectangle "ExternalAPIIntegrator\n\n- integrate_n8n()\n- connect_zapier()\n- manage_webhooks()\n- handle_responses()" as EAI #E0F0FF
+  rectangle "QualityAssuranceEngine\n\n- validate_results()\n- check_quality()\n- run_tests()\n- generate_reports()" as QAE #E0F0FF
+  rectangle "PerformanceMonitor\n\n- monitor_performance()\n- collect_metrics()\n- detect_bottlenecks()\n- optimize_resources()" as PMon #E0F0FF
+}
+
+' =======================
+' AI-ENHANCED MODULES
+' =======================
+package "AI-ENHANCED MODULES" #FFF0E6 {
+  rectangle "ComputerVisionAnalyzer\n\n- analyze_screenshots()\n- detect_ui_elements()\n- extract_visual_features()\n- map_to_dom()" as CVA #FFE0B3
+  rectangle "NovelInteractionDetector\n\n- detect_new_patterns()\n- classify_interactions()\n- learn_behaviors()\n- update_knowledge()" as NID #FFE0B3
+  rectangle "PersonalizationEngine\n\n- personalize_workflows()\n- adapt_to_users()\n- learn_preferences()\n- optimize_experience()" as PE #FFE0B3
+  rectangle "HeadfullMonitor\n\n- monitor_browser()\n- record_interactions()\n- detect_issues()\n- provide_feedback()" as HM #FFE0B3
+}
+
+' =======================
+' INTER-MODULE CONNECTIONS
+' =======================
+
+' Discovery flow
+UN --> RC : normalized URLs
+RC --> CMSD : crawled content
+CMSD --> SCA : CMS patterns
+SCA --> MLGB : complexity assessment
+
+' Graph construction flow
+MLGB --> DSA : site structure
+DSA --> ME : DOM semantics
+ME --> CRR : extracted modules
+CRR --> TE : resolved references
+
+' Semantic processing flow
+TE --> SC : embeddings
+SC --> CA : classifications
+CA --> KF : contexts
+KF --> AGB : fused knowledge
+
+' Execution flow
+AGB --> RLM : action graph
+RLM --> SHE : locator strategies
+SHE --> FA : execution results
+FA --> PM : failure analysis
+
+' Learning flow
+PM --> FSL : discovered patterns
+FSL --> CL : adapted models
+CL --> MU : learned knowledge
+MU --> SC : updated models
+
+' Integration flow
+WO --> EAI : orchestrated tasks
+EAI --> QAE : external results
+QAE --> PMon : quality metrics
+PMon --> WO : performance feedback
+
+' AI enhancement integration
+CVA --> DSA : visual analysis
+NID --> PM : novel patterns
+PE --> WO : personalization
+HM --> FA : monitoring data
+
+' Cross-cutting connections
+KF --> RLM : semantic locators
+DSA --> SHE : DOM understanding
+CA --> WO : context-aware orchestration
+FSL --> RLM : adaptive strategies
+
+note bottom of RC
+**RobustCrawler новые возможности**
+• Headless/headfull switching
+• Advanced JS rendering
+• Cookie/session management
+• Anti-bot detection evasion
+• Parallel crawling strategies
+end note
+
+note bottom of TE
+**TransformerEmbedding обновления**
+• Multi-language support
+• Cross-site embedding alignment
+• Incremental embedding updates
+• GPU acceleration
+• Embedding compression
+end note
+
+note bottom of SHE
+**SelfHealingExecutor улучшения**
+• Visual-based recovery
+• Context-aware fallbacks
+• Machine learning predictions
+• Real-time adaptation
+• Performance optimization
+end note
+
+note bottom of CVA
+**ComputerVisionAnalyzer**
+• YOLO-based UI detection
+• OCR text extraction
+• Visual element mapping
+• Screenshot comparison
+• Accessibility analysis
+end note
+
+note bottom of WO
+**WorkflowOrchestrator расширения**
+• Complex task decomposition
+• Multi-service coordination
+• Error handling strategies
+• Resource optimization
+• Real-time monitoring
+end note
+
+@enduml

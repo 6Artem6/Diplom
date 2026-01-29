@@ -1,0 +1,240 @@
+@startuml Navigation_Aware_BPG_Structure
+!theme aws-orange
+title Навигационно-ориентированная структура многоуровневого BPG
+
+skinparam linetype ortho
+skinparam defaultFontColor black
+skinparam class {
+  BackgroundColor #F0F8FF
+  BorderColor #4169E1
+  FontColor black
+}
+
+' === Enhanced Entity Layer ===
+package "Entity Layer (GUI-focused)" #LightGreen {
+  class PageNode {
+    +page_id: UUID
+    +page_type: PageType
+    +url_pattern: URLPattern
+    +layout_signature: Hash
+    +required_auth: Boolean
+    +preconditions: List[Condition]
+    +available_actions: List[ActionType]
+    --
+    +get_current_context(): PageContext
+    +check_accessibility(): Boolean
+    +extract_elements(): List[UIElementNode]
+  }
+
+  class UIElementNode {
+    +element_id: UUID
+    +element_type: UIElementType
+    +page_context: PageNode
+    +bounding_box: Rectangle
+    +visual_features: VisualSignature
+    +text_content: String
+    +interaction_type: InteractionType
+    --
+    +get_coordinates(): Coordinates
+    +is_visible(): Boolean
+    +is_interactable(): Boolean
+  }
+
+  class NavigationElementNode {
+    +nav_id: UUID
+    +nav_type: NavigationType
+    +source_page: PageNode
+    +target_page: PageNode
+    +link_text: String
+    +transition_conditions: List[Condition]
+    --
+    +calculate_transition_cost(): Float
+    +validate_accessibility(): Boolean
+  }
+
+  class FormElementNode {
+    +form_id: UUID
+    +form_purpose: FormPurpose
+    +input_fields: List[InputField]
+    +validation_rules: List[ValidationRule]
+    +submission_target: PageNode
+    --
+    +validate_input(): Boolean
+    +get_required_fields(): List[InputField]
+  }
+}
+
+' === Enhanced Pattern Layer ===
+package "Pattern Layer (Navigation + Business)" #LightYellow {
+  class NavigationPattern {
+    +pattern_id: UUID
+    +navigation_type: NavigationType
+    +source_page_type: PageType
+    +target_page_type: PageType
+    +transition_steps: List[NavigationStep]
+    +success_probability: Float
+    --
+    +plan_navigation(): List[NavigationStep]
+    +estimate_completion_time(): Duration
+  }
+
+  class BusinessProcessPattern {
+    +process_id: UUID
+    +process_name: String
+    +required_pages: List[PageType]
+    +navigation_dependencies: List[NavigationPattern]
+    +interaction_sequence: List[InteractionStep]
+    +completion_criteria: List[Condition]
+    --
+    +decompose_to_navigation(): List[NavigationPattern]
+    +validate_feasibility(): Boolean
+  }
+
+  class InteractionPattern {
+    +interaction_id: UUID
+    +interaction_type: InteractionType
+    +element_requirements: ElementRequirements
+    +success_indicators: List[Indicator]
+    +fallback_strategies: List[FallbackStrategy]
+    --
+    +match_elements(): List[UIElementNode]
+    +execute_interaction(): InteractionResult
+  }
+}
+
+' === Enhanced Workflow Layer ===
+package "Workflow Layer (Execution-ready)" #LightCoral {
+  class NavigationWorkflowNode {
+    +nav_workflow_id: UUID
+    +navigation_sequence: List[NavigationStep]
+    +current_step: Integer
+    +context_requirements: ContextRequirements
+    +rollback_strategy: RollbackStrategy
+    --
+    +execute_navigation(): NavigationResult
+    +handle_navigation_failure(): RecoveryAction
+  }
+
+  class InteractionWorkflowNode {
+    +interaction_workflow_id: UUID
+    +target_elements: List[UIElementNode]
+    +interaction_type: InteractionType
+    +execution_parameters: Parameters
+    +verification_criteria: List[Condition]
+    --
+    +link_runtime_elements(): LinkingResult
+    +execute_interaction(): InteractionResult
+    +verify_outcome(): Boolean
+  }
+
+  class ContextWorkflowNode {
+    +context_id: UUID
+    +context_type: ContextType
+    +page_state: PageState
+    +user_state: UserState
+    +session_data: SessionData
+    --
+    +update_context(): ContextUpdate
+    +validate_consistency(): Boolean
+    +restore_previous_state(): Boolean
+  }
+}
+
+' === Navigation-specific Auxiliary Nodes ===
+package "Navigation Support Layer" #Thistle {
+  class PageContextNode {
+    +context_id: UUID
+    +current_page: PageNode
+    +user_permissions: List[Permission]
+    +session_state: SessionState
+    +available_transitions: List[NavigationElementNode]
+    --
+    +get_possible_actions(): List[ActionType]
+    +check_page_accessibility(): Boolean
+  }
+
+  class NavigationHistoryNode {
+    +history_id: UUID
+    +visited_pages: List[PageVisit]
+    +navigation_path: List[NavigationStep]
+    +backtrack_capability: Boolean
+    --
+    +get_shortest_path(): List[NavigationStep]
+    +can_return_to_page(): Boolean
+  }
+
+  class ElementLinkingCache {
+    +cache_id: UUID
+    +page_element_mappings: Map[PageNode, List[UIElementNode]]
+    +cross_view_links: List[CrossViewLink]
+    +linking_confidence: Map[ElementPair, Float]
+    +cache_timestamp: Timestamp
+    --
+    +get_cached_linking(): List[UIElementNode]
+    +invalidate_page_cache(): Boolean
+    +update_linking_confidence(): Float
+  }
+}
+
+' === Key Navigation Relationships ===
+
+PageNode ||--o{ NavigationElementNode : provides_transitions
+NavigationElementNode }o--|| PageNode : leads_to_page
+PageNode ||--o{ UIElementNode : contains_elements
+PageNode ||--o{ FormElementNode : contains_forms
+
+UIElementNode ||--|| UIElementNode : cross_view_equivalence\n(same element, different pages)
+UIElementNode ||--o{ ElementLinkingCache : cached_in
+
+NavigationPattern ||--|| PageNode : requires_source_page
+NavigationPattern ||--|| PageNode : targets_destination_page
+BusinessProcessPattern ||--o{ NavigationPattern : composed_of_navigations
+InteractionPattern ||--o{ UIElementNode : targets_elements
+
+NavigationWorkflowNode ||--|| NavigationPattern : implements_pattern
+InteractionWorkflowNode ||--o{ UIElementNode : runtime_linked_elements\n(linking during execution)
+ContextWorkflowNode ||--|| PageContextNode : maintains_context
+
+PageContextNode ||--|| PageNode : current_page_state
+NavigationHistoryNode ||--o{ PageNode : navigation_trail
+ElementLinkingCache ||--o{ PageNode : cached_page_elements
+
+InteractionWorkflowNode ||..|| UIElementNode : runtime_coordinate_extraction\n(for RPA click coordinates)
+
+note right of NavigationPattern
+**Navigation Pattern Types:**
+• Direct Link: A → B
+• Menu Navigation: Home → Menu → Category
+• Form Submission: Form → Results
+• Modal Flow: Trigger → Modal → Action → Close
+• Multi-step Process: Step1 → Step2 → ... → StepN
+end note
+
+note right of InteractionWorkflowNode
+**Runtime Element Linking:**
+• Screenshot capture
+• LayoutML element detection
+• Cross-view matching with cached elements
+• Coordinate extraction for RPA actions
+• Fallback strategies for linking failures
+end note
+
+note bottom of ElementLinkingCache
+**Caching Strategy:**
+• L1: Active page elements (in-memory)
+• L2: Recent page layouts (Redis)
+• L3: Cross-view linkings (persistent)
+• Invalidation: DOM changes, A/B tests, timeouts
+end note
+
+note bottom
+**Navigation-Aware Architecture Key Features:**
+
+1. Page-Centric Entity Model
+2. Multi-level Navigation Patterns
+3. Runtime Element Linking
+4. Context State Management
+5. Navigation-aware Pattern Discovery
+end note
+
+@enduml

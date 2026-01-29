@@ -1,0 +1,542 @@
+@startuml Enterprise_Onboarding_Process
+!theme aws-orange
+title Процесс настройки многоуровневого BPG для нового предприятия
+skinparam linetype ortho
+
+skinparam legend {
+  BackgroundColor white
+  BorderColor #4169E1
+  FontColor black
+}
+
+start
+
+' === Phase 1: Initial Assessment ===
+partition "📋 Phase 1: Initial Assessment & Setup" {
+  :🏢 Enterprise Profile Creation;
+  note right
+• Company domain (e-commerce, CRM, LMS, etc.)
+• Business size and complexity
+• Target websites/applications
+• User roles and permissions
+• Compliance requirements
+  end note
+
+  :🌐 Target System Analysis;
+  note right
+• Website URLs and access credentials
+• Authentication requirements
+• User permission levels
+• System architecture overview
+• Integration constraints
+  end note
+
+  :📊 Domain Template Pre-selection;
+  note right
+relevant_templates = template_library.query(
+    domain = enterprise_profile.domain,
+    complexity = enterprise_profile.complexity,
+    industry = enterprise_profile.industry
+)
+
+template_recommendations = {
+    "entity_templates": relevant_templates.entities,
+    "process_templates": relevant_templates.processes,
+    "relationship_templates": relevant_templates.relationships,
+    "confidence_scores": calculate_applicability_scores()
+}
+  end note
+}
+
+' === Phase 2: Automated Discovery ===
+partition "🕷️ Phase 2: Automated System Discovery" {
+  :🔍 Systematic Site Crawling;
+  note right
+crawler_config = {
+    "max_pages": 100,
+    "crawl_depth": 3,
+    "respect_robots_txt": True,
+    "authentication": enterprise_profile.auth_config,
+    "rate_limiting": "1 request/second"
+}
+
+discovered_data = site_crawler.crawl(
+    start_urls = target_system.urls,
+    config = crawler_config
+)
+
+# Results:
+# - 45 unique pages discovered
+# - 156 UI elements catalogued
+# - 23 forms identified
+# - 34 navigation patterns extracted
+  end note
+
+  :🎨 Multi-modal Analysis;
+  note right
+**Computer Vision Pipeline:**
+• YOLOv8: 156 UI elements detected
+• OCR: 89 text elements extracted
+• LayoutML: Page structures analyzed
+• CLIP: Visual embeddings generated
+
+**Navigation Pattern Discovery:**
+• 34 page transition patterns
+• 12 user workflow sequences
+• 8 authentication flows
+• 15 form submission patterns
+  end note
+
+  :📊 Page Signature Generation;
+  note right
+for page in discovered_pages:
+    page_signature = generate_signature(
+        dom_structure = page.dom,
+        ui_elements = page.elements,
+        business_purpose = classify_page_purpose(page)
+    )
+
+    # Check for similar pages (data variants)
+    similar_pages = find_similar_signatures(
+        page_signature, existing_pages
+    )
+
+    if similar_pages:
+        link_as_data_variant(page, similar_pages)
+    else:
+        create_new_page_template(page)
+  end note
+}
+
+' === Phase 3: LLM-Enhanced Analysis ===
+partition "🧠 Phase 3: LLM-Enhanced Business Analysis" #LightYellow {
+  :📄 Business Document Processing;
+  note right
+LLM Prompt:
+"Analyze these business documents for [Company Name]:
+- Standard Operating Procedures
+- User Training Materials
+- Process Documentation
+
+Extract:
+1. Business entities (actors, objects, processes)
+2. Workflows and decision points
+3. Business rules and constraints
+4. Success criteria and KPIs
+
+Domain: {enterprise_domain}
+Known GUI elements: {discovered_ui_elements}
+Format: Structured JSON with confidence scores"
+  end note
+
+  :🤖 LLM Entity & Pattern Discovery;
+  note right
+{
+  "discovered_entities": [
+    {
+      "name": "Customer",
+      "category": "Actor",
+      "role": "Places orders and makes payments",
+      "confidence": 0.94,
+      "gui_manifestations": ["user profile", "checkout form"]
+    },
+    {
+      "name": "Product",
+      "category": "Object",
+      "role": "Items available for purchase",
+      "confidence": 0.91,
+      "gui_manifestations": ["product cards", "detail pages"]
+    }
+  ],
+  "discovered_processes": [
+    {
+      "name": "Order Placement",
+      "category": "Transaction",
+      "steps": ["Browse", "Select", "Add to Cart", "Checkout"],
+      "confidence": 0.89
+    }
+  ]
+}
+  end note
+
+  :🎯 Template Matching & Ranking;
+  note right
+template_matches = []
+
+for discovered_entity in llm_discovered_entities:
+    matches = template_library.find_similar_entities(
+        entity_description = discovered_entity.description,
+        domain_context = enterprise_domain,
+        similarity_threshold = 0.7
+    )
+
+    for match in matches:
+        confidence = calculate_matching_confidence(
+            discovered_entity = discovered_entity,
+            template = match,
+            gui_evidence = discovered_ui_elements,
+            business_context = business_documents
+        )
+
+        template_matches.append(TemplateMatch(
+            discovered_entity = discovered_entity,
+            template = match,
+            confidence = confidence,
+            customization_needed = assess_customization_needs()
+        ))
+  end note
+}
+
+' === Phase 4: Expert Validation ===
+partition "👥 Phase 4: Expert Validation & Customization" #LightCoral {
+  :📊 Validation Dashboard Generation;
+  note right
+High Confidence Suggestions (Auto-approve if >0.85):
+• Customer entity → EndUser template (0.94)
+• Product entity → PurchasableItem template (0.91)
+• Order process → TransactionProcess template (0.89)
+
+Medium Confidence (Requires review 0.6-0.85):
+• Manager entity → Administrator template (0.78)
+• Review process → ApprovalWorkflow template (0.72)
+
+Low Confidence (Manual definition <0.6):
+• CustomReportGenerator → No template match (0.34)
+  end note
+
+  :🔍 Expert Review Interface;
+  note right
+Validation UI for Domain Expert:
+
+✅ Approve: Customer → EndUser template
+   Customization: Add "loyalty_level" attribute
+
+⚠️ Review: Manager → Administrator template
+   Question: Does Manager have approval authority?
+   Options: [Yes - keep template] [No - modify template] [Custom entity]
+
+❌ Reject: ProductReview → No good template match
+   Action: Create custom entity with attributes:
+   - rating: 1-5 scale
+   - review_text: free text
+   - moderation_status: pending/approved/rejected
+  end note
+
+  :🔧 Custom Business Rule Definition;
+  note right
+custom_business_rules = [
+    BusinessRule(
+        name = "High Value Order Approval",
+        condition = "order.total_amount > 10000",
+        action = "require_manager_approval",
+        priority = "high",
+        validation_method = "human_confirmation"
+    ),
+    BusinessRule(
+        name = "Product Availability Check",
+        condition = "product.stock_level < 5",
+        action = "display_low_stock_warning",
+        priority = "medium",
+        validation_method = "automated_check"
+    )
+]
+  end note
+}
+
+' === Phase 5: BPG Construction ===
+partition "🏗️ **Phase 5: Enterprise BPG Construction**" #Lavender {
+  :🎯 Entity Layer Construction;
+  note right
+enterprise_entities = []
+
+for validated_match in expert_approved_matches:
+    enterprise_entity = EnterpriseEntityNode(
+        entity_id=generate_uuid(),
+        entity_name=validated_match.custom_name,
+        template_reference=validated_match.template,
+        domain_attributes=validated_match.customizations,
+        gui_manifestations=link_to_discovered_elements(
+            validated_match.discovered_entity
+        ),
+        confidence_score=validated_match.final_confidence
+    )
+
+    enterprise_entities.append(enterprise_entity)
+
+    # Link to discovered UI elements
+    for gui_element in validated_match.gui_elements:
+        create_visual_link(
+            entity=enterprise_entity,
+            ui_element=gui_element,
+            link_type="represents"
+        )
+  end note
+
+  :⚙️ Pattern Layer Construction;
+  note right
+enterprise_patterns = []
+
+for business_process in validated_processes:
+    # Find best matching template
+    template_match = find_best_process_template(
+        business_process, template_library.process_templates
+    )
+
+    enterprise_pattern = EnterprisePatternNode(
+        pattern_id=generate_uuid(),
+        pattern_name=business_process.custom_name,
+        base_template=template_match.template,
+        domain_customizations=business_process.customizations,
+        involved_entities=link_to_enterprise_entities(
+            business_process.required_entities
+        ),
+        business_rules=custom_business_rules,
+        navigation_sequence=extract_navigation_from_discovery(
+            business_process, discovered_navigation_patterns
+        )
+    )
+
+    enterprise_patterns.add(enterprise_pattern)
+  end note
+
+  :🔧 Workflow Layer Construction;
+  note right
+# Generate executable workflows
+for enterprise_pattern in enterprise_patterns:
+    workflow_nodes = []
+
+    # Decompose pattern into atomic actions
+    atomic_actions = decompose_pattern_to_actions(
+        pattern=enterprise_pattern,
+        atomic_action_templates=template_library.atomic_actions
+    )
+
+    for action_template in atomic_actions:
+        workflow_node = InteractionWorkflowNode(
+            workflow_id=generate_uuid(),
+            template_reference=action_template,
+            target_elements=[], # Will be linked at runtime
+            execution_context=ExecutionContext(
+                pattern=enterprise_pattern,
+                business_rules=enterprise_pattern.business_rules
+            )
+        )
+        workflow_nodes.add(workflow_node)
+
+    # Link workflow nodes in sequence
+    create_workflow_sequence(workflow_nodes)
+  end note
+}
+
+' === Phase 6: Testing & Optimization ===
+partition "🧪 **Phase 6: Testing & Performance Optimization**" #PaleGreen {
+  :🔍 BPG Validation Testing;
+  note right
+test_scenarios = set(
+    TestScenario(
+        name="Customer Registration Flow",
+        user_input="Register new customer John Doe",
+        expected_entities=set(["Customer", "RegistrationForm"]),
+        expected_patterns=set(["UserRegistrationProcess"]),
+        success_criteria="User account created successfully"
+    ),
+    TestScenario(
+        name="Product Purchase Flow",
+        user_input="Buy Product X under $50",
+        expected_entities=set(["Customer", "Product", "Cart", "Payment"]),
+        expected_patterns=set(["ProductSearchProcess", "PurchaseProcess"]),
+        success_criteria="Order placed and payment processed"
+    )
+)
+
+for scenario in test_scenarios:
+    test_result = execute_test_scenario(
+        scenario=scenario,
+        bpg_instance=enterprise_bpg,
+        test_environment=staging_environment
+    )
+
+    if test_result.success_rate < 0.8:
+        identify_failure_points(test_result)
+        suggest_optimizations(test_result)
+  end note
+
+  :📈 Performance Optimization;
+  note right
+# Optimize based on test results
+optimization_results = dict(
+    element_linking_accuracy=0.87,
+    pattern_matching_speed="1.2s average",
+    workflow_execution_success=0.89,
+    required_optimizations=set([
+        "Improve element linking cache hit rate to >90%",
+        "Optimize navigation pattern matching to <500ms",
+        "Enhance cross-view element consistency to >95%"
+    ])
+)
+
+# Apply optimizations
+apply_performance_optimizations(
+    enterprise_bpg, optimization_results
+)
+  end note
+
+
+  :🎯 A/B Testing Setup;
+  note right
+# Setup A/B testing for different approaches
+nab_test_config = dict(
+    test_groups=set([
+        dict(name="template_heavy", template_reliance=0.8),
+        dict(name="llm_heavy", llm_reliance=0.8),
+        dict(name="balanced", template_reliance=0.5, llm_reliance=0.5)
+    ]),
+    success_metrics=set([
+        "workflow_completion_rate",
+        "element_linking_accuracy",
+        "user_satisfaction_score"
+    ]),
+    test_duration="2_weeks"
+)
+  end note
+
+  :📈 Success Metrics & KPIs;
+  note right
+**📊 Key Success Metrics:**
+
+**Technical Performance:**
+• Element linking accuracy: >90%
+• Pattern matching speed: <500ms
+• Workflow completion rate: >85%
+• System uptime: >99.5%
+
+**Business Value:**
+• Time-to-value: <2 weeks onboarding
+• User adoption rate: >80% within 3 months
+• Task automation success: >75%
+• Expert time reduction: >60%
+
+**Quality Assurance:**
+• False positive rate: <10%
+• User satisfaction score: >4.0/5.0
+• Business rule compliance: >95%
+• Audit trail completeness: 100%
+  end note
+}
+
+' === Phase 7: Production Deployment ===
+partition "🚀 **Phase 7: Production Deployment & Monitoring**" #Moccasin {
+  :📊 **Production Readiness Checklist:**
+
+✅ **BPG Quality Metrics:**
+• Entity coverage: 95% of discovered entities mapped
+• Pattern accuracy: 89% success rate in testing
+• Workflow completeness: All critical paths covered
+• Performance: <2s average response time
+
+✅ **Security & Compliance:**
+• Authentication integration tested
+• Data privacy controls implemented
+• Audit logging enabled
+• GDPR compliance verified
+
+✅ **Monitoring & Alerting:**
+• Performance dashboards configured
+• Error rate alerting setup
+• Usage analytics enabled
+• Feedback collection mechanisms active;
+
+  :🔄 Gradual Rollout Strategy;
+  note right
+rollout_phases = set(
+    RolloutPhase(
+        name="pilot_users",
+        user_percentage=5,
+        duration="1_week",
+        success_criteria=dict(error_rate="<5%", satisfaction=">4.0")
+    ),
+    RolloutPhase(
+        name="early_adopters",
+        user_percentage=25,
+        duration="2_weeks",
+        success_criteria=dict(error_rate="<3%", satisfaction=">4.2")
+    ),
+    RolloutPhase(
+        name="full_deployment",
+        user_percentage=100,
+        duration="ongoing",
+        success_criteria=dict(error_rate="<2%", satisfaction=">4.3")
+    )
+)
+  end note
+
+  :📈 Continuous Learning Activation;
+  note right
+# Enable continuous learning pipeline
+learning_config = dict(
+    feedback_collection=True,
+    performance_monitoring=True,
+    template_updates=True,
+    cross_enterprise_sharing=True, # anonymized
+    expert_review_frequency="weekly",
+    automated_optimization=True
+)
+
+activate_continuous_learning(
+    enterprise_bpg, learning_config
+)
+  end note
+
+
+  note right
+**🔧 Implementation Timeline:**
+
+**Week 1-2: Discovery & Analysis**
+• Automated site crawling (3 days)
+• LLM business analysis (2 days)
+• Template matching (2 days)
+• Expert validation sessions (3 days)
+
+**Week 3-4: Construction & Testing**
+• BPG construction (5 days)
+• Testing and optimization (3 days)
+• Security and compliance validation (2 days)
+
+**Week 5-6: Deployment**
+• Pilot rollout (1 week)
+• Monitoring and adjustments (1 week)
+
+**Ongoing: Optimization**
+• Performance monitoring
+• Continuous learning
+• Template updates
+• Cross-enterprise knowledge sharing
+  end note
+}
+
+stop
+
+' === Resource Requirements ===
+legend top
+**💼 Resource Requirements for Enterprise Onboarding:**
+
+**Technical Resources:**
+• Senior AI/ML Engineer (2-3 weeks)
+• Business Process Analyst (1-2 weeks)
+• Domain Expert (SME) (0.5-1 week)
+• DevOps Engineer (0.5 week)
+
+**Infrastructure Requirements:**
+• GPU instances for computer vision (2-4 GPU hours)
+• LLM API credits (~$200-500 per enterprise)
+• Storage: 10-50GB per enterprise instance
+• Compute: 4-8 vCPUs, 16-32GB RAM
+
+**Expected Outcomes:**
+• 60-80% reduction in manual workflow creation
+• 75-90% accuracy in automated business process discovery
+• 2-4 week time-to-value vs 2-6 months manual approach
+• 85%+ user adoption rate within first quarter
+end legend
+
+@enduml

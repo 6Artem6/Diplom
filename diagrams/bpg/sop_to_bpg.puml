@@ -1,0 +1,175 @@
+@startuml Text_to_BPG_Transformation_Algorithm
+!theme aws-orange
+title Алгоритм преобразования текстового описания бизнес-процессов в BPG
+skinparam linetype ortho
+
+' --- Глобальные параметры шрифта ---
+skinparam defaultFontColor Black
+
+skinparam activity {
+  BackgroundColor #F0F8FF
+  BorderColor #4169E1
+}
+skinparam legend {
+  BackgroundColor white
+  BorderColor black
+  FontColor black
+}
+
+start
+
+partition "📋 Phase 1: Text Analysis & Entity Extraction" #LightBlue {
+
+  :📄 Input Business Documents;
+  note right
+  • SOP documents
+  • Process descriptions
+  • User manuals
+  • Training materials
+  • Interview transcripts
+  • Existing workflow diagrams
+  • Domain-specific terminology lists
+  end note
+
+  :🤖 LLM Entity Recognition;
+  note right
+  LLM Prompting Strategy:
+
+      System: You are a business process analyst expert.
+      Analyze the following business documentation and extract:
+
+      1. ENTITIES (actors, objects, processes, containers, controls)
+         - Name, type, role, attributes
+
+      2. RELATIONSHIPS (connections between entities)
+         - Source, target, relationship type, cardinality
+
+      3. PROCESSES (business workflows and patterns)
+         - Name, description, inputs, outputs, steps
+
+      Format: Structured JSON with confidence scores.
+      Context: [Domain-specific context here]
+  end note
+
+  :📊 Extract Structured Data;
+  note right
+  JSON representation of extracted entities, processes, relationships
+  end note
+}
+
+partition "🏷️ Phase 2: Template Matching & Categorization" #LightGreen {
+
+  :🔍 Entity Category Matching;
+  note right
+  Сопоставление извлеченных сущностей с шаблонами категорий
+  end note
+
+  :📊 Calculate Matching Confidence;
+  note right
+  Пример псевдокода для оценки семантической схожести:
+      for entity in extracted_entities:
+          best_template = find_best_match(
+              entity.description,
+              entity_category_templates,
+              similarity_threshold=0.7
+          )
+          confidence = calculate_semantic_similarity(entity, best_template)
+  end note
+}
+
+partition "🔗 Phase 3: Relationship Inference" #LightYellow {
+
+  :🧠 LLM Relationship Suggestion;
+  note right
+  Предложение связей между сущностями на основе контекста
+  end note
+
+  :📋 Template-based Relationship Discovery;
+  note right
+  Алгоритм сопоставления с шаблонами:
+
+      def find_relationship_templates(entity1, entity2):
+          category1 = entity1.category
+          category2 = entity2.category
+
+          # Direct template lookup
+          direct_relations = template_db.query(
+              source_category=category1,
+              target_category=category2
+          )
+
+          # Semantic similarity search
+          similar_relations = vector_search(
+              query_embedding=encode(f"{category1} {category2}"),
+              collection="relationship_templates",
+              top_k=5
+          )
+
+          # Combine and rank
+          return rank_by_relevance(
+              direct_relations + similar_relations,
+              business_context
+          )
+  end note
+
+  :🎯 Relationship Type Classification;
+  note right
+  Informational, Transactional, Hierarchical, Temporal, Conditional
+  end note
+}
+
+partition "⚙️ Phase 4: Process Pattern Discovery" #LightCoral {
+  :📊 Pattern Template Matching;
+  :🔍 Multi-level Pattern Recognition;
+  :🤖 LLM Pattern Analysis;
+  note right
+  Уровни распознавания паттернов:
+
+  Level 1: Atomic patterns (CRUD, Search, Navigation)
+  Level 2: Composite patterns (E-commerce flow, User registration)
+  Level 3: Domain patterns (Healthcare, Finance, Education)
+  end note
+}
+
+partition "🏗️ Phase 5: Graph Construction" #Lavender {
+  :📊 Create Enterprise BPG Structure;
+  :🔗 Build Relationship Network;
+  note right
+  Создание слоев сущностей, паттернов и рабочих процессов.
+  Связывание предсказанных отношений с оценкой доверия.
+  end note
+}
+
+partition "✅ Phase 6: Validation & Refinement" #PaleGreen {
+  :🔍 Consistency Validation;
+  :👥 Expert Review Integration;
+  :📊 Confidence Assessment;
+  note right
+  Проверка логической согласованности, соответствие бизнес-правилам, интеграция отзывов экспертов, расчет общей уверенности.
+  end note
+}
+
+partition "📚 Phase 7: Knowledge Base Enrichment" #Moccasin {
+  :🔄 Template Updates;
+  :💾 Knowledge Base Storage;
+  note right
+  Обновление глобальной и корпоративной базы знаний с проверенными расширениями.
+  end note
+}
+
+stop
+
+legend right
+Key Success Factors:
+
+1. Multi-modal Validation
+   • Template matching + LLM + expert review
+2. Incremental Learning
+   • Continuous template refinement, domain pattern discovery
+3. Quality Assurance
+   • Automated consistency checks, expert validation
+4. Scalability
+   • Modular architecture, efficient similarity search, cached results, parallel processing
+end legend
+
+@enduml

@@ -1,0 +1,333 @@
+@startuml
+!theme plain
+skinparam rectangle {
+  Shadowing false
+  BorderColor black
+  FontSize 10
+  FontName Arial
+}
+skinparam arrow {
+  Color darkblue
+  FontSize 9
+}
+skinparam package {
+  BorderColor red
+  FontColor red
+  FontSize 12
+  FontStyle bold
+}
+
+title SiteGPT: Распределенная AI-система веб-автоматизации
+
+' =======================
+' CORE ORIGINAL ARCHITECTURE (выделено красным)
+' =======================
+package "ОСНОВНАЯ АРХИТЕКТУРА (Core SiteGPT Services)" #FFEEEE {
+
+  ' Phase 1: Site Discovery
+  package "Фаза 1: Обнаружение и анализ сайта" as P1 {
+    rectangle Crawler as C #lightblue
+    rectangle URLNormalizer as UN #lightblue
+    rectangle PatternAnalyzer as PA #lightgreen
+    rectangle StrategySelector as SS #lightgreen
+  }
+
+  ' Phase 2: Site Graph Construction
+  package "Фаза 2: Построение SiteGraph" as P2 {
+    rectangle SiteGraphBuilder as SGB #yellow
+    rectangle PageGraph as PG #yellow
+    rectangle DOMAnalyzer as DGA #orange
+    rectangle PageGraphStats as PGS #yellow
+  }
+
+  ' Phase 3: Multi-level Extraction
+  package "Фаза 3: Многоуровневая экстракция" as P3 {
+    rectangle ModuleExtractor as ME #lightyellow
+    rectangle PageExtractor as PE #lightyellow
+    rectangle WorkAreaExtractor as WAE #lightyellow
+    rectangle ElementExtractor as ELE #lightyellow
+    rectangle ScriptExtractor as SE #lightcyan
+    rectangle APIExtractor as AE #lightcyan
+    rectangle EventExtractor as EE #lightcyan
+    rectangle ValidationExtractor as VE #lightcyan
+  }
+
+  ' Phase 4: Semantic Processing
+  package "Фаза 4: Семантическая обработка" as P4 {
+    rectangle UnifiedEmbedding as UE #lightpink
+    rectangle GraphMerger as GM #lightpink
+    rectangle SiteGraph as SG #pink
+  }
+
+  ' Phase 5: Action Graph
+  package "Фаза 5: ActionGraph" as P5 {
+    rectangle ActionGraphBuilder as AGB #lightgreen
+    rectangle ActionSemanticEngine as ASE #lightgreen
+    rectangle ActionGraph as AG #green
+  }
+
+  ' Phase 6: Change Monitoring
+  package "Фаза 6: Мониторинг изменений" as P6 {
+    rectangle GraphSynchronizer as GS #lightcoral
+    rectangle SnapshotManager as SM #lightcoral
+  }
+
+  ' Phase 7: Task Processing
+  package "Фаза 7: Обработка задач" as P7 {
+    rectangle UserQuery as UQ #lightsteelblue
+    rectangle QueryAnalyzer as QA #lightsteelblue
+    rectangle TaskGraphBuilder as TGB #lightyellow
+    rectangle TaskGraph as TG #yellow
+    rectangle ExecutionEngine as EXE #lightgray
+  }
+}
+
+' =======================
+' EXTENDED SERVICES (новые компоненты)
+' =======================
+package "РАСШИРЕННЫЕ СЕРВИСЫ (Extended SiteGPT Services)" #EEEEFF {
+
+  rectangle RoleBasedCrawler as RBC #lightcyan
+  rectangle UIImageAnalyzer as UIA #orange
+  rectangle NovelInteractionDetector as NID #lightpink
+  rectangle PersonalizationEngine as PE_PERS #pink
+  rectangle WorkflowService as WFS #lightsteelblue
+  rectangle HumanInLoopService as HILS #lightcoral
+  rectangle PlaywrightAI as PAI #lightgreen
+}
+
+' =======================
+' DEPLOYMENT ARCHITECTURE
+' =======================
+package "АРХИТЕКТУРА РАЗВЕРТЫВАНИЯ" #EEFFEE {
+
+  package "Локальный сервис (Local Service)" as LOCAL {
+    rectangle "Core SiteGPT" as CORE_LOCAL #lightblue
+    rectangle "Playwright Engine" as PW_LOCAL #lightgreen
+    rectangle "Local Cache" as CACHE_LOCAL #lightyellow
+  }
+
+  package "Корпоративный сервис (Corporate Service)" as CORP {
+    rectangle "Role Manager" as RM_CORP #lightcyan
+    rectangle "Permission Engine" as PE_CORP #lightcyan
+    rectangle "Corporate Data Store" as DS_CORP #lightyellow
+    rectangle "Enterprise Security" as SEC_CORP #lightcoral
+  }
+
+  package "Облачный сервис (Cloud Service)" as CLOUD {
+    rectangle "ML Models Hub" as MLH_CLOUD #lightpink
+    rectangle "Workflow Orchestrator" as WO_CLOUD #lightsteelblue
+    rectangle "Global Knowledge Base" as KB_CLOUD #lightyellow
+    rectangle "API Gateway" as API_CLOUD #lightgreen
+  }
+}
+
+' =======================
+' EXTERNAL INTEGRATIONS
+' =======================
+package "ВНЕШНИЕ ИНТЕГРАЦИИ" #FFFFEE {
+  rectangle "n8n API" as N8N #lightsteelblue
+  rectangle "Zapier API" as ZAP #lightsteelblue
+  rectangle "External APIs" as EXT_API #lightcyan
+  rectangle "Headfull Browser Monitor" as HBM #lightcoral
+}
+
+' =======================
+' NOTES WITH TECHNICAL DETAILS
+' =======================
+
+note right of PA
+**PatternAnalyzer**
+**ПО**: Custom Python + scikit-learn
+**Модели**:
+• DistilBERT для классификации CMS
+• XGBoost для scoring сложности
+**Данные**: HTML patterns, JS frameworks
+end note
+
+note right of UE
+**UnifiedEmbedding**
+**ПО**: sentence-transformers
+**Модель**: all-MiniLM-L6-v2
+**Данные**: DOM, Scripts, API, UI elements
+**Хранение**: Локально + Cloud sync
+end note
+
+note right of UIA
+**UIImageAnalyzer**
+**ПО**: OpenCV + PyTorch
+**Модели**:
+• YOLO8 для детекции UI элементов
+• PaddleOCR для текста
+**Данные**: Screenshots, DOM mapping
+end note
+
+note right of NID
+**NovelInteractionDetector**
+**ПО**: HuggingFace Transformers
+**Модели**:
+• Zero-shot classifier (BART)
+• Custom interaction classifier
+**Данные**: Unknown UI patterns, failures
+end note
+
+note right of WFS
+**WorkflowService**
+**ПО**: FastAPI + Celery
+**Функции**:
+• Анализ сложности задач
+• Генерация n8n workflows
+• Вызов других SiteGPT сервисов
+• Простые задачи - прямое выполнение
+• Сложные - делегация n8n
+end note
+
+note right of HILS
+**HumanInLoopService**
+**ПО**: WebSocket + React UI
+**Функции**:
+• Headfull Browser Monitoring
+• Запись пользовательских действий
+• Обучение новым паттернам
+• Валидация сложных сценариев
+end note
+
+note right of PAI
+**PlaywrightAI**
+**ПО**: Playwright + Custom AI
+**Функции**:
+• Самовосстанавливающиеся селекторы
+• AI-оптимизация действий
+• Контекстные стратегии ожидания
+end note
+
+note right of CORE_LOCAL
+**Локальное развертывание**
+• Базовая функциональность SiteGPT
+• Простые задачи без внешних API
+• Кеширование часто используемых данных
+• Offline режим для критических функций
+end note
+
+note right of RM_CORP
+**Корпоративное развертывание**
+• Управление ролями и разрешениями
+• Интеграция с корпоративной AD/LDAP
+• Безопасное хранение учетных данных
+• Аудит и логирование действий
+end note
+
+note right of MLH_CLOUD
+**Облачное развертывание**
+• Центральный hub ML моделей
+• Масштабируемая обработка
+• Глобальная база знаний паттернов
+• API для внешних интеграций
+end note
+
+note right of HBM
+**Headfull Browser Monitor**
+**ПО**: Playwright headful + Computer Vision
+**Функции**:
+• Запись действий пользователя
+• Анализ взаимодействий с Canvas/Audio/Video
+• Обучение сложным UI паттернам
+• Генерация шаблонов действий
+end note
+
+' =======================
+' CORE ARCHITECTURE FLOWS (оригинальные)
+' =======================
+
+C --> UN : нормализованные URL
+UN --> PA : структура сайта
+PA --> SS : анализ сложности
+SS --> SGB : стратегия построения
+
+SGB --> PG : стратегия построения
+PG --> PGS : структура страниц
+PGS --> DGA : DOM дерево
+DGA --> SGB : оптимизированная стратегия
+
+SGB --> ME : детекция модулей
+SGB --> PE : анализ страниц
+SGB --> WAE : детекция рабочих областей
+SGB --> ELE : экстракция элементов
+SGB --> SE : анализ скриптов
+SGB --> AE : обнаружение API
+SGB --> EE : экстракция событий
+SGB --> VE : правила валидации
+
+ME --> GM : данные модулей
+PE --> GM : данные страниц
+WAE --> GM : данные рабочих областей
+ELE --> GM : данные элементов
+SE --> GM : данные скриптов
+AE --> GM : данные API
+EE --> GM : данные событий
+VE --> GM : данные валидации
+
+GM --> UE : объединенные данные
+UE --> SG : эмбеддинги
+GM --> SG : структура графа
+
+SG --> AGB : структура сайта
+AGB --> ASE : анализ действий
+ASE --> AG : иерархия действий
+
+SG --> GS : граф сайта
+AG --> GS : граф действий
+GS --> SM : мониторинг изменений
+SM --> SG : обновления графа
+
+UQ --> QA : запрос пользователя
+QA --> AG : анализированный запрос
+AG --> TGB : доступные действия
+TGB --> TG : план задач
+TG --> EXE : план выполнения
+
+' =======================
+' EXTENDED SERVICES FLOWS (новые интеграции)
+' =======================
+
+SS --> RBC : стратегия с учетом ролей
+RBC --> SGB : многоролевой crawling
+DGA --> UIA : DOM-visual mapping
+UIA --> PAI : визуальные элементы
+SGB --> NID : новые взаимодействия
+SG --> PE_PERS : граф для персонализации
+PE_PERS --> AG : персонализированные действия
+
+TG --> WFS : план задач
+WFS --> N8N : сложные workflow
+WFS --> EXE : простые задачи
+N8N --> WFS : результаты workflow
+WFS --> HILS : неизвестные сценарии
+HILS --> HBM : мониторинг браузера
+HBM --> NID : новые паттерны
+NID --> HILS : обучающие данные
+
+' =======================
+' DEPLOYMENT FLOWS (архитектура развертывания)
+' =======================
+
+C --> CORE_LOCAL : базовая функциональность
+CORE_LOCAL --> CACHE_LOCAL : кеширование
+CORE_LOCAL --> PW_LOCAL : выполнение
+
+RBC --> RM_CORP : управление ролями
+RM_CORP --> PE_CORP : разрешения
+PE_CORP --> DS_CORP : корпоративные данные
+DS_CORP --> SEC_CORP : безопасность
+
+UE --> MLH_CLOUD : модели и эмбеддинги
+WFS --> WO_CLOUD : оркестрация workflow
+AG --> KB_CLOUD : база знаний
+EXT_API --> API_CLOUD : внешние API
+
+CORE_LOCAL --> MLH_CLOUD : синхронизация моделей
+RM_CORP --> API_CLOUD : корпоративный доступ
+WO_CLOUD --> N8N : создание workflow
+WO_CLOUD --> ZAP : интеграция zapier
+
+@enduml

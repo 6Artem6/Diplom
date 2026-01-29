@@ -1,0 +1,261 @@
+@startuml
+title Full Unified Cross-View Entity Linking Pipeline with Code
+
+scale 1024 width
+skinparam dpi 150
+
+start
+
+:Получить набор скриншотов GUI;
+note right
+```python
+  screenshots = load_screenshots(paths)
+  metadata = {"timestamp": ts, "page_url": url, "session_id": session, "domain": domain}
+```
+
+**Цель:** Найти одинаковые бизнес-сущности
+в разных GUI представлениях
+end note
+
+partition "Preprocessing & Detection" {
+:Предобработка изображений;
+note right
+```python
+      preprocessed_images = []
+      for img in screenshots:
+          img = resize_image(img, (1920,1080))
+          img = enhance_contrast(img)
+          preprocessed_images.append(img)
+```
+end note
+
+:YOLO11 / Specialized GUI Detection;
+note right
+  ```python
+  ui_elements = []
+  gui_detector = YOLO('yolo11-gui-elements.pt')
+  for img in preprocessed_images:
+      detections = gui_detector(img, classes=["button","card","form","input","table","modal","nav","dropdown"])
+      for det in detections:
+          element = UIElement(
+              bbox=det.bbox,
+              type=det.class_name,
+              confidence=det.confidence,
+              visual_features=det.features,
+              screenshot_id=img.id
+          )
+          ui_elements.append(element)
+  ```
+end note
+
+if (Сложный layout?) then (yes)
+  :LayoutLMv3 для complex layout;
+  note right
+    ```python
+    layout_enhancer = LayoutLMv3.from_pretrained("microsoft/layoutlmv3-base")
+    layout_features = layout_enhancer.extract_features(screenshot, detected_elements=ui_elements, return_spatial_relationships=True)
+    for element in ui_elements:
+        element.spatial_context = layout_features.get_context(element.id)
+        element.hierarchical_position = layout_features.get_hierarchy(element.id)
+    ```
+  end note
+else (no)
+  :Simple Layout Analysis;
+  note right
+    ```python
+    for element in ui_elements:
+        element.norm_pos = normalize_bbox(element.bbox)
+        element.neighbors = find_spatial_neighbors(element, ui_elements)
+        element.visual_group = detect_visual_group(element, ui_elements)
+    ```
+  end note
+endif
+
+:OCR извлечение текста;
+note right
+  ```python
+  text_regions = []
+  for elem in ui_elements:
+      cropped = crop_image(img, elem.bbox)
+      ocr_result = paddle_ocr.ocr(cropped)
+      if ocr_result:
+          text_regions.append({
+              "text": clean_text(ocr_result[0][1][0]),
+              "confidence": ocr_result[0][1][1],
+              "bbox": elem.bbox,
+              "element_id": elem.id
+          })
+  ```
+end note
+
+:GPT-4V Batch Semantic Analysis;
+note right
+  ```python
+  def analyze_entities_batch(ui_elements_groups):
+      batch_prompt = f"Analyze these UI elements for business entity identification:\n{format_elements_for_analysis(ui_elements_groups)}"
+      response = gpt4v_client.analyze(
+          images=extract_element_images(ui_elements_groups),
+          prompt=batch_prompt,
+          response_format="json_schema"
+      )
+      return parse_entity_analysis(response)
+  ```
+end note
+
+}
+
+partition "Embedding Generation" {
+:Visual / Text / Layout Embeddings;
+note right
+```python
+class ModernEmbeddingGenerator:
+    def __init__(self):
+    self.clip_model = CLIPModel.from_pretrained("openai/clip-vit-large-patch14")
+    self.sentence\_model = SentenceTransformer('all-mpnet-base-v2')
+
+      def generate_composite_embedding(self, ui_element):
+          visual_emb = self.clip_model.encode_image(ui_element.cropped_image)
+          text_emb = self.sentence_model.encode(ui_element.text_content) if ui_element.text_content else np.zeros(384)
+          layout_emb = self.encode_layout_features(ui_element.spatial_context)
+          return np.concatenate([visual_emb, text_emb, layout_emb])
+```
+end note
+}
+
+partition "Similarity Computation" {
+:Adaptive Similarity Calculation;
+note right
+```python
+      def calculate_adaptive_similarity(e1, e2):
+          base_sim = cosine_similarity(e1.composite_embedding, e2.composite_embedding)
+          adjustments = []
+          if e1.domain == e2.domain: adjustments.append(0.1)
+          if abs(e1.timestamp - e2.timestamp) < 3600: adjustments.append(0.05)
+          if e1.visual_group == e2.visual_group: adjustments.append(0.08)
+          final_similarity = min(base_sim + sum(adjustments), 1.0)
+          return final_similarity
+```
+end note
+}
+
+partition "Clustering" {
+:Distance Matrix + Clustering;
+note right
+```python
+      n = len(ui_elements)
+      distance_matrix = np.zeros((n,n))
+      for i in range(n):
+          for j in range(n):
+              if i != j:
+                  distance_matrix[i][j] = 1.0 - calculate_adaptive_similarity(ui_elements[i], ui_elements[j])       # HDBSCAN or Agglomerative Clustering with auto-threshold
+      cluster_labels = HDBSCAN(metric='precomputed', min_cluster_size=3, min_samples=2).fit_predict(distance_matrix)
+```
+end note
+
+:Calculate Cluster Confidence;
+note right
+```python
+  cluster_confidences = {}
+  for cluster_id in set(cluster_labels):
+      if cluster_id == -1: continue
+      members = [i for i,lbl in enumerate(cluster_labels) if lbl==cluster_id]
+      intra_sim = np.mean([1-distance_matrix[i][j] for i,j in combinations(members,2)])
+      cluster_confidences[cluster_id] = intra_sim
+```
+end note
+}
+
+if (Есть кластеры с низкой уверенностью?) then (yes)
+partition "LLM Disambiguation" {
+:Batch LLM Validation;
+note right
+```python
+        def batch_validate_uncertain_clusters(uncertain_clusters):
+            batch_prompt = create_batch_validation_prompt(uncertain_clusters)
+            validation_response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role":"system","content":"You are a GUI entity linking expert."},
+                          {"role":"user","content":batch_prompt}],
+                temperature=0.1
+            )
+            return parse_batch_validation_results(validation_response)
+```
+end note
+}
+else (no)
+:Все кластеры имеют высокую уверенность;
+endif
+
+partition "Entity Creation" {
+:Создать финальные cross-view entities;
+note right
+```python
+      cross_view_entities = []
+      for cluster_id, elems in validated_clusters.items():
+          entity = CrossViewEntity(
+              entity_id=generate_uuid(),
+              confidence=cluster_confidences[cluster_id],
+              entity_type=infer_entity_type(elems),
+              representations=[EntityRepresentation(
+                  screenshot_id=e.screenshot_id,
+                  bbox=e.bbox,
+                  composite_embedding=e.composite_embedding,
+                  business_attributes=e.business_attributes
+              ) for e in elems],
+              analysis_metadata={
+                  "detection_method": e.detection_method,
+                  "layout_complexity": e.layout_complexity,
+                  "llm_validated": cluster_id in llm_validated,
+                  "confidence_factors": e.confidence_factors
+              }
+          )
+          cross_view_entities.append(entity)
+```
+end note
+}
+
+partition "BPG Construction" {
+:Создать BPG узлы;
+note right
+```cypher
+      CREATE (entity:Entity {
+          id: $entity_id,
+          type: $entity_type,
+          name: $entity_name,
+          attributes: $attributes,
+          confidence: $confidence,
+          provenance: $provenance_info
+      })
+```
+end note
+
+:Создать BPG рёбра;
+note right
+  ```cypher
+  CREATE (a)-[:LINK {
+      similarity: $sim,
+      validated: $flag,
+      source: $source,
+      timestamp: $ts
+  }]->(b)
+  ```
+end note
+}
+
+partition "Storage" {
+:Сохранение в Vector + Graph DB;
+note right
+```python
+      for entity in cross_view_entities:
+          vector_db.upsert(id=entity.entity_id, values=entity.average_embedding, metadata=entity.get_searchable_metadata())
+          neo4j.create_node("CrossViewEntity", properties={"entity_id": entity.entity_id, "entity_type": entity.entity_type, "confidence": entity.confidence})
+          for r1,r2 in combinations(entity.representations,2):
+              neo4j.create_relationship(r1.node_id,"SAME_ENTITY",r2.node_id,{"confidence": entity.confidence})
+```
+end note
+}
+
+:Cross-View Entity Linking Complete;
+stop
+
+@enduml

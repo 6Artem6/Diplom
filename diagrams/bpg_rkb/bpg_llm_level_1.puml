@@ -1,0 +1,238 @@
+@startuml Revised_Technology_Architecture
+!theme aws-orange
+title Переработанная технологическая архитектура: BPG как Runtime Knowledge для LLM Agents
+skinparam linetype ortho
+skinparam package {
+  BackgroundColor #F8F8FF
+  BorderColor #4169E1
+}
+
+' === Client Layer ===
+package "🖥️ CLIENT LAYER" #F0F8FF {
+  rectangle "Browser Extension / Desktop App" #LightBlue {
+    rectangle "💻 User Interface\n• Natural language input\n• Visual feedback display\n• HITL interaction interface" as UI
+    rectangle "🎯 Intent Capture\n• Voice/text processing\n• Context-aware parsing\n• Intent validation" as IntentCapture
+    rectangle "📸 Visual Context Collector\n• Screenshot capture\n• Page state detection\n• Element highlighting" as VisualCollector
+    rectangle "⚡ Action Executor\n• Platform-specific automation\n• Coordinate-based actions\n• Real-time adaptation" as ClientExecutor
+    rectangle "📝 Feedback Collector\n• Collect execution feedback\n• User satisfaction logging" as FeedbackCollector
+
+    ' Вертикальная последовательность
+    UI -[hidden]-> IntentCapture
+    IntentCapture -[hidden]-> VisualCollector
+    VisualCollector -[hidden]-> ClientExecutor
+    ClientExecutor -[hidden]-> FeedbackCollector
+  }
+}
+
+' === API Gateway Layer ===
+package "🌐 API GATEWAY LAYER" #E8F5E8 {
+  rectangle "Intelligent Request Router" #LightGreen {
+    rectangle "🛠️ Intent Classification Gateway\n• Intent complexity analysis\n• Routing to appropriate agents\n• Load balancing" as IntentGateway
+    rectangle "🔗 Context Enrichment Coordinator\n• Multi-source context gathering\n• Context priority management\n• Context validation" as ContextCoordinator
+    rectangle "🤖 LLM Agent Orchestrator\n• Agent selection logic\n• Multi-agent coordination\n• Fallback strategies" as AgentOrchestrator
+    rectangle "📝 Response Assembly Engine\n• Assemble agent responses\n• Context integration\n• Response formatting" as ResponseAssembly
+
+    ' Вертикальная последовательность внутри слоя
+    IntentGateway -[hidden]-> ContextCoordinator
+    ContextCoordinator -[hidden]-> AgentOrchestrator
+    AgentOrchestrator -[hidden]-> ResponseAssembly
+  }
+}
+
+' === Core Processing Services ===
+package "🧠 CORE PROCESSING SERVICES" #FFF8E1 {
+
+  rectangle "BPG Knowledge Services" #LightYellow {
+    rectangle "Business Entity Service\n• Entity definition management\n• Cross-view mapping\n• Constraint validation" as EntityService
+    rectangle "Process Template Service\n• Workflow template storage\n• Process adaptation logic\n• Success pattern analysis" as ProcessService
+    rectangle "Business Rules Engine\n• Business rule evaluation\n• Constraint checking\n• Exception handling" as RulesEngine
+    rectangle "Domain Vocabulary Service\n• Domain-specific terminology\n• Synonym management\n• Context translation" as VocabService
+    rectangle "Context State Manager\n• Session state tracking\n• Permission management\n• Context continuity" as StateManager
+
+    ' Скрытые связи для вертикального выравнивания внутри слоя
+    EntityService -[hidden]-> ProcessService
+    ProcessService -[hidden]-> RulesEngine
+    RulesEngine -[hidden]-> VocabService
+    VocabService -[hidden]-> StateManager
+  }
+
+  rectangle "Prompt Engineering Services" #LightCoral {
+
+    rectangle "Knowledge Context Extractor\n• Relevant knowledge identification\n• Context prioritization\n• Knowledge summarization" as KnowledgeExtractor
+    rectangle "Prompt Assembly Engine\n• Dynamic prompt construction\n• Template management\n• Context insertion logic" as PromptAssembly
+    rectangle "Context Integration Service\n• Multi-modal context fusion\n• Context coherence validation\n• Context compression" as ContextIntegration
+    rectangle "Prompt Optimization Engine\n• Prompt effectiveness tracking\n• A/B testing framework\n• Performance optimization" as PromptOptimization
+
+    ' Скрытые связи для вертикального выравнивания внутри слоя
+    KnowledgeExtractor -[hidden]-> PromptAssembly
+    PromptAssembly -[hidden]-> ContextIntegration
+    ContextIntegration -[hidden]-> PromptOptimization
+  }
+
+  rectangle "LLM Agent Services" #Lavender {
+
+    rectangle "Intent Understanding Agent\n• GPT-4 Turbo integration\n• Business context processing\n• Ambiguity resolution" as IntentAgent
+    rectangle "Visual Analysis Agent\n• GPT-4V integration\n• Screenshot analysis\n• Element identification" as VisualAgent
+    rectangle "Action Planning Agent\n• Claude-3 integration\n• Workflow generation\n• Step optimization" as PlanningAgent
+    rectangle "Execution Guidance Agent\n• Real-time guidance\n• Adaptive reasoning\n• Error recovery" as ExecutionAgent
+    rectangle "Learning Agent\n• Pattern recognition\n• Knowledge update\n• Feedback processing" as LearningAgent
+
+    ' Скрытые связи для вертикального выравнивания внутри слоя
+    IntentAgent -[hidden]-> VisualAgent
+    VisualAgent -[hidden]-> PlanningAgent
+    PlanningAgent -[hidden]-> ExecutionAgent
+    ExecutionAgent -[hidden]-> LearningAgent
+  }
+}
+
+' === Data Storage Layer ===
+package "🗄️ DATA STORAGE LAYER" #F5F0FF {
+
+  rectangle "Knowledge Storage" #Thistle {
+    rectangle "BPG Knowledge Base (Neo4j)\n• Business entity relationships\n• Process dependencies\n• Rule interconnections" as BPGStorage
+    rectangle "Vector Knowledge Store (Pinecone)\n• Semantic similarity search\n• Entity embeddings\n• Process pattern vectors" as VectorStore
+    rectangle "Process Templates (PostgreSQL)\n• Workflow templates\n• Success metrics\n• Performance data" as ProcessStorage
+    rectangle "User Context Store (Redis)\n• Session state\n• User permissions\n• Real-time context" as ContextStore
+
+    ' Скрытые связи для вертикального выравнивания внутри блока
+    BPGStorage -[hidden]-> VectorStore
+    VectorStore -[hidden]-> ProcessStorage
+    ProcessStorage -[hidden]-> ContextStore
+  }
+
+  rectangle "Prompt & Model Storage" #MistyRose {
+    rectangle "Prompt Template Store (PostgreSQL)\n• Dynamic prompt templates\n• Context integration rules\n• Optimization strategies" as PromptStore
+    rectangle "Model Performance Metrics (InfluxDB)\n• LLM response times\n• Success rates\n• Cost tracking" as MetricsStore
+    rectangle "Conversation History (PostgreSQL)\n• Multi-turn conversations\n• Context evolution\n• User feedback" as ConversationStore
+    rectangle "Learning Data Store (PostgreSQL)\n• Training datasets\n• Model updates\n• Feedback loops" as LearningStore
+
+    ' Скрытые связи для вертикального выравнивания внутри блока
+    PromptStore -[hidden]-> MetricsStore
+    MetricsStore -[hidden]-> ConversationStore
+    ConversationStore -[hidden]-> LearningStore
+  }
+}
+
+
+' === External AI Services ===
+package "🤖 EXTERNAL AI SERVICES" #E6F3FF {
+  rectangle "Primary LLM Providers" #LightBlue {
+    [OpenAI GPT-4/GPT-4V] as OpenAI
+    [Anthropic Claude-3] as Claude
+    [Google Gemini Pro] as Gemini
+    [Local LLM (Llama 3.1)] as LocalLLM
+  }
+
+  rectangle "Specialized AI Services" #LightCyan {
+    [Computer Vision APIs] as CVApis
+    [Speech Recognition] as SpeechAPI
+    [Document Processing] as DocProcessing
+    [Embedding Services] as EmbeddingAPI
+  }
+}
+
+' === Technology Stack Connections ===
+
+' Client to Gateway
+UI --> IntentGateway : user_intent + context
+VisualCollector --> ContextCoordinator : screenshot + state
+FeedbackCollector --> AgentOrchestrator : execution_feedback
+
+' Gateway to Core Services
+IntentGateway --> KnowledgeExtractor : intent_analysis_request
+ContextCoordinator --> StateManager : context_validation_request
+AgentOrchestrator --> IntentAgent : enriched_intent_prompt
+
+' BPG Knowledge Flow
+EntityService --> KnowledgeExtractor : business_entity_definitions
+ProcessService --> KnowledgeExtractor : workflow_templates
+RulesEngine --> KnowledgeExtractor : applicable_business_rules
+VocabService --> KnowledgeExtractor : domain_terminology
+StateManager --> KnowledgeExtractor : current_context_state
+
+' Prompt Engineering Flow
+KnowledgeExtractor --> PromptAssembly : relevant_knowledge_context
+PromptAssembly --> ContextIntegration : assembled_prompt_components
+ContextIntegration --> PromptOptimization : integrated_prompt
+PromptOptimization --> IntentAgent : optimized_enriched_prompt
+
+' LLM Agent Execution Flow
+IntentAgent --> VisualAgent : understood_intent + business_context
+VisualAgent --> PlanningAgent : visual_analysis + intent + context
+PlanningAgent --> ExecutionAgent : action_plan + constraints
+ExecutionAgent --> ClientExecutor : execution_guidance
+ExecutionAgent --> LearningAgent : execution_results
+
+' Storage Connections
+EntityService --> BPGStorage : entity_crud_operations
+ProcessService --> ProcessStorage : template_management
+KnowledgeExtractor --> VectorStore : semantic_similarity_search
+StateManager --> ContextStore : state_persistence
+PromptAssembly --> PromptStore : template_retrieval
+LearningAgent --> LearningStore : pattern_updates
+
+' External AI Integration
+IntentAgent --> OpenAI : gpt4_api_calls
+VisualAgent --> OpenAI : gpt4v_api_calls
+PlanningAgent --> Claude : claude3_api_calls
+ExecutionAgent --> LocalLLM : local_inference_calls
+KnowledgeExtractor --> EmbeddingAPI : text_embedding_generation
+
+' Learning Feedback Loops
+LearningAgent --> EntityService : entity_definition_updates
+LearningAgent --> ProcessService : process_template_refinement
+LearningAgent --> RulesEngine : business_rule_validation
+LearningAgent --> PromptOptimization : prompt_effectiveness_feedback
+
+' === Technology Stack Details ===
+note right of OpenAI
+**LLM Integration Strategy:**
+• Primary: GPT-4 Turbo (intent understanding)
+• Visual: GPT-4V (screenshot analysis)
+• Backup: Claude-3 (action planning)
+• Local: Llama 3.1 (privacy-sensitive operations)
+
+**Cost Optimization:**
+• Intelligent routing based on complexity
+• Context compression techniques
+• Response caching strategies
+end note
+
+note right of BPGStorage
+**Knowledge Base Architecture:**
+• Neo4j: Complex relationship modeling
+• PostgreSQL: Structured template data
+• Pinecone: Semantic similarity search
+• Redis: Real-time context management
+
+**Scalability Strategy:**
+• Read replicas for knowledge queries
+• Caching layers for frequent access
+• Vector index optimization
+end note
+
+note bottom
+**🔧 Key Architectural Principles:**
+
+**1. Knowledge-Agent Separation:**
+• BPG captures static business knowledge
+• LLM agents provide dynamic reasoning capabilities
+• Clear interfaces between knowledge and intelligence
+
+**2. Prompt Engineering as Core Capability:**
+• Systematic approach to context integration
+• Dynamic prompt optimization based on performance
+• Multi-modal context fusion strategies
+
+**3. Multi-LLM Strategy:**
+• Different models for different reasoning tasks
+• Intelligent routing based on request complexity
+• Cost optimization through strategic model selection
+
+**4. Learning-Driven Evolution:**
+• Continuous improvement of knowledge base
+• Prompt effectiveness optimization
+• User feedback integration loops
+end note
+
+@enduml

@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}О нас{% endblock %}
+{% block content %}
+<h1>О нас</h1>
+<a href="/" onclick="console.log('Переходим на Главную')">Главная</a>
+<script>
+document.querySelector('a').addEventListener('click', () => {
+    console.log('Click on link About');
+});
+</script>
+{% endblock %}

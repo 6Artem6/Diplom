@@ -1,0 +1,330 @@
+@startuml Revised_Microservices_Architecture
+!theme aws-orange
+title Переработанная микросервисная архитектура: BPG Knowledge + LLM Agents
+skinparam linetype ortho
+skinparam package {
+  BackgroundColor #F8F8FF
+  BorderColor #4169E1
+}
+left to right direction
+
+' === Microservice 1: Knowledge Management Service ===
+package "🧠 KNOWLEDGE MANAGEMENT SERVICE" #E8F5E8 {
+  package "Controllers" {
+    class BusinessKnowledgeController {
+      +get_entity_definitions(domain: str): List[EntityDefinition]
+      +get_process_templates(context: BusinessContext): List[ProcessTemplate]
+      +get_applicable_rules(entities: List[str], action: str): List[BusinessRule]
+      +validate_business_constraints(proposed_action: Action): ValidationResult
+    }
+
+    class KnowledgeDiscoveryController {
+      +analyze_site_structure(urls: List[str]): SiteAnalysisResult
+      +extract_business_patterns(analysis: SiteAnalysisResult): List[BusinessPattern]
+      +create_knowledge_base(patterns: List[BusinessPattern]): KnowledgeBase
+      +update_knowledge_from_feedback(feedback: UserFeedback): UpdateResult
+    }
+  }
+
+  package "Core Services" {
+    class EntityDefinitionService {
+      -entity_repository: EntityRepository
+      -cross_reference_engine: CrossReferenceEngine
+      +define_business_entities(site_analysis: SiteAnalysis): List[EntityDefinition]
+      +map_gui_manifestations(entities: List[EntityDefinition]): ManifestationMapping
+      +validate_entity_relationships(relationships: List[Relationship]): ValidationResult
+    }
+
+    class ProcessTemplateService {
+      -template_repository: ProcessTemplateRepository
+      -pattern_matching_engine: PatternMatchingEngine
+      +extract_workflow_templates(business_docs: List[Document]): List[WorkflowTemplate]
+      +adapt_template_to_context(template: WorkflowTemplate, context: BusinessContext): AdaptedWorkflow
+      +optimize_process_efficiency(template: WorkflowTemplate, metrics: PerformanceMetrics): OptimizedTemplate
+    }
+
+    class BusinessRulesService {
+      -rules_repository: BusinessRulesRepository
+      -rule_evaluation_engine: RuleEvaluationEngine
+      +extract_business_constraints(documents: List[Document], processes: List[Process]): List[BusinessRule]
+      +evaluate_rule_applicability(rule: BusinessRule, context: ExecutionContext): ApplicabilityResult
+      +resolve_rule_conflicts(conflicting_rules: List[BusinessRule]): ConflictResolution
+    }
+  }
+
+  package "Data Layer" {
+    class KnowledgeRepository {
+      -graph_db: Neo4jClient
+      -vector_store: PineconeClient
+      +store_business_knowledge(knowledge: BusinessKnowledge): StorageResult
+      +query_related_entities(entity: str, relationship_type: str): List[RelatedEntity]
+      +search_similar_processes(process_description: str): List[SimilarProcess]
+      +update_knowledge_relationships(updates: List[RelationshipUpdate>): UpdateResult
+    }
+  }
+}
+
+' === Microservice 2: Context Intelligence Service ===
+package "🔍 CONTEXT INTELLIGENCE SERVICE" #FFF8E1 {
+
+  package "Controllers" {
+    class ContextAnalysisController {
+      +analyze_current_context(screenshot: bytes, session_data: SessionData): ContextAnalysis
+      +extract_visual_elements(image: bytes): List[VisualElement]
+      +determine_page_state(context: ContextAnalysis): PageState
+      +validate_context_consistency(context: ContextAnalysis): ConsistencyResult
+    }
+
+    class ContextEnrichmentController {
+      +enrich_user_intent(intent: str, context: ContextAnalysis): EnrichedIntent
+      +gather_relevant_knowledge(intent: EnrichedIntent): RelevantKnowledge
+      +build_execution_context(intent: EnrichedIntent, knowledge: RelevantKnowledge): ExecutionContext
+    }
+  }
+
+  package "Core Services" {
+    class VisualContextService {
+      -computer_vision_client: ComputerVisionClient
+      -element_recognition_engine: ElementRecognitionEngine
+      +process_screenshot(image: bytes): ScreenshotAnalysis
+      +identify_interactive_elements(analysis: ScreenshotAnalysis): List[InteractiveElement]
+      +map_elements_to_business_entities(elements: List[InteractiveElement], entities: List[EntityDefinition>): ElementEntityMapping
+    }
+
+    class SessionContextService {
+      -session_manager: SessionManager
+      -permission_validator: PermissionValidator
+      +track_user_session(user_id: str, actions: List[UserAction>): SessionState
+      +validate_user_permissions(user: User, requested_action: Action): PermissionResult
+      +maintain_conversation_context(conversation_id: str, turn: ConversationTurn): ConversationContext
+    }
+
+    class KnowledgeRetrievalService {
+      -knowledge_client: KnowledgeServiceClient
+      -relevance_scorer: RelevanceScorer
+      +retrieve_relevant_entities(context: ExecutionContext): List[RelevantEntity]
+      +get_applicable_processes(intent: EnrichedIntent, context: ExecutionContext): List[ApplicableProcess]
+      +fetch_contextual_constraints(entities: List[Entity], processes: List[Process>): List[ContextualConstraint]
+    }
+  }
+
+  package "Data Layer" {
+    class ContextRepository {
+      -redis_client: RedisClient
+      -postgres_client: PostgreSQLClient
+      +store_session_context(session_id: str, context: SessionContext): StorageResult
+      +retrieve_conversation_history(conversation_id: str): ConversationHistory
+      +cache_visual_analysis(image_hash: str, analysis: VisualAnalysis): CacheResult
+      +update_user_behavior_patterns(user_id: str, behavior: UserBehavior): UpdateResult
+    }
+  }
+}
+
+' === Microservice 3: LLM Agent Orchestration Service ===
+package "🤖 LLM AGENT ORCHESTRATION SERVICE" #F0F0FF {
+
+  package "Controllers" {
+    class AgentCoordinationController {
+      +orchestrate_multi_agent_workflow(request: AgentRequest): OrchestrationResult
+      +route_to_specialized_agent(task: AgentTask): AgentRoutingResult
+      +coordinate_agent_collaboration(agents: List[Agent], task: CollaborativeTask): CollaborationResult
+      +handle_agent_failures(failed_agent: Agent, fallback_strategy: FallbackStrategy): FailureHandlingResult
+    }
+
+    class PromptEngineeringController {
+      +build_enriched_prompts(intent: EnrichedIntent, context: ExecutionContext, knowledge: RelevantKnowledge): EnrichedPrompt
+      +optimize_prompt_performance(prompt: Prompt, performance_data: PerformanceData): OptimizedPrompt
+      +manage_prompt_templates(template_type: PromptType, domain: str): List[PromptTemplate]
+    }
+  }
+
+  package "Agent Services" {
+    class IntentUnderstandingAgent {
+      -llm_client: LLMClient  # GPT-4 Turbo
+      -business_context_processor: BusinessContextProcessor
+      +understand_user_intent(user_input: str, business_context: BusinessContext): IntentUnderstanding
+      +resolve_intent_ambiguities(ambiguous_intent: Intent, context_options: List[ContextOption>): ResolvedIntent
+      +validate_intent_feasibility(intent: Intent, current_capabilities: List[Capability>): FeasibilityAssessment
+    }
+
+    class VisualReasoningAgent {
+      -multimodal_llm_client: MultimodalLLMClient  # GPT-4V
+      -visual_understanding_engine: VisualUnderstandingEngine
+      +analyze_screenshot_content(image: bytes, analysis_focus: AnalysisFocus): VisualAnalysis
+      +identify_actionable_elements(image: bytes, intent: Intent): List[ActionableElement]
+      +understand_visual_context(image: bytes, business_knowledge: BusinessKnowledge): VisualContextUnderstanding
+    }
+
+    class ActionPlanningAgent {
+      -planning_llm_client: PlanningLLMClient  # Claude-3
+      -workflow_optimization_engine: WorkflowOptimizationEngine
+      +generate_action_sequence(intent: Intent, visual_context: VisualContext, business_constraints: List[Constraint>): ActionSequence
+      +optimize_execution_plan(initial_plan: ActionSequence, optimization_criteria: OptimizationCriteria): OptimizedPlan
+      +validate_plan_feasibility(plan: ActionSequence, execution_environment: ExecutionEnvironment): ValidationResult
+    }
+
+    class ExecutionGuidanceAgent {
+      -guidance_llm_client: GuidanceLLMClient  # Local Llama or GPT-4
+      -real_time_adaptation_engine: RealtimeAdaptationEngine
+      +provide_step_guidance(current_step: ExecutionStep, context: ExecutionContext): StepGuidance
+      +adapt_to_runtime_changes(original_plan: ActionSequence, runtime_changes: List[RuntimeChange>): AdaptedPlan
+      +handle_execution_errors(error: ExecutionError, recovery_options: List[RecoveryOption>): ErrorRecovery
+    }
+  }
+
+  package "Core Services" {
+    class PromptAssemblyService {
+      -template_manager: PromptTemplateManager
+      -context_integration_engine: ContextIntegrationEngine
+      +assemble_business_aware_prompt(base_prompt: BasePrompt, business_knowledge: BusinessKnowledge): BusinessAwarePrompt
+      +integrate_visual_context(prompt: Prompt, visual_analysis: VisualAnalysis): VisuallyEnrichedPrompt
+      +optimize_prompt_length(prompt: Prompt, token_limit: int): OptimizedPrompt
+    }
+
+    class LLMModelManager {
+      -model_pool: LLMModelPool
+      -load_balancer: ModelLoadBalancer
+      +route_request_to_optimal_model(request: LLMRequest): ModelRoutingResult
+      +manage_model_availability(models: List[LLMModel>, health_checks: List[HealthCheck>): AvailabilityStatus
+      +optimize_model_usage_costs(usage_patterns: UsagePatterns): CostOptimizationStrategy
+    }
+  }
+}
+
+' === Microservice 4: Execution & Learning Service ===
+package "⚡ EXECUTION & LEARNING SERVICE" #F5F0FF {
+
+  package "Controllers" {
+    class ExecutionController {
+      +execute_action_sequence(sequence: ActionSequence, execution_context: ExecutionContext): ExecutionResult
+      +coordinate_real_time_execution(guidance: ExecutionGuidance): CoordinationResult
+      +handle_execution_failures(failure: ExecutionFailure): FailureHandlingResult
+      +provide_execution_feedback(results: ExecutionResult): FeedbackResult
+    }
+
+    class LearningController {
+      +process_execution_feedback(feedback: ExecutionFeedback): LearningResult
+      +update_knowledge_base(learning_insights: LearningInsights): KnowledgeUpdateResult
+      +improve_agent_performance(performance_data: AgentPerformanceData): ImprovementResult
+      +optimize_system_behavior(optimization_data: OptimizationData): OptimizationResult
+    }
+  }
+
+  package "Core Services" {
+    class PlatformExecutionService {
+      -platform_adapters: Map[Platform, PlatformAdapter]
+      -action_execution_engine: ActionExecutionEngine
+      +execute_platform_action(action: Action, platform: Platform): ExecutionResult
+      +adapt_action_to_platform(generic_action: Action, target_platform: Platform): PlatformSpecificAction
+      +validate_action_feasibility(action: Action, platform_state: PlatformState): FeasibilityResult
+    }
+
+    class FeedbackProcessingService {
+      -feedback_analyzer: FeedbackAnalyzer
+      -pattern_recognition_engine: PatternRecognitionEngine
+      +analyze_execution_outcomes(outcomes: List[ExecutionOutcome>): OutcomeAnalysis
+      +identify_improvement_opportunities(analysis: OutcomeAnalysis): List[ImprovementOpportunity]
+      +extract_successful_patterns(successes: List[SuccessfulExecution>): List[SuccessPattern>
+    }
+
+    class KnowledgeEvolutionService {
+      -knowledge_updater: KnowledgeUpdater
+      -learning_algorithm: LearningAlgorithm
+      +evolve_business_knowledge(feedback: ProcessedFeedback): KnowledgeEvolution
+      +refine_process_templates(execution_data: ExecutionData): TemplateRefinement
+      +improve_business_rules(rule_violations: List[RuleViolation>): RuleImprovement
+    }
+  }
+}
+
+' === Inter-Service Communication ===
+' Knowledge to Context Intelligence
+BusinessKnowledgeController --> ContextEnrichmentController : business_knowledge_query
+KnowledgeDiscoveryController --> VisualContextService : site_analysis_data
+
+' Context Intelligence to LLM Orchestration
+ContextEnrichmentController --> PromptEngineeringController : enriched_context
+ContextAnalysisController --> IntentUnderstandingAgent : visual_context
+
+' LLM Orchestration to Execution
+AgentCoordinationController --> ExecutionController : orchestrated_action_plan
+ActionPlanningAgent --> PlatformExecutionService : execution_sequence
+
+' Learning Feedback Loops
+LearningController --> BusinessKnowledgeController : knowledge_updates
+FeedbackProcessingService --> KnowledgeEvolutionService : processed_insights
+KnowledgeEvolutionService --> EntityDefinitionService : entity_refinements
+
+' Cross-Service Data Sharing
+KnowledgeRepository <--> ContextRepository : shared_business_context
+ContextRepository <--> ExecutionController : execution_context_sharing
+
+' === External Dependencies ===
+' LLM Integrations
+IntentUnderstandingAgent --> "GPT-4 Turbo API"
+VisualReasoningAgent --> "GPT-4V API"
+ActionPlanningAgent --> "Claude-3 API"
+ExecutionGuidanceAgent --> "Local Llama 3"
+
+' Storage Dependencies
+KnowledgeRepository --> "Neo4j Cluster"
+KnowledgeRepository --> "Pinecone Vector DB"
+ContextRepository --> "Redis Cluster"
+ContextRepository --> "PostgreSQL Cluster"
+
+' === Service Communication Patterns ===
+note right of AgentCoordinationController
+**Agent Coordination Patterns:**
+• Sequential: Intent → Visual → Planning → Execution
+• Parallel: Multiple agents process different aspects
+• Collaborative: Agents share intermediate results
+• Fallback: Alternative agents when primary fails
+
+**Communication:**
+• Async messaging for non-blocking operations
+• Sync calls for real-time coordination
+• Event streaming for learning feedback
+end note
+
+note right of PromptAssemblyService
+**Prompt Engineering Strategy:**
+• Dynamic prompt construction based on context
+• Business knowledge integration templates
+• Multi-modal context fusion rules
+• Performance-driven prompt optimization
+
+**Quality Assurance:**
+• A/B testing of prompt variations
+• Response quality monitoring
+• Cost-effectiveness tracking
+end note
+
+note bottom
+**🔧 Microservice Architecture Benefits:**
+
+**1. Clear Separation of Concerns:**
+• Knowledge Management: Business logic storage and retrieval
+• Context Intelligence: Real-time context analysis and enrichment
+• LLM Orchestration: AI agent coordination and prompt engineering
+• Execution & Learning: Action execution and continuous improvement
+
+**2. Independent Scalability:**
+• Scale knowledge services based on business complexity
+• Scale context services based on user activity
+• Scale LLM services based on reasoning complexity
+• Scale execution services based on automation volume
+
+**3. Technology Flexibility:**
+• Different LLM models for different reasoning tasks
+• Pluggable storage solutions based on data characteristics
+• Platform-specific execution adapters
+• Modular prompt engineering approaches
+
+**4. Resilience and Reliability:**
+• Service isolation prevents cascade failures
+• Multiple fallback strategies for each service
+• Circuit breaker patterns for external dependencies
+• Comprehensive monitoring and alerting
+end note
+
+@enduml

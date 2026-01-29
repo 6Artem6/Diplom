@@ -1,0 +1,228 @@
+@startuml Deployment_Priority_Matrix
+!theme aws-orange
+title Матрица приоритизации развертывания компонентов BPG системы
+skinparam linetype ortho
+skinparam rectangle {
+  RoundCorner 6
+  BorderColor #444
+}
+
+rectangle "КРИТИЧЕСКИЙ ПУТЬ\n(P0 - Must Have)" #FF6B6B {
+  rectangle "PoC Foundation" #FFB3B3 {
+    [Computer Vision Service] as P0_CV
+    [Basic BPG Repository] as P0_BPG
+    [Simple NLU Controller] as P0_NLU
+    [Template Repository] as P0_Templates
+    [Element Detection Models] as P0_Elements
+  }
+}
+
+rectangle "ВЫСОКИЙ ПРИОРИТЕТ\n(P1 - Should Have)" #FFD93D {
+  rectangle "Core Intelligence" #FFF176 {
+    [Cross-View Matching Service] as P1_CrossView
+    [Workflow Executor Service] as P1_Workflow
+    [Runtime Linking Service] as P1_Linking
+    [Pattern Matching Service] as P1_PatternMatch
+    [Basic Orchestration] as P1_Orchestration
+  }
+}
+
+' === Dependencies ===
+P0_CV --> P1_Linking
+P0_BPG --> P1_Workflow
+P0_NLU --> P1_PatternMatch
+P0_Templates --> P1_PatternMatch
+P0_Elements --> P1_CrossView
+
+rectangle "СРЕДНИЙ ПРИОРИТЕТ\n(P2 - Could Have)" #4ECDC4 {
+  rectangle "Advanced Features" #A8E6CF {
+    [LLM Pattern Discovery] as P2_LLM
+    [Advanced NLU Context] as P2_Context
+    [Multi-level Caching] as P2_Cache
+    [HITL Coordinator] as P2_HITL
+    [Navigation Planner] as P2_Navigation
+  }
+}
+
+P1_CrossView --> P2_LLM
+P1_Workflow --> P2_HITL
+P1_Linking --> P2_Context
+P1_PatternMatch --> P2_LLM
+P1_PatternMatch --> P2_Context
+
+rectangle "НИЗКИЙ ПРИОРИТЕТ\n(P3 - Nice to Have)" #A8E6CF {
+  rectangle "Enterprise Features" #C8F7C5 {
+    [Advanced Analytics] as P3_Analytics
+    [Cross-Enterprise Learning] as P3_CrossEnt
+    [Custom Model Training] as P3_CustomAI
+    [Multi-tenant Architecture] as P3_MultiTenant
+    [Enterprise Integrations] as P3_Integrations
+  }
+}
+
+P2_LLM --> P3_Analytics
+P2_HITL --> P3_CrossEnt
+P2_Navigation --> P3_Integrations
+P2_Cache --> P3_Analytics
+P2_Cache --> P3_CrossEnt
+P2_Cache --> P3_CustomAI
+P2_Cache --> P3_MultiTenant
+P2_Cache --> P3_Integrations
+
+P3_Analytics --> P3_CustomAI
+P3_CrossEnt --> P3_CustomAI
+
+' === Development Phases Mapping ===
+package "РАЗВЕРТЫВАНИЕ ПО ФАЗАМ" #F0F0F0 {
+
+  rectangle "PHASE 1: PoC (Months 1-3)" as P0 #E3F2FD {
+    P0_CV --> P0_Elements
+    P0_Elements --> P0_BPG
+    P0_BPG --> P0_Templates
+    P0_Templates --> P0_NLU
+
+    note right of P0_CV
+    **Month 1-2 Development:**
+    • YOLOv8 integration and training
+    • Basic OCR pipeline setup
+    • UI element detection models
+
+    **Success Criteria:**
+    • >80% element detection accuracy
+    • <2s processing time per screenshot
+    • Basic workflow execution
+    end note
+  }
+
+  rectangle "PHASE 2: Pre-Production (Months 4-6)" as P1 #E8F5E8 {
+    P1_CrossView --> P1_PatternMatch
+    P1_PatternMatch --> P1_Linking
+    P1_Linking --> P1_Workflow
+    P1_Workflow --> P1_Orchestration
+
+    P2_LLM --> P2_Context
+    P2_Context --> P2_Cache
+    P2_Cache --> P2_HITL
+    P2_HITL --> P2_Navigation
+
+    note right of P1_CrossView
+    **Month 4-5 Development:**
+    • CLIP embeddings for similarity
+    • Cross-page element consistency
+    • Advanced pattern matching
+
+    **Month 6 Integration:**
+    • Multi-component integration
+    • Performance optimization
+    • Quality assurance testing
+    end note
+  }
+
+  rectangle "PHASE 3: Production (Months 7-8)" as P2 #FFF3E0 {
+    P2_Cache --> P2_HITL
+    P2_HITL --> P2_Navigation
+
+    note right of P2_Cache
+    **Production Readiness:**
+    • Multi-level caching strategy
+    • HITL validation workflows
+    • Navigation planning optimization
+    • Load testing and scaling
+    end note
+  }
+
+  rectangle "PHASE 4: Enterprise (Months 9-10)" as P3 #F3E5F5 {
+    P3_Analytics --> P3_CrossEnt
+    P3_CrossEnt --> P3_CustomAI
+    P3_CustomAI --> P3_MultiTenant
+    P3_MultiTenant --> P3_Integrations
+
+    note right of P3_Analytics
+    **Enterprise Features:**
+    • Business intelligence
+    • Cross-enterprise learning
+    • Custom AI model training
+    • Multi-tenant deployment
+    end note
+  }
+
+}
+
+' === Resource Allocation ===
+note top
+**Ресурсное планирование по приоритетам:**
+
+**P0 Components (40% ресурсов):**
+• 2 Senior Engineers + 1 AI Specialist
+• 60% GPU resources for training/inference
+• Critical path - cannot be delayed
+
+**P1 Components (30% ресурсов):**
+• 1 Senior Engineer + 2 Mid-level Engineers
+• 25% GPU resources
+• Essential for MVP functionality
+
+**P2 Components (20% ресурсов):**
+• 1 Mid-level Engineer + 1 DevOps
+• 10% GPU resources
+• Important for production readiness
+
+**P3 Components (10% ресурсов):**
+• 1 Engineer (part-time) + Product roles
+• 5% GPU resources
+• Enterprise differentiation features
+end note
+
+' === Risk Mitigation ===
+note bottom
+**Стратегия снижения рисков:**
+
+**Technical Risks:**
+• **P0 Bottleneck:** Parallel development где возможно
+• **AI Model Performance:** Early benchmarking + fallback strategies
+• **Integration Complexity:** API-first design + comprehensive testing
+
+**Resource Risks:**
+• **Team Scaling:** Gradual team growth with knowledge transfer
+• **GPU Availability:** Cloud provider redundancy + spot instances
+• **Budget Overruns:** Monthly budget reviews + scope adjustment
+
+**Market Risks:**
+• **Competition:** Focus on unique cross-view matching advantage
+• **Customer Adoption:** Early customer validation + iterative feedback
+• **Technology Changes:** Modular architecture for easy component swapping
+end note
+
+' === Success Metrics by Phase ===
+rectangle "МЕТРИКИ УСПЕХА ПО ФАЗАМ" #F5F5F5 {
+
+  rectangle "PoC Metrics" {
+    [Element Detection: >80%] as PoC_Detection
+    [Intent Parsing: >75%] as PoC_Intent
+    [Template Matching: >70%] as PoC_Template
+    [End-to-end Demo: Working] as PoC_Demo
+  }
+
+  rectangle "Pre-Production Metrics" {
+    [Cross-view Accuracy: >85%] as PreProd_CrossView
+    [Pattern Recognition: >80%] as PreProd_Pattern
+    [Workflow Success: >75%] as PreProd_Workflow
+    [Response Time: <2s] as PreProd_Performance
+  }
+
+  rectangle "Production Metrics" {
+    [System Uptime: >99%] as Prod_Uptime
+    [User Adoption: >60%] as Prod_Adoption
+    [Automation Success: >70%] as Prod_Automation
+    [Customer Satisfaction: >4.0] as Prod_Satisfaction
+  }
+
+  rectangle "Enterprise Metrics" {
+    [Multi-tenant Isolation: 100%] as Ent_Isolation
+    [Cross-enterprise Learning: Active] as Ent_Learning
+    [Custom Model Accuracy: >90%] as Ent_CustomAI
+    [Revenue Growth: >50%] as Ent_Revenue
+  }
+}
+
+@enduml

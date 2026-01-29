@@ -1,0 +1,372 @@
+@startuml Enhanced_BPG_with_Templates
+!theme aws-orange
+title Усовершенствованная архитектура BPG с базой шаблонных знаний
+skinparam linetype ortho
+skinparam class {
+  BackgroundColor #F0F8FF
+  BorderColor #4169E1
+}
+
+skinparam defaultFontColor Black
+
+' === Template Knowledge Base Layer ===
+package "📚 Template Knowledge Base Layer" #E8F5E8 {
+  class EntityCategoryTemplate {
+    +category_id: UUID
+    +category_name: String
+    +semantic_role: SemanticRole
+    +common_attributes: List[AttributeTemplate]
+    +typical_relationships: List[RelationshipAffinity]
+    +ui_manifestations: List[UIPattern]
+    --
+    +calculate_match_confidence(): Float
+    +suggest_attributes(): List[Attribute]
+  }
+
+  class ProcessPatternTemplate {
+    +pattern_id: UUID
+    +pattern_name: String
+    +pattern_category: ProcessCategory
+    +required_entity_categories: List[CategoryID]
+    +workflow_template: AbstractWorkflow
+    +business_rules: List[BusinessRule]
+    +success_indicators: List[KPI]
+    --
+    +instantiate_for_domain(): ConcretePattern
+    +estimate_complexity(): ComplexityScore
+  }
+
+  class RelationshipTemplate {
+    +relationship_id: UUID
+    +relationship_type: RelationType
+    +source_category: CategoryID
+    +target_category: CategoryID
+    +cardinality: Cardinality
+    +business_semantics: String
+    +strength_indicators: List[Indicator]
+    --
+    +validate_context(): Boolean
+    +suggest_inverse(): RelationshipTemplate
+  }
+
+  class AtomicActionTemplate {
+    +action_id: UUID
+    +action_type: ActionType
+    +applicable_elements: List[UIElementType]
+    +preconditions: List[Condition]
+    +execution_strategy: ExecutionStrategy
+    +verification_method: VerificationMethod
+    --
+    +generate_implementation(): ActionImplementation
+    +estimate_reliability(): ReliabilityScore
+  }
+}
+
+' === Enhanced Entity Layer ===
+package "🏷️ Enhanced Entity Layer" #LightGreen {
+  class EnterpriseEntityNode {
+    +entity_id: UUID
+    +entity_name: String
+    +template_reference: EntityCategoryTemplate
+    +domain_attributes: Map[String, Any]
+    +custom_relationships: List[Relationship]
+    +gui_manifestations: List[UIElementNode]
+    +confidence_score: Float
+    +provenance: ProvenanceInfo
+    --
+    +inherit_template_properties(): TemplateProperties
+    +customize_for_domain(): CustomProperties
+    +link_to_gui_elements(): List[UILink]
+  }
+
+  class UIElementNode {
+    +element_id: UUID
+    +element_type: UIElementType
+    +visual_signature: VisualFingerprint
+    +semantic_role: SemanticRole
+    +page_context: PageContext
+    +interaction_capabilities: List[ActionType]
+    +stability_score: Float
+    --
+    +match_to_entity(): EntityMatchResult
+    +generate_selectors(): List[Selector]
+  }
+
+  class PageContextNode {
+    +page_id: UUID
+    +page_type: PageType
+    +business_purpose: String
+    +available_entities: List[EntityNode]
+    +navigation_options: List[NavigationPath]
+    +access_requirements: List[Permission]
+    --
+    +analyze_business_context(): BusinessContext
+    +suggest_missing_entities(): List[EntitySuggestion]
+  }
+}
+
+' === Enhanced Pattern Layer ===
+package "⚙️ Enhanced Pattern Layer" #LightYellow {
+  class EnterprisePatternNode {
+    +pattern_id: UUID
+    +pattern_name: String
+    +base_template: ProcessPatternTemplate
+    +domain_customizations: List[Customization]
+    +involved_entities: List[EntityNode]
+    +navigation_sequence: List[NavigationStep]
+    +business_rules: List[EnterpriseRule]
+    +performance_metrics: PerformanceData
+    --
+    +generate_workflow(): WorkflowSequence
+    +validate_business_compliance(): ComplianceResult
+    +optimize_for_context(): OptimizationResult
+  }
+
+  class NavigationPatternNode {
+    +nav_pattern_id: UUID
+    +navigation_type: NavigationType
+    +source_context: PageContext
+    +target_context: PageContext
+    +transition_conditions: List[Condition]
+    +typical_user_paths: List[UserPath]
+    +success_probability: Float
+    --
+    +plan_optimal_route(): NavigationPlan
+    +handle_context_changes(): AdaptationStrategy
+  }
+
+  class BusinessRuleNode {
+    +rule_id: UUID
+    +rule_description: String
+    +rule_category: RuleCategory
+    +applicable_patterns: List[PatternID]
+    +conditions: List[LogicalCondition]
+    +actions: List[RuleAction]
+    +priority: Priority
+    +source: RuleSource
+    --
+    +evaluate_in_context(): EvaluationResult
+    +suggest_enforcement(): EnforcementStrategy
+  }
+}
+
+' === Enhanced Workflow Layer ===
+package "🔧 Enhanced Workflow Layer" #LightCoral {
+  class CompositeWorkflowNode {
+    +workflow_id: UUID
+    +workflow_name: String
+    +pattern_reference: EnterprisePatternNode
+    +atomic_actions: List[AtomicActionNode]
+    +execution_order: ExecutionGraph
+    +context_requirements: ContextRequirements
+    +rollback_strategy: RollbackPlan
+    --
+    +compile_execution_plan(): ExecutionPlan
+    +handle_dynamic_changes(): AdaptationResult
+  }
+
+  class AtomicActionNode {
+    +action_id: UUID
+    +template_reference: AtomicActionTemplate
+    +target_element: UIElementNode
+    +parameters: ActionParameters
+    +expected_outcome: OutcomeDefinition
+    +fallback_actions: List[FallbackAction]
+    +execution_context: ExecutionContext
+    --
+    +execute_with_verification(): ExecutionResult
+    +adapt_to_ui_changes(): AdaptationResult
+  }
+
+  class ContextStateNode {
+    +context_id: UUID
+    +state_snapshot: StateSnapshot
+    +active_entities: List[EntityNode]
+    +page_context: PageContextNode
+    +user_permissions: List[Permission]
+    +session_data: SessionData
+    +temporal_constraints: List[TimeConstraint]
+    --
+    +validate_state_consistency(): ValidationResult
+    +predict_state_transitions(): List[StateTransition]
+  }
+}
+
+' === LLM Integration Layer ===
+package "🧠 LLM Integration Layer" #FFF8E1 {
+  class LLMBusinessAnalyzer {
+    +analyze_business_documents(): BusinessAnalysisResult
+    +extract_entity_candidates(): List[EntityCandidate]
+    +infer_process_patterns(): List[PatternCandidate]
+    +suggest_relationships(): List[RelationshipCandidate]
+    +validate_business_logic(): ValidationReport
+    --
+    +explain_reasoning(): ExplanationText
+    +assess_confidence(): ConfidenceMetrics
+  }
+
+  class TemplateRecommendationEngine {
+    +recommend_entity_templates(): List[TemplateRecommendation]
+    +suggest_process_patterns(): List[PatternRecommendation]
+    +propose_relationships(): List[RelationshipRecommendation]
+    +validate_template_applicability(): ApplicabilityScore
+    --
+    +rank_recommendations(): RankedRecommendations
+    +explain_selection_criteria(): SelectionExplanation
+  }
+}
+
+' === Key Relationships - Template Inheritance ===
+EnterpriseEntityNode ||--|| EntityCategoryTemplate : inherits_from_template
+EnterprisePatternNode ||--|| ProcessPatternTemplate : based_on_template
+AtomicActionNode ||--|| AtomicActionTemplate : instantiated_from_template
+BusinessRuleNode ||--|| ProcessPatternTemplate : enforces_pattern_rules
+
+' === Enhanced Cross-Layer Relationships ===
+EntityCategoryTemplate ||--o{ RelationshipTemplate : defines_possible_relationships
+ProcessPatternTemplate ||--o{ EntityCategoryTemplate : requires_entity_categories
+ProcessPatternTemplate ||--o{ AtomicActionTemplate : composed_of_action_types
+EnterpriseEntityNode ||--o{ UIElementNode : manifested_in_gui
+EnterprisePatternNode ||--o{ NavigationPatternNode : includes_navigation
+CompositeWorkflowNode ||--o{ AtomicActionNode : composed_of_actions
+
+' === LLM Integration Relationships ===
+LLMBusinessAnalyzer --> EntityCategoryTemplate : matches_against_templates
+LLMBusinessAnalyzer --> ProcessPatternTemplate : discovers_similar_patterns
+TemplateRecommendationEngine --> EnterpriseEntityNode : recommends_entity_types
+TemplateRecommendationEngine --> EnterprisePatternNode : suggests_patterns
+
+' === Context and State Management ===
+ContextStateNode ||--|| PageContextNode : maintains_page_state
+ContextStateNode ||--o{ EnterpriseEntityNode : tracks_active_entities
+ContextStateNode ||--|| EnterprisePatternNode : executes_within_pattern
+
+' === Relationship Type Specialization ===
+EnterpriseEntityNode ||--|| EnterpriseEntityNode : informational_relationship\n(describes, contains, displays)
+EnterpriseEntityNode ||--|| EnterpriseEntityNode : transactional_relationship\n(purchases, creates, modifies)
+EnterpriseEntityNode ||--|| EnterpriseEntityNode : hierarchical_relationship\n(manages, belongs_to, part_of)
+EnterpriseEntityNode ||--|| EnterpriseEntityNode : temporal_relationship\n(precedes, triggers, schedules)
+EnterpriseEntityNode ||--|| EnterpriseEntityNode : conditional_relationship\n(requires, enables, blocks)
+
+' === Cross-view and Runtime Linking ===
+UIElementNode ||--|| UIElementNode : cross_view_equivalence\n⭐ (same entity, different presentations)
+AtomicActionNode ||..|| UIElementNode : runtime_element_linking\n⭐ (coordinates for RPA execution)
+
+' === Template Evolution and Learning ===
+EnterpriseEntityNode ..> EntityCategoryTemplate : usage_feedback\n(template improvement)
+EnterprisePatternNode ..> ProcessPatternTemplate : performance_data\n(pattern optimization)
+BusinessRuleNode ..> ProcessPatternTemplate : rule_effectiveness\n(template refinement)
+
+' === Implementation Notes ===
+note right of EntityCategoryTemplate
+**Template Categories:**
+
+**Actor Categories:**
+• EndUser (Customer, Client, Student)
+• Administrator (Manager, Admin, Owner)
+• ServiceProvider (Support, Consultant, Vendor)
+• SystemActor (Automated process, Integration)
+
+**Object Categories:**
+• PurchasableItem (Product, Service, Subscription)
+• Document (Report, Invoice, Contract, Manual)
+• Transaction (Order, Payment, Booking, Request)
+• Container (Cart, Category, Folder, Queue)
+
+**Process Categories:**
+• QueryProcess (Search, Filter, Browse, Lookup)
+• TransactionProcess (Purchase, Book, Reserve, Order)
+• ManagementProcess (Create, Update, Delete, Manage)
+• ApprovalProcess (Review, Approve, Reject, Escalate)
+end note
+
+note right of RelationshipTemplate
+**Relationship Semantics:**
+
+**Informational (Actor ↔ Object):**
+• describes: Manager describes Product
+• contains: Category contains Products
+• displays: Page displays Information
+
+**Transactional (Actor ↔ Object):**
+• purchases: Customer purchases Product
+• creates: User creates Document
+• modifies: Admin modifies Settings
+
+**Hierarchical (Object ↔ Object):**
+• belongs_to: Product belongs_to Category
+• part_of: LineItem part_of Order
+• manages: Manager manages Team
+
+**Temporal (Process ↔ Process):**
+• precedes: Search precedes Selection
+• triggers: Payment triggers Fulfillment
+• enables: Login enables PersonalizedView
+end note
+
+note bottom of LLMBusinessAnalyzer
+**🧠 LLM Integration Strategy:**
+
+**1. Business Document Analysis:**
+System: Analyze this business process document and extract:
+1. Business entities (actors, objects, containers, processes)
+2. Relationships between entities (type and semantics)
+3. Process flows and decision points
+4. Business rules and constraints
+
+Format as structured JSON with confidence scores.
+Consider domain: {enterprise_domain}
+Reference templates: {relevant_templates}
+
+
+**2. Template Matching & Validation:**
+• Semantic similarity scoring against template library
+• Contextual appropriateness assessment
+• Cross-domain pattern recognition
+• Confidence-weighted recommendations
+
+**3. Continuous Learning Pipeline:**
+• Expert validation feedback integration
+• Template effectiveness tracking
+• Cross-enterprise pattern discovery
+• Automated template refinement
+end note
+
+' === Нижняя легенда с белым фоном и черным текстом ===
+legend right
+BackgroundColor White
+FontColor Black
+**🔧 Enhanced Architecture Benefits:**
+
+**1. Systematic Knowledge Reuse:**
+• Template-based entity and pattern discovery
+• Cross-domain knowledge transfer
+• Reduced manual configuration effort
+• Consistent business process modeling
+
+**2. LLM-Enhanced Intelligence:**
+• Natural language business document processing
+• Contextual pattern and relationship inference
+• Confidence-weighted decision support
+• Explainable AI recommendations
+
+**3. Multi-Level Relationship Modeling:**
+• Specialized relationship types with business semantics
+• Template-driven relationship suggestion
+• Cross-view entity consistency
+• Runtime element linking for RPA execution
+
+**4. Adaptive Enterprise Customization:**
+• Template inheritance with domain customization
+• Business rule integration and validation
+• Performance-based template optimization
+• Continuous learning from usage patterns
+
+**5. Quality Assurance & Validation:**
+• Multi-modal validation (templates + LLM + expert review)
+• Automated consistency checking
+• Business rule compliance verification
+• Provenance tracking for all decisions
+end legend
+
+@enduml

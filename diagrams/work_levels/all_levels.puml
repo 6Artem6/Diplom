@@ -1,0 +1,251 @@
+@startuml
+!theme plain
+left to right direction
+skinparam linetype ortho
+
+skinparam rectangle {
+  Shadowing false
+  BorderColor black
+  FontSize 9
+  FontName Arial
+}
+skinparam arrow {
+  Color darkblue
+  FontSize 8
+}
+skinparam package {
+  BorderColor darkviolet
+  FontColor darkviolet
+  FontSize 10
+  FontStyle bold
+}
+
+title Многоуровневые связи архитектуры SiteGPT\nОт концепции диссертации до производственной реализации
+
+' =======================
+' УРОВЕНЬ 1: КОНЦЕПТУАЛЬНЫЙ
+' =======================
+package "L1: КОНЦЕПТУАЛЬНЫЙ" #FFE6E6 {
+  rectangle "Адаптивная\nэкстракция" as L1_ADAPT #FFB3B3
+  rectangle "Семантическое\nмоделирование" as L1_SEMANTIC #FFB3B3
+  rectangle "Самовосстановление" as L1_HEAL #FFB3B3
+  rectangle "Многоуровневая\nархитектура" as L1_MULTI #FFB3B3
+}
+
+' =======================
+' УРОВЕНЬ 2: ИССЛЕДОВАТЕЛЬСКИЕ МЕТОДЫ
+' =======================
+package "L2: ИССЛЕДОВАТЕЛЬСКИЕ МЕТОДЫ" #F0FFF0 {
+  rectangle "Multi-Strategy\nPattern Recognition" as L2_MSPR #E0FFE0
+  rectangle "DOM Semantic\nEmbedding" as L2_DSE #E0FFE0
+  rectangle "Resilient Locator\nStrategies" as L2_RLS #E0FFE0
+  rectangle "Hierarchical Graph\nConstruction" as L2_HGC #E0FFE0
+}
+
+' =======================
+' УРОВЕНЬ 3: СИСТЕМНЫЕ КОМПОНЕНТЫ
+' =======================
+package "L3: СИСТЕМНЫЕ КОМПОНЕНТЫ" #FFF0F8 {
+  rectangle "Intelligent Web\nDiscovery" as L3_IWD #FFE0F0
+  rectangle "Semantic Understanding\nSubsystem" as L3_SUS #FFE0F0
+  rectangle "Adaptive Action\nExecution" as L3_AAE #FFE0F0
+  rectangle "Learning & Adaptation\nSubsystem" as L3_LAS #FFE0F0
+}
+
+' =======================
+' УРОВЕНЬ 4: ТЕХНИЧЕСКИЕ МОДУЛИ
+' =======================
+package "L4: ТЕХНИЧЕСКИЕ МОДУЛИ" #F0F8FF {
+  rectangle "RobustCrawler\nCMSDetector" as L4_RC #E0F0FF
+  rectangle "TransformerEmbedding\nSemanticClassifier" as L4_TE #E0F0FF
+  rectangle "SelfHealingExecutor\nResilientLocator" as L4_SHE #E0F0FF
+  rectangle "PatternMiner\nContinualLearner" as L4_PM #E0F0FF
+}
+
+' =======================
+' УРОВЕНЬ 5: СЕРВИСЫ РАЗВЕРТЫВАНИЯ
+' =======================
+package "L5: СЕРВИСЫ РАЗВЕРТЫВАНИЯ" #FFFAF0 {
+  rectangle "CoreSiteGPTService\nLocalExecution" as L5_CORE #FFF0E0
+  rectangle "MLModelHubService\nGlobalKnowledge" as L5_ML #FFF0E0
+  rectangle "ComputerVisionService\nConversationalAI" as L5_AI #FFF0E0
+  rectangle "MonitoringService\nSecurityService" as L5_INFRA #FFF0E0
+}
+
+' =======================
+' НОВЫЕ НАУЧНЫЕ ДОСТИЖЕНИЯ (интеграция)
+' =======================
+package "НОВЫЕ НАУЧНЫЕ ДОСТИЖЕНИЯ" #F8F0FF {
+  rectangle "Контекстуальная\nавтоматизация" as NEW_CONTEXT #F0E8FF
+  rectangle "Нейро-символьное\nпонимание" as NEW_NEURO #F0E8FF
+  rectangle "Мета-обучение\nадаптации" as NEW_META #F0E8FF
+  rectangle "Федеративное\nобучение" as NEW_FED #F0E8FF
+}
+
+' =======================
+' ВЕРТИКАЛЬНЫЕ СВЯЗИ (по столбцам - одинаковые концепции)
+' =======================
+
+' Колонка адаптации/discovery
+L1_ADAPT --> L2_MSPR : реализация через
+L2_MSPR --> L3_IWD : системная интеграция
+L3_IWD --> L4_RC : технические модули
+L4_RC --> L5_CORE : сервисная реализация
+
+' Колонка семантики/понимания
+L1_SEMANTIC --> L2_DSE : методы исследования
+L2_DSE --> L3_SUS : семантическая подсистема
+L3_SUS --> L4_TE : embedding модули
+L4_TE --> L5_ML : ML сервисы
+
+' Колонка самовосстановления/выполнения
+L1_HEAL --> L2_RLS : стратегии локации
+L2_RLS --> L3_AAE : адаптивное выполнение
+L3_AAE --> L4_SHE : self-healing модули
+L4_SHE --> L5_AI : AI-enhanced сервисы
+
+' Колонка многоуровневости/обучения
+L1_MULTI --> L2_HGC : иерархические графы
+L2_HGC --> L3_LAS : подсистема обучения
+L3_LAS --> L4_PM : pattern mining
+L4_PM --> L5_INFRA : инфраструктурная поддержка
+
+' =======================
+' ГОРИЗОНТАЛЬНЫЕ СВЯЗИ (взаимодействия на уровнях)
+' =======================
+
+' Уровень 2: методы поддерживают друг друга
+L2_MSPR --> L2_DSE : паттерны → семантика
+L2_DSE --> L2_RLS : семантика → локаторы
+L2_RLS --> L2_HGC : локаторы → граф
+L2_HGC --> L2_MSPR : граф → паттерны
+
+' Уровень 3: подсистемы интегрированы
+L3_IWD --> L3_SUS : обнаруженное → понимание
+L3_SUS --> L3_AAE : понимание → выполнение
+L3_AAE --> L3_LAS : выполнение → обучение
+L3_LAS --> L3_IWD : обучение → улучшенное обнаружение
+
+' Уровень 4: технические модули взаимодействуют
+L4_RC --> L4_TE : crawled data → embeddings
+L4_TE --> L4_SHE : embeddings → execution
+L4_SHE --> L4_PM : execution results → learning
+L4_PM --> L4_RC : patterns → improved crawling
+
+' Уровень 5: сервисы координируются
+L5_CORE --> L5_ML : local requests → cloud ML
+L5_ML --> L5_AI : ML models → AI enhancement
+L5_AI --> L5_INFRA : AI results → monitoring
+L5_INFRA --> L5_CORE : infrastructure → local service
+
+' =======================
+' ИНТЕГРАЦИЯ НОВЫХ НАУЧНЫХ ДОСТИЖЕНИЙ
+' =======================
+
+' Новые достижения влияют на все уровни
+NEW_CONTEXT --> L2_DSE : контекстные эмбеддинги
+NEW_CONTEXT --> L4_TE : контекстные трансформеры
+NEW_CONTEXT --> L5_AI : контекстный AI
+
+NEW_NEURO --> L2_RLS : нейро-символьные локаторы
+NEW_NEURO --> L3_AAE : объяснимое выполнение
+NEW_NEURO --> L5_AI : гибридный AI
+
+NEW_META --> L2_HGC : мета-обучение графов
+NEW_META --> L3_LAS : быстрая адаптация
+NEW_META --> L5_ML : мета-модели
+
+NEW_FED --> L3_LAS : федеративное обучение
+NEW_FED --> L4_PM : распределенный pattern mining
+NEW_FED --> L5_ML : федеративные ML сервисы
+
+' =======================
+' ОБРАТНЫЕ СВЯЗИ ДЛЯ НЕПРЕРЫВНОГО УЛУЧШЕНИЯ
+' =======================
+
+' Обратная связь от технической реализации к исследованиям
+L5_INFRA --> L2_MSPR : производственные инсайты
+L5_AI --> L2_DSE : реальные данные использования
+L5_ML --> L2_RLS : эффективность моделей
+L5_CORE --> L2_HGC : практические ограничения
+
+' Обратная связь от новых достижений к концепциям
+NEW_CONTEXT --> L1_ADAPT : улучшенная адаптация
+NEW_NEURO --> L1_SEMANTIC : гибридное понимание
+NEW_META --> L1_HEAL : быстрое самовосстановление
+NEW_FED --> L1_MULTI : распределенная архитектура
+
+' =======================
+' КРОСС-УРОВНЕВЫЕ ИННОВАЦИИ
+' =======================
+
+' Прямые связи между отдаленными уровнями
+L1_ADAPT --> L4_RC : концепция → реализация
+L1_SEMANTIC --> L5_AI : семантика → AI сервисы
+L2_DSE --> L5_ML : исследования → производство
+L3_LAS --> NEW_META : системное обучение → мета-подходы
+
+note left of L1_ADAPT
+**Уровень 1: Концептуальные основы**
+• Теоретические принципы
+• Научные гипотезы
+• Исследовательские цели
+• Новизна и вклад
+end note
+
+note left of L2_MSPR
+**Уровень 2: Методы и алгоритмы**
+• Конкретные подходы
+• Математические модели
+• Алгоритмические решения
+• Экспериментальная проверка
+end note
+
+note left of L3_IWD
+**Уровень 3: Системная архитектура**
+• Подсистемы и модули
+• Интеграционные решения
+• Архитектурные паттерны
+• Системные интерфейсы
+end note
+
+note left of L4_RC
+**Уровень 4: Техническая реализация**
+• Конкретные модули
+• Программные компоненты
+• Технологические решения
+• Детали реализации
+end note
+
+note left of L5_CORE
+**Уровень 5: Производственное развертывание**
+• Сервисы и микросервисы
+• DevOps и инфраструктура
+• Масштабирование и мониторинг
+• Интеграция с внешними системами
+end note
+
+note bottom of NEW_CONTEXT
+**Новые научные достижения**
+Эти инновации пронизывают все уровни:
+• Контекстуальная автоматизация
+• Нейро-символьное понимание
+• Мета-обучение для адаптации
+• Федеративное обучение паттернов
+
+Каждое достижение имеет проявления
+на всех уровнях - от теории до практики
+end note
+
+note right of L5_INFRA
+**Обратные связи**
+Система самосовершенствования:
+• Производственные данные → исследования
+• Пользовательская обратная связь → алгоритмы
+• Производительность → архитектура
+• Реальное использование → теория
+
+Непрерывное улучшение всех уровней
+end note
+
+@enduml

@@ -1,0 +1,69 @@
+[
+  {
+    "prompt_cache:{prompt_hash}:{context_hash}": {
+      "response": "LLM response content",
+      "model_used": "gpt-4-turbo",
+      "confidence": 0.95,
+      "timestamp": 1703980800,
+      "ttl": 3600
+    }
+  },
+
+  {
+    "session:{session_id}": {
+      "user_id": "user123",
+      "current_domain": "e-commerce",
+      "active_entities": ["product_123", "customer_456"],
+      "conversation_history": [
+        {
+          "turn": 1,
+          "user_input": "Add product to cart",
+          "system_response": "...",
+          "timestamp": 1703980800
+        }
+      ],
+      "context_state": {
+        "current_page": "product_detail",
+        "available_actions": ["add_to_cart", "view_details"],
+        "user_permissions": ["read", "write"]
+      }
+    }
+  },
+
+  {
+    "vector_cache:{query_hash}": {
+      "similar_patterns": [
+        {
+          "pattern_id": "pattern_123",
+          "similarity_score": 0.89,
+          "pattern_type": "navigation"
+        }
+      ],
+      "search_metadata": {
+        "k": 5,
+        "filters": {"domain": "e-commerce"},
+        "search_time_ms": 45
+      },
+      "timestamp": 1703980800,
+      "ttl": 1800
+    }
+  },
+
+  {
+    "execution:{execution_id}": {
+      "status": "in_progress",
+      "current_step": 3,
+      "total_steps": 7,
+      "step_results": [
+        {
+          "step": 1,
+          "action": "screenshot_analysis",
+          "result": "success",
+          "timestamp": 1703980800
+        }
+      ],
+      "error_count": 0,
+      "started_at": 1703980750
+    }
+  }
+]

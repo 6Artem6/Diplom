@@ -1,0 +1,686 @@
+@startuml Updated_Microservices_Architecture
+!theme aws-orange
+title Обновленная микросервисная архитектура BPG с классами и хранилищами
+skinparam linetype ortho
+skinparam package {
+  BackgroundColor #F8F8FF
+  BorderColor #4169E1
+}
+
+' === Template Knowledge Service ===
+package "📚 TEMPLATE KNOWLEDGE SERVICE" #E8F5E8 {
+
+  package "Controllers" {
+    class TemplateController {
+      +get_entity_templates(domain: str): List[EntityTemplate]
+      +get_process_patterns(category: str): List[ProcessPattern]
+      +suggest_relationships(entity1: str, entity2: str): List[Relationship]
+      +validate_template_applicability(template_id: str, context: dict): float
+    }
+
+    class OpenSourceAnalysisController {
+      +analyze_system(system_url: str): SystemAnalysisResult
+      +extract_patterns(analysis_result: SystemAnalysisResult): List[Pattern]
+      +validate_extracted_patterns(patterns: List[Pattern]): ValidationReport
+    }
+  }
+
+  package "Services" {
+    class TemplateMatchingService {
+      -similarity_calculator: SimilarityCalculator
+      -confidence_scorer: ConfidenceScorer
+      +find_similar_entities(query: EntityQuery): List[EntityMatch]
+      +rank_template_matches(matches: List[Match]): List[RankedMatch]
+      +calculate_domain_relevance(template: Template, domain: str): float
+    }
+
+    class PatternExtractionService {
+      -code_analyzer: CodeAnalyzer
+      -documentation_parser: DocumentationParser
+      -ui_analyzer: UIAnalyzer
+      +extract_from_source_code(repo_path: str): List[Pattern]
+      +analyze_documentation(docs: List[Document]): List[BusinessProcess]
+      +discover_ui_patterns(screenshots: List[Screenshot]): List[UIPattern]
+    }
+
+    class LLMPatternDiscoveryService {
+      -llm_client: LLMClient
+      -prompt_manager: PromptManager
+      +analyze_business_documents(docs: List[Document]): List[EntityCandidate]
+      +infer_relationships(entities: List[Entity], context: BusinessContext): List[RelationshipCandidate]
+      +suggest_process_patterns(entities: List[Entity], workflows: List[Workflow]): List[ProcessCandidate]
+    }
+  }
+
+  package "Models" {
+    class EntityCategoryTemplate {
+      +template_id: UUID
+      +category_name: str
+      +semantic_role: str
+      +attributes: List[AttributeTemplate]
+      +relationship_affinities: Dict[str, float]
+      +ui_manifestation_patterns: List[UIPattern]
+      +domain_applicability: Dict[str, float]
+    }
+
+    class ProcessPatternTemplate {
+      +pattern_id: UUID
+      +pattern_name: str
+      +category: ProcessCategory
+      +required_entities: List[EntityReference]
+      +workflow_steps: List[WorkflowStep]
+      +business_rules: List[BusinessRule]
+      +success_metrics: List[KPI]
+      +complexity_score: float
+    }
+
+    class RelationshipTemplate {
+      +relationship_id: UUID
+      +relationship_type: str
+      +source_category: str
+      +target_category: str
+      +cardinality: str
+      +business_semantics: str
+      +validation_rules: List[ValidationRule]
+    }
+  }
+
+  package "Repositories" {
+    class TemplateRepository {
+      -graph_db: Neo4jClient
+      -vector_db: ChromaDBClient
+      +save_template(template: Template): UUID
+      +find_templates_by_domain(domain: str): List[Template]
+      +search_similar_templates(query_embedding: np.array): List[Template]
+      +update_template_confidence(template_id: UUID, confidence: float): void
+    }
+  }
+}
+
+' === Enterprise BPG Service ===
+package "🏢 ENTERPRISE BPG SERVICE" #F0F8FF {
+
+  package "Controllers" {
+    class BPGController {
+      +create_enterprise_bpg(enterprise_config: EnterpriseConfig): BPGInstance
+      +get_bpg_status(instance_id: UUID): BPGStatus
+      +update_custom_entities(instance_id: UUID, entities: List[Entity]): void
+      +validate_business_rules(instance_id: UUID, rules: List[BusinessRule]): ValidationResult
+    }
+
+    class OnboardingController {
+      +start_onboarding_process(enterprise_profile: EnterpriseProfile): OnboardingSession
+      +process_site_discovery(session_id: UUID, urls: List[str]): DiscoveryResult
+      +handle_expert_validation(session_id: UUID, validations: List[Validation]): void
+      +finalize_bpg_construction(session_id: UUID): BPGInstance
+    }
+  }
+
+  package "Services" {
+    class SiteDiscoveryService {
+      -web_crawler: WebCrawler
+      -page_analyzer: PageAnalyzer
+      -navigation_extractor: NavigationExtractor
+      +crawl_target_sites(urls: List[str], config: CrawlConfig): List[Page]
+      +analyze_page_structures(pages: List[Page]): List[PageStructure]
+      +extract_navigation_patterns(pages: List[Page]): List[NavigationPattern]
+    }
+
+    class BusinessDocumentProcessor {
+      -llm_service: LLMIntegrationService
+      -nlp_pipeline: NLPPipeline
+      +process_sop_documents(documents: List[Document]): List[ProcessDescription]
+      +extract_business_entities(text: str): List[EntityMention]
+      +identify_business_rules(documents: List[Document]): List[BusinessRule]
+    }
+
+    class BPGConstructorService {
+      -template_service: TemplateMatchingService
+      -validation_service: ValidationService
+      +construct_entity_layer(discoveries: List[Discovery], templates: List[Template]): List[EnterpriseEntity]
+      +build_pattern_layer(entities: List[EnterpriseEntity], processes: List[Process]): List[EnterprisePattern]
+      +generate_workflow_layer(patterns: List[EnterprisePattern]): List[WorkflowNode]
+    }
+  }
+
+  package "Models" {
+    class EnterpriseEntityNode {
+      +entity_id: UUID
+      +entity_name: str
+      +template_reference: UUID
+      +domain_attributes: Dict[str, Any]
+      +gui_manifestations: List[UIElementReference]
+      +custom_relationships: List[CustomRelationship]
+      +confidence_score: float
+      +created_at: datetime
+      +updated_at: datetime
+    }
+
+    class EnterprisePatternNode {
+      +pattern_id: UUID
+      +pattern_name: str
+      +base_template: UUID
+      +customizations: List[PatternCustomization]
+      +involved_entities: List[EntityReference]
+      +navigation_sequences: List[NavigationSequence]
+      +business_rules: List[EnterpriseBusinessRule]
+      +performance_metrics: PerformanceData
+    }
+
+    class WorkflowNode {
+      +workflow_id: UUID
+      +workflow_name: str
+      +pattern_reference: UUID
+      +execution_steps: List[ExecutionStep]
+      +context_requirements: ContextRequirements
+      +rollback_strategy: RollbackStrategy
+      +success_criteria: List[SuccessCriterion]
+    }
+  }
+
+  package "Repositories" {
+    class EnterpriseBPGRepository {
+      -graph_db: Neo4jClient
+      -cache: RedisClient
+      +save_bpg_instance(bpg: BPGInstance): UUID
+      +load_bpg_instance(instance_id: UUID): BPGInstance
+      +update_entity_nodes(nodes: List[EnterpriseEntityNode]): void
+      +query_patterns_by_intent(intent: str): List[EnterprisePatternNode]
+    }
+  }
+}
+
+' === Perception Service ===
+package "👁️ PERCEPTION SERVICE" #LightYellow {
+
+  package "Controllers" {
+    class PerceptionController {
+      +process_screenshot(image: bytes, config: ProcessingConfig): PerceptionResult
+      +analyze_ui_elements(elements: List[UIElement]): List[ElementAnalysis]
+      +perform_cross_view_matching(elements: List[UIElement], context: PageContext): List[CrossViewMatch]
+    }
+  }
+
+  package "Services" {
+    class ComputerVisionService {
+      -yolo_model: YOLOModel
+      -ocr_engine: OCREngine
+      -layout_analyzer: LayoutMLAnalyzer
+      +detect_ui_elements(image: np.array): List[UIElement]
+      +extract_text_from_elements(elements: List[UIElement]): List[TextExtraction]
+      +analyze_page_layout(image: np.array): PageLayout
+    }
+
+    class CrossViewMatchingService {
+      -clip_model: CLIPModel
+      -similarity_calculator: SimilarityCalculator
+      -consistency_validator: ConsistencyValidator
+      +match_elements_across_views(elements1: List[UIElement], elements2: List[UIElement]): List[ElementMatch]
+      +calculate_visual_similarity(element1: UIElement, element2: UIElement): float
+      +validate_cross_view_consistency(matches: List[ElementMatch]): ConsistencyReport
+    }
+
+    class EmbeddingService {
+      -clip_model: CLIPModel
+      -sentence_transformer: SentenceTransformer
+      -vector_store: ChromaDBClient
+      +generate_visual_embeddings(images: List[np.array]): List[np.array]
+      +generate_text_embeddings(texts: List[str]): List[np.array]
+      +store_embeddings(embeddings: List[Embedding]): void
+      +search_similar_embeddings(query_embedding: np.array, top_k: int): List[SimilarityMatch]
+    }
+  }
+
+  package "Models" {
+    class UIElement {
+      +element_id: UUID
+      +bounding_box: BoundingBox
+      +element_type: str
+      +text_content: str
+      +visual_features: VisualFeatures
+      +confidence_score: float
+      +page_context: PageContext
+    }
+
+    class CrossViewMatch {
+      +match_id: UUID
+      +source_element: UIElement
+      +target_element: UIElement
+      +similarity_score: float
+      +match_type: str
+      +validation_status: str
+    }
+  }
+
+  package "Repositories" {
+    class PerceptionRepository {
+      -vector_db: ChromaDBClient
+      -cache: RedisClient
+      +save_ui_elements(elements: List[UIElement]): void
+      +save_cross_view_matches(matches: List[CrossViewMatch]): void
+      +get_cached_elements(page_signature: str): List[UIElement]
+      +update_element_confidence(element_id: UUID, confidence: float): void
+    }
+  }
+}
+
+' === NLU Service ===
+package "🧠 NLU SERVICE" #LightPink {
+
+  package "Controllers" {
+    class NLUController {
+      +parse_user_intent(text: str, context: ConversationContext): IntentParsingResult
+      +resolve_entities(intent: Intent, bpg_context: BPGContext): List[ResolvedEntity]
+      +suggest_patterns(resolved_entities: List[ResolvedEntity]): List[PatternSuggestion]
+    }
+  }
+
+  package "Services" {
+    class IntentParsingService {
+      -llm_client: LLMClient
+      -prompt_templates: PromptTemplateManager
+      -confidence_calculator: ConfidenceCalculator
+      +parse_natural_language(text: str, domain_context: str): ParsedIntent
+      +extract_entities_from_text(text: str): List[EntityMention]
+      +calculate_parsing_confidence(parsed_intent: ParsedIntent): float
+    }
+
+    class ContextResolutionService {
+      -bpg_repository: EnterpriseBPGRepository
+      -conversation_manager: ConversationManager
+      +resolve_current_context(bpg_instance_id: UUID): CurrentContext
+      +update_conversation_context(context: ConversationContext, new_info: dict): ConversationContext
+      +validate_intent_feasibility(intent: Intent, context: CurrentContext): FeasibilityResult
+    }
+
+    class PatternRecommendationService {
+      -template_service: TemplateMatchingService
+      -ranking_algorithm: PatternRankingAlgorithm
+      +recommend_patterns(entities: List[Entity], intent: Intent): List[PatternRecommendation]
+      +rank_pattern_applicability(patterns: List[Pattern], context: ExecutionContext): List[RankedPattern]
+    }
+  }
+
+  package "Models" {
+    class ParsedIntent {
+      +intent_id: UUID
+      +primary_action: str
+      +target_entities: List[str]
+      +constraints: List[Constraint]
+      +confidence_score: float
+      +parsing_metadata: dict
+    }
+
+    class ConversationContext {
+      +context_id: UUID
+      +current_page: str
+      +active_entities: List[Entity]
+      +conversation_history: List[Turn]
+      +user_preferences: UserPreferences
+      +session_state: dict
+    }
+  }
+
+  package "Repositories" {
+    class NLURepository {
+      -cache: RedisClient
+      -conversation_db: PostgreSQLClient
+      +save_conversation_context(context: ConversationContext): UUID
+      +load_conversation_context(context_id: UUID): ConversationContext
+      +save_intent_parsing_result(result: IntentParsingResult): void
+      +get_user_intent_history(user_id: UUID): List[ParsedIntent]
+    }
+  }
+}
+
+' === Planning Service ===
+package "🎯 PLANNING SERVICE" #LightCoral {
+
+  package "Controllers" {
+    class PlanningController {
+      +generate_execution_plan(intent: Intent, patterns: List[Pattern]): ExecutionPlan
+      +optimize_workflow_sequence(workflow: List[WorkflowStep]): OptimizedWorkflow
+      +calculate_plan_confidence(plan: ExecutionPlan): ConfidenceMetrics
+    }
+  }
+
+  package "Services" {
+    class WorkflowPlannerService {
+      -pattern_expander: PatternExpander
+      -sequence_optimizer: SequenceOptimizer
+      +expand_patterns_to_workflows(patterns: List[Pattern]): List[Workflow]
+      +optimize_execution_sequence(workflows: List[Workflow]): OptimizedSequence
+      +generate_recovery_strategies(workflow: Workflow): List[RecoveryStrategy]
+    }
+
+    class NavigationPlannerService {
+      -navigation_repository: NavigationRepository
+      -path_finder: PathFindingAlgorithm
+      +plan_navigation_route(source: PageContext, target: PageContext): NavigationPlan
+      +optimize_multi_page_workflow(workflow: Workflow): OptimizedWorkflow
+      +validate_navigation_feasibility(plan: NavigationPlan): ValidationResult
+    }
+  }
+
+  package "Models" {
+    class ExecutionPlan {
+      +plan_id: UUID
+      +workflow_steps: List[WorkflowStep]
+      +navigation_sequence: List[NavigationStep]
+      +resource_requirements: ResourceRequirements
+      +estimated_duration: timedelta
+      +confidence_metrics: ConfidenceMetrics
+      +fallback_strategies: List[FallbackStrategy]
+    }
+
+    class WorkflowStep {
+      +step_id: UUID
+      +step_type: str
+      +target_element: ElementReference
+      +action_parameters: dict
+      +expected_outcome: OutcomeDefinition
+      +confidence_score: float
+      +dependencies: List[StepDependency]
+    }
+  }
+
+  package "Repositories" {
+    class PlanningRepository {
+      -graph_db: Neo4jClient
+      -cache: RedisClient
+      +save_execution_plan(plan: ExecutionPlan): UUID
+      +get_navigation_patterns(source_type: str, target_type: str): List[NavigationPattern]
+      +update_plan_performance_metrics(plan_id: UUID, metrics: dict): void
+    }
+  }
+}
+
+' === Orchestration Service ===
+package "🎭 ORCHESTRATION SERVICE" #Moccasin {
+
+  package "Controllers" {
+    class OrchestrationController {
+      +execute_workflow(plan: ExecutionPlan, context: ExecutionContext): ExecutionResult
+      +handle_step_failure(step_id: UUID, error: ExecutionError): RecoveryAction
+      +manage_hitl_interaction(workflow_id: UUID, hitl_request: HITLRequest): HITLResponse
+    }
+  }
+
+  package "Services" {
+    class WorkflowExecutorService {
+      -rpa_connector: RPAConnector
+      -state_manager: StateManager
+      -error_handler: ErrorHandler
+      +execute_workflow_step(step: WorkflowStep, context: ExecutionContext): StepResult
+      +manage_workflow_state(workflow_id: UUID, state_update: StateUpdate): void
+      +handle_execution_errors(error: ExecutionError): RecoveryAction
+    }
+
+    class HITLCoordinatorService {
+      -hitl_interface: HITLInterface
+      -validation_queue: ValidationQueue
+      +request_human_validation(validation_request: ValidationRequest): UUID
+      +process_human_feedback(feedback: HumanFeedback): ProcessingResult
+      +manage_approval_workflows(approval_request: ApprovalRequest): ApprovalResult
+    }
+
+    class StateManagementService {
+      -context_repository: ContextRepository
+      -session_manager: SessionManager
+      +maintain_execution_context(workflow_id: UUID): ExecutionContext
+      +handle_context_transitions(transition: ContextTransition): TransitionResult
+      +validate_state_consistency(context: ExecutionContext): ConsistencyResult
+    }
+  }
+
+  package "Models" {
+    class ExecutionContext {
+      +context_id: UUID
+      +current_page: PageContext
+      +active_workflow: UUID
+      +execution_state: ExecutionState
+      +user_session: UserSession
+      +error_history: List[ExecutionError]
+    }
+
+    class ExecutionResult {
+      +execution_id: UUID
+      +workflow_id: UUID
+      +steps_completed: List[StepResult]
+      +overall_success: bool
+      +performance_metrics: PerformanceMetrics
+      +errors_encountered: List[ExecutionError]
+    }
+  }
+
+  package "Repositories" {
+    class OrchestrationRepository {
+      -state_db: PostgreSQLClient
+      -cache: RedisClient
+      +save_execution_context(context: ExecutionContext): UUID
+      +load_execution_context(context_id: UUID): ExecutionContext
+      +save_execution_results(results: ExecutionResult): void
+      +get_workflow_execution_history(workflow_id: UUID): List[ExecutionResult]
+    }
+  }
+}
+
+' === Element Linking Service ===
+package "🔗 ELEMENT LINKING SERVICE" #Thistle {
+
+  package "Controllers" {
+    class ElementLinkingController {
+      +link_workflow_to_elements(workflow: Workflow, page_elements: List[UIElement]): LinkingResult
+      +extract_element_coordinates(element: UIElement, viewport: Viewport): Coordinates
+      +validate_element_accessibility(element: UIElement, context: PageContext): AccessibilityResult
+    }
+  }
+
+  package "Services" {
+    class RuntimeLinkingService {
+      -similarity_calculator: SimilarityCalculator
+      -coordinate_extractor: CoordinateExtractor
+      +link_abstract_elements_to_concrete(abstract_elements: List[AbstractElement], concrete_elements: List[UIElement]): List[ElementLink]
+      +calculate_linking_confidence(link: ElementLink): float
+      +generate_fallback_selectors(element: UIElement): List[Selector]
+    }
+
+    class CoordinateExtractionService {
+      -viewport_manager: ViewportManager
+      -bounding_box_calculator: BoundingBoxCalculator
+      +extract_click_coordinates(element: UIElement): Coordinates
+      +calculate_optimal_interaction_point(element: UIElement): Point
+      +validate_coordinate_accessibility(coordinates: Coordinates, viewport: Viewport): bool
+    }
+
+    class CacheManagementService {
+      -multi_level_cache: MultiLevelCache
+      -invalidation_manager: CacheInvalidationManager
+      +cache_element_linking(page_signature: str, linking_result: LinkingResult): void
+      +get_cached_linking(page_signature: str): Optional[LinkingResult]
+      +invalidate_outdated_cache(invalidation_criteria: InvalidationCriteria): void
+    }
+  }
+
+  package "Models" {
+    class ElementLink {
+      +link_id: UUID
+      +abstract_element: AbstractElementReference
+      +concrete_element: UIElement
+      +linking_confidence: float
+      +coordinates: Coordinates
+      +selectors: List[Selector]
+      +created_at: datetime
+    }
+
+    class LinkingResult {
+      +result_id: UUID
+      +workflow_id: UUID
+      +element_links: List[ElementLink]
+      +overall_confidence: float
+      +linking_strategy_used: str
+      +fallback_strategies: List[FallbackStrategy]
+    }
+  }
+
+  package "Repositories" {
+    class ElementLinkingRepository {
+      -cache: RedisClient
+      -linking_db: PostgreSQLClient
+      +save_linking_result(result: LinkingResult): UUID
+      +get_cached_element_links(page_signature: str): List[ElementLink]
+      +update_link_confidence(link_id: UUID, confidence: float): void
+      +save_element_performance_metrics(element_id: UUID, metrics: dict): void
+    }
+  }
+}
+
+' === Data Storage Layer ===
+package "🗄️ DATA STORAGE LAYER" #F5F0FF {
+
+  package "Graph Databases" {
+    class Neo4jClient {
+      -driver: Neo4jDriver
+      -session_pool: SessionPool
+      +execute_cypher_query(query: str, parameters: dict): QueryResult
+      +create_nodes(nodes: List[Node]): List[UUID]
+      +create_relationships(relationships: List[Relationship]): List[UUID]
+      +run_graph_algorithms(algorithm: GraphAlgorithm): AlgorithmResult
+    }
+
+    class GraphSchemaManager {
+      -schema_definitions: List[SchemaDefinition]
+      +create_indices(index_definitions: List[IndexDefinition]): void
+      +enforce_constraints(constraints: List[Constraint]): void
+      +migrate_schema(migration: SchemaMigration): MigrationResult
+    }
+  }
+
+  package "Vector Databases" {
+    class ChromaDBClient {
+      -client: ChromaClient
+      -collections: Dict[str, Collection]
+      +create_collection(name: str, metadata: dict): Collection
+      +add_embeddings(collection: str, embeddings: List[np.array], metadata: List[dict]): void
+      +query_similar(collection: str, query_embedding: np.array, n_results: int): QueryResult
+      +update_embeddings(collection: str, ids: List[str], embeddings: List[np.array]): void
+    }
+  }
+
+  package "Relational Databases" {
+    class PostgreSQLClient {
+      -connection_pool: ConnectionPool
+      -migration_manager: MigrationManager
+      +execute_sql(sql: str, parameters: List[Any]): QueryResult
+      +create_tables(table_definitions: List[TableDefinition]): void
+      +manage_transactions(transaction_operations: List[Operation]): TransactionResult
+    }
+  }
+
+  package "Cache Layer" {
+    class RedisClient {
+      -redis_cluster: RedisCluster
+      -serializer: Serializer
+      +set_cache(key: str, value: Any, ttl: int): bool
+      +get_cache(key: str): Optional[Any]
+      +invalidate_cache_pattern(pattern: str): int
+      +manage_cache_levels(level_config: CacheLevelConfig): void
+    }
+
+    class MultiLevelCache {
+      -l1_cache: Dict[str, Any]  # In-memory
+      -l2_cache: RedisClient      # Distributed
+      -l3_cache: PostgreSQLClient # Persistent
+      +get_with_fallback(key: str): Optional[Any]
+      +set_multi_level(key: str, value: Any, levels: List[CacheLevel]): void
+    }
+  }
+}
+
+' === Message Queue System ===
+package "📨 MESSAGE QUEUE SYSTEM" #LightGreen {
+
+  class KafkaProducer {
+    -kafka_client: KafkaClient
+    +send_message(topic: str, message: dict): MessageId
+    +send_batch(topic: str, messages: List[dict]): List[MessageId]
+  }
+
+  class KafkaConsumer {
+    -kafka_client: KafkaClient
+    -message_handlers: Dict[str, MessageHandler]
+    +consume_messages(topics: List[str]): void
+    +register_handler(topic: str, handler: MessageHandler): void
+  }
+
+  class MessageRouter {
+    +route_user_request(request: UserRequest): void
+    +route_processing_task(task: ProcessingTask): void
+    +route_execution_event(event: ExecutionEvent): void
+  }
+}
+
+' === Service Relationships ===
+' Template Knowledge Service connections
+TemplateController --> TemplateMatchingService
+TemplateMatchingService --> TemplateRepository
+OpenSourceAnalysisController --> PatternExtractionService
+PatternExtractionService --> LLMPatternDiscoveryService
+
+' Enterprise BPG Service connections
+BPGController --> BPGConstructorService
+OnboardingController --> SiteDiscoveryService
+SiteDiscoveryService --> BusinessDocumentProcessor
+BPGConstructorService --> EnterpriseBPGRepository
+
+' Perception Service connections
+PerceptionController --> ComputerVisionService
+ComputerVisionService --> CrossViewMatchingService
+CrossViewMatchingService --> EmbeddingService
+EmbeddingService --> PerceptionRepository
+
+' NLU Service connections
+NLUController --> IntentParsingService
+IntentParsingService --> ContextResolutionService
+ContextResolutionService --> PatternRecommendationService
+PatternRecommendationService --> NLURepository
+
+' Planning Service connections
+PlanningController --> WorkflowPlannerService
+WorkflowPlannerService --> NavigationPlannerService
+NavigationPlannerService --> PlanningRepository
+
+' Orchestration Service connections
+OrchestrationController --> WorkflowExecutorService
+WorkflowExecutorService --> HITLCoordinatorService
+HITLCoordinatorService --> StateManagementService
+StateManagementService --> OrchestrationRepository
+
+' Element Linking Service connections
+ElementLinkingController --> RuntimeLinkingService
+RuntimeLinkingService --> CoordinateExtractionService
+CoordinateExtractionService --> CacheManagementService
+CacheManagementService --> ElementLinkingRepository
+
+' Cross-service dependencies
+TemplateMatchingService --> ChromaDBClient
+BPGConstructorService --> TemplateMatchingService
+ContextResolutionService --> EnterpriseBPGRepository
+PatternRecommendationService --> TemplateRepository
+WorkflowPlannerService --> EnterpriseBPGRepository
+RuntimeLinkingService --> PerceptionRepository
+
+' Storage layer connections
+TemplateRepository --> Neo4jClient
+EnterpriseBPGRepository --> Neo4jClient
+PerceptionRepository --> ChromaDBClient
+NLURepository --> PostgreSQLClient
+OrchestrationRepository --> PostgreSQLClient
+ElementLinkingRepository --> RedisClient
+
+' Message queue connections
+AllControllers --> KafkaProducer
+AllServices --> KafkaConsumer
+MessageRouter --> AllServices
+
+@enduml

@@ -1,0 +1,192 @@
+@startuml
+!theme plain
+top to bottom direction
+skinparam linetype ortho
+
+skinparam rectangle {
+  Shadowing false
+  BorderColor black
+  FontSize 10
+  FontName Arial
+}
+skinparam arrow {
+  Color darkblue
+  FontSize 9
+}
+skinparam package {
+  BorderColor purple
+  FontColor purple
+  FontSize 12
+  FontStyle bold
+}
+
+title SiteGPT: Системная архитектура
+
+' =======================
+' СЛОЙ 1: Discovery & Graph Construction
+' =======================
+package "ПОДСИСТЕМА ОБНАРУЖЕНИЯ" #F5F0FF {
+  rectangle "Адаптивный\nВеб-Краулер" as AWC #E8DDFF
+  rectangle "Мульти-Стратегический\nАнализатор Паттернов" as MSPA #E8DDFF
+  rectangle "Обнаружение CMS\nи Фреймворков" as CFD #E8DDFF
+  rectangle "Оценка Сложности\nСайта" as SCAE #E8DDFF
+  rectangle "Селектор Стратегий\nКраулинга" as CSS #E8DDFF
+}
+
+package "ПОДСИСТЕМА ПОСТРОЕНИЯ ГРАФОВ" #F0FFF5 {
+  rectangle "Конструктор Многоуровневых\nГрафов" as MLGB #DDFFED
+  rectangle "Семантический\nАнализ DOM" as DSA_SYS #DDFFED
+  rectangle "Сопоставитель Связей\nСтраниц" as PRM #DDFFED
+  rectangle "Извлечение Иерархии\nМодулей" as MHE #DDFFED
+  rectangle "Разрешение\nПерекрёстных Ссылок" as CRR #DDFFED
+}
+
+' =======================
+' СЛОЙ 2: Semantic Understanding & Action Execution
+' =======================
+package "ПОДСИСТЕМА СЕМАНТИЧЕСКОГО ПОНИМАНИЯ" #FFF5F0 {
+  rectangle "Единый Семантический\nЭмбеддинг" as USEE #FFEDDD
+  rectangle "Классификатор\nЭлементов" as ESC #FFEDDD
+  rectangle "Распознавание\nПаттернов Взаимодействия" as IPR #FFEDDD
+  rectangle "Агрегация Контекста\nCAE" as CAE #FFEDDD
+  rectangle "Процессор Объединения\nЗнаний" as KFP #FFEDDD
+}
+
+package "ПОДСИСТЕМА ВЫПОЛНЕНИЯ ДЕЙСТВИЙ" #F0F5FF {
+  rectangle "Конструктор\nГрафа Действий" as AGC #DDE8FF
+  rectangle "Семантическое Сопоставление\nДействий" as SAM_SYS #DDE8FF
+  rectangle "Устойчивый Исполнитель\nREE" as REE #DDE8FF
+  rectangle "Менеджер Локаторов\nSelf-Healing" as SHLM #DDE8FF
+  rectangle "Система Восстановления\nОшибок" as FRS #DDE8FF
+}
+
+' =======================
+' СЛОЙ 3: Learning & Monitoring
+' =======================
+package "ПОДСИСТЕМА ОБУЧЕНИЯ И АДАПТАЦИИ" #FFF0F5 {
+  rectangle "Двигатель\nОбучения Паттернов" as PLE #FFDDEB
+  rectangle "Менеджер Адаптации\nFew-Shot" as FSAM #FFDDEB
+  rectangle "Координатор\nTransfer Learning" as TLC #FFDDEB
+  rectangle "Оркестратор Непрерывного\nОбучения" as CLO #FFDDEB
+  rectangle "Менеджер Обновлений\nМоделей" as MUM #FFDDEB
+}
+
+package "ПОДСИСТЕМА МОНИТОРИНГА И ОРКЕСТРАЦИИ" #F8F0FF {
+  rectangle "Монитор Изменений\nCDM" as CDM #F0E8FF
+  rectangle "Отслеживание Здоровья\nСистемы" as SHT #F0E8FF
+  rectangle "Оркестратор Рабочих Процессов\nWO" as WO #F0E8FF
+  rectangle "Двигатель Контроля Качества\nQAE" as QAE #F0E8FF
+  rectangle "Оптимизатор Производительности\nPO" as PO #F0E8FF
+}
+
+' =======================
+' ВЕРТИКАЛЬНЫЕ СВЯЗИ
+' =======================
+' Discovery -> Graph
+
+' Выравнивание колонок скрытыми стрелками
+AWC -[hidden]-> MLGB
+MLGB -[hidden]-> USEE
+MSPA -[hidden]-> DSA_SYS
+DSA_SYS -[hidden]-> ESC
+CFD -[hidden]-> PRM
+PRM -[hidden]-> IPR
+SCAE -[hidden]-> MHE
+MHE -[hidden]-> CAE
+CSS -[hidden]-> CRR
+CRR -[hidden]-> KFP
+
+AWC --> MLGB
+MSPA --> DSA_SYS
+CFD --> MHE
+SCAE --> PRM
+CSS --> CRR
+
+' Graph -> Semantic
+MLGB --> USEE
+DSA_SYS --> ESC
+PRM --> CAE
+MHE --> IPR
+CRR --> KFP
+
+' Semantic -> Action
+USEE --> AGC
+ESC --> SAM_SYS
+IPR --> REE
+CAE --> SHLM
+KFP --> FRS
+
+' Action -> Learning
+REE --> PLE
+FRS --> FSAM
+SHLM --> TLC
+SAM_SYS --> CLO
+
+' Learning -> Discovery (feedback)
+PLE --> MSPA
+FSAM --> CSS
+TLC --> CFD
+CLO --> SCAE
+
+' Monitoring -> subsystems
+CDM --> AWC
+SHT --> REE
+WO --> MLGB
+QAE --> USEE
+PO --> all
+
+' Cross-subsystem
+USEE --> SHLM
+DSA_SYS --> FRS
+IPR --> REE
+CAE --> WO
+
+' =======================
+' ЗАМЕТКИ
+' =======================
+note right of AWC
+**Адаптивный Веб-Краулер**
+• Многопоточный краулинг
+• Уважение лимитов запросов
+• Динамическая глубина обхода
+• Контекстно-зависимая навигация
+• Обработка аутентификации
+end note
+
+note right of USEE
+**Единый Семантический Эмбеддинг**
+• Мульти-модальное представление
+• Передача знаний между сайтами
+• Контекстное понимание
+• Вычисление сходства
+• Семантическая индексация
+end note
+
+note right of REE
+**Устойчивый Исполнитель**
+• Множественные стратегии отката
+• Адаптация в реальном времени
+• Механизмы восстановления ошибок
+• Оптимизация производительности
+• Управление состоянием
+end note
+
+note right of PLE
+**Двигатель Обучения Паттернов**
+• Неподконтрольное обучение
+• Инкрементальное обновление
+• Валидация паттернов
+• Консолидация знаний
+• Повторение опыта
+end note
+
+note right of WO
+**Оркестратор Рабочих Процессов**
+• Декомпозиция задач
+• Распределение ресурсов
+• Управление зависимостями
+• Параллельное выполнение
+• Агрегация результатов
+end note
+
+@enduml

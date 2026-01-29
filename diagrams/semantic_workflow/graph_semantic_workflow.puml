@@ -1,0 +1,306 @@
+@startuml
+!theme plain
+skinparam rectangle {
+  Shadowing false
+  BorderColor black
+  FontSize 11
+  FontName Arial
+}
+skinparam arrow {
+  Color darkblue
+  FontSize 10
+}
+
+title Web Automation System: Multi-level Semantic Analysis & Execution Architecture
+
+' =======================
+' PHASE 1: Site Discovery & Pattern Analysis
+' =======================
+package "Phase 1: Site Discovery" as P1 {
+  rectangle Crawler as C #lightblue
+  rectangle URLNormalizer as UN #lightblue
+  rectangle PatternAnalyzer as PA #lightgreen
+  rectangle StrategySelector as SS #lightgreen
+}
+
+note right of C
+**Crawler**
+• Обходит все нормализованные ссылки
+• Собирает HTML контент страниц
+• Определяет структуру навигации
+• **Optimization**: Параллельный обход с rate limiting
+end note
+
+note right of PA
+**PatternAnalyzer**
+• Анализирует характерные элементы и скрипты
+• Определяет тип сайта: WordPress, CMS, Framework
+• Выявляет сложность архитектуры
+• **Heuristic**: Кеширование паттернов по доменам
+end note
+
+' =======================
+' PHASE 2: Site Graph Construction
+' =======================
+package "Phase 2: Site Graph Construction" as P2 {
+  rectangle SiteGraphBuilder as SGB #yellow
+  rectangle PageGraph as PG #yellow
+  rectangle PageGraphStats as PGS #yellow
+  rectangle DOMAnalyzer as DGA #orange
+  rectangle DOMOptimizer as DO #orange
+}
+
+note right of SGB
+**SiteGraphBuilder**
+• Координирует построение многоуровневого графа
+• Управляет стратегией обхода DOM
+• **Optimization**: Инкрементальное построение графа
+end note
+
+note right of DGA
+**DOMAnalyzer + DOMOptimizer**
+• Анализирует DOM структуру страниц
+• Схлопывает лишнюю вложенность
+• Оптимизирует стратегию обхода
+• **Heuristic**: Игнорирование декоративных элементов
+end note
+
+' =======================
+' PHASE 3: Data Extraction
+' =======================
+package "Phase 3: Multi-level Data Extraction" as P3 {
+  rectangle ModuleExtractor as ME #lightyellow
+  rectangle PageExtractor as PE #lightyellow
+  rectangle WorkAreaExtractor as WAE #lightyellow
+  rectangle ElementExtractor as ELE #lightyellow
+  rectangle ScriptExtractor as SE #lightcyan
+  rectangle APIExtractor as AE #lightcyan
+  rectangle EventExtractor as EE #lightcyan
+  rectangle ValidationExtractor as VE #lightcyan
+}
+
+note right of ME
+**ModuleExtractor**
+• Выделяет модули по схожим URL и элементам
+• Группирует связанные страницы
+• **Optimization**: Кластеризация по URL паттернам
+end note
+
+note right of WAE
+**WorkAreaExtractor**
+• Извлекает рабочие области: формы, таблицы, списки
+• Определяет функциональные зоны страниц
+• **Heuristic**: Определение по семантическим тегам
+end note
+
+note right of SE
+**ScriptExtractor + APIExtractor**
+• Анализирует JavaScript код и события
+• Извлекает API эндпоинты, параметры, ответы
+• Строит граф API взаимодействий
+• **Optimization**: Статический анализ + runtime мониторинг
+end note
+
+' =======================
+' PHASE 4: Semantic Analysis & Graph Building
+' =======================
+package "Phase 4: Semantic Processing" as P4 {
+  rectangle SemanticAnalyzer as SA #lightpink
+  rectangle EmbeddingEngine as EE_EMB #lightpink
+  rectangle GraphMerger as GM #lightpink
+  rectangle SiteGraph as SG #pink
+}
+
+note right of SA
+**SemanticAnalyzer**
+• Присваивает семантику каждому уровню
+• Определяет функциональную значимость элементов
+• Анализирует контекст в рамках родительских элементов
+• **Optimization**: Кеширование семантических векторов
+end note
+
+note right of EE_EMB
+**EmbeddingEngine**
+• Создает эмбеддинги для элементов всех уровней
+• Определяет семантическую близость
+• Расширяет значимость родительских элементов
+• **Heuristic**: Контекстуальные эмбеддинги с учетом иерархии
+end note
+
+note right of SG
+**SiteGraph (Final Structure)**
+**Level 1**: Modules (по URL и элементам)
+**Level 2**: Pages
+**Level 3**: WorkAreas (формы, таблицы)
+**Level 4**: Elements (поля, кнопки)
+**Level 5**: Scripts & API calls
++ API paths, parameters, responses
++ Event handlers and validation rules
+end note
+
+' =======================
+' PHASE 5: Action Graph Construction
+' =======================
+package "Phase 5: Action Graph Construction" as P5 {
+  rectangle ActionGraphBuilder as AGB #lightgreen
+  rectangle ActionSemanticEngine as ASE #lightgreen
+  rectangle ActionHierarchy as AH #lightgreen
+  rectangle ActionGraph as AG #green
+}
+
+note right of AGB
+**ActionGraphBuilder**
+• Строит граф возможных действий от SiteGraph
+• Прямое направление: понимание → атомарные действия
+• Обратное: атомарные → общие последствия
+• **Optimization**: Предвычисление типовых action patterns
+end note
+
+note right of AG
+**ActionGraph Structure**
+**Descriptive Level**: Общее понимание возможностей сайта
+**Functional Level**: Функциональные области действий
+**Operational Level**: Конкретные операции
+**Atomic Level**: Элементарные действия (click, type, etc.)
+
+Каждый уровень связан с соответствующим уровнем SiteGraph
+end note
+
+' =======================
+' PHASE 6: Change Monitoring
+' =======================
+package "Phase 6: Change Monitoring" as P6 {
+  rectangle GraphSynchronizer as GS #lightcoral
+  rectangle SnapshotManager as SM #lightcoral
+  rectangle ChangeDetector as CD #lightcoral
+  rectangle IncrementalUpdater as IU #lightcoral
+}
+
+note right of GS
+**GraphSynchronizer**
+• Мониторинг изменений на сайте
+• Создание снапшотов каждого уровня
+• Инкрементальные обновления графов
+• **Optimization**: Differential snapshots, smart polling
+end note
+
+' =======================
+' PHASE 7: Query Processing & Task Execution
+' =======================
+package "Phase 7: Task Planning & Execution" as P7 {
+  rectangle UserQuery as UQ #lightsteelblue
+  rectangle QueryAnalyzer as QA #lightsteelblue
+  rectangle ActionMatcher as AM #lightsteelblue
+  rectangle LLMTaskPlanner as LTP #lightyellow
+  rectangle TaskGraphBuilder as TGB #lightyellow
+  rectangle TaskOptimizer as TO #lightyellow
+  rectangle TaskGraph as TG #yellow
+  rectangle ExecutionEngine as EXE #lightgray
+}
+
+note right of QA
+**QueryAnalyzer**
+• Анализирует пользовательский запрос
+• Извлекает намерения и параметры
+• Определяет область поиска в ActionGraph
+• **Heuristic**: NLP preprocessing + intent classification
+end note
+
+note right of LTP
+**LLMTaskPlanner**
+• Формирует последовательность действий через LLM
+• Сопоставляет с уровнями ActionGraph
+• Строит план от поиска страниц до атомарных действий
+• **Optimization**: Template-based planning for common patterns
+end note
+
+note right of TO
+**TaskOptimizer**
+• Оптимизация последовательности действий
+• Исключение избыточных переходов
+• Пакетирование однотипных операций
+• **Heuristic**: State-aware optimization (current page context)
+end note
+
+note right of TG
+**TaskGraph (Execution Plan)**
+**Navigation Level**: Поиск и переход к нужным страницам
+**Context Level**: Поиск рабочих областей
+**Interaction Level**: Взаимодействие с элементами
+**Atomic Level**: Конкретные команды (click, type, wait)
+
+Включает оптимизации для текущего состояния браузера
+end note
+
+' =======================
+' Data Flow Connections
+' =======================
+
+' Phase 1 Flow
+C --> UN : normalized URLs
+UN --> PA : site structure
+PA --> SS : complexity analysis
+SS --> SGB : strategy selection
+
+' Phase 2 Flow
+SGB --> PG : build strategy
+PG --> PGS : page structure
+PGS --> DGA : DOM tree
+DGA --> DO : optimization rules
+DO --> SGB : optimized strategy
+
+' Phase 3 Flow
+SGB --> ME : module detection
+SGB --> PE : page analysis
+SGB --> WAE : work area detection
+SGB --> ELE : element extraction
+SGB --> SE : script analysis
+SGB --> AE : API discovery
+SGB --> EE : event extraction
+SGB --> VE : validation rules
+
+' Phase 4 Flow
+ME --> GM : module data
+PE --> GM : page data
+WAE --> GM : work area data
+ELE --> GM : element data
+SE --> GM : script data
+AE --> GM : API data
+EE --> GM : event data
+VE --> GM : validation data
+
+GM --> SA : merged data
+SA --> EE_EMB : semantic analysis
+EE_EMB --> SG : embeddings
+GM --> SG : graph structure
+
+' Phase 5 Flow
+SG --> AGB : site structure
+AGB --> ASE : action analysis
+ASE --> AH : semantic actions
+AH --> AG : action hierarchy
+
+' Phase 6 Flow
+SG --> GS : site graph
+AG --> GS : action graph
+GS --> SM : change monitoring
+SM --> CD : snapshots
+CD --> IU : detected changes
+IU --> SG : graph updates
+IU --> AG : action updates
+
+' Phase 7 Flow
+UQ --> QA : user request
+QA --> AM : analyzed query
+AM --> AG : intent matching
+AG --> LTP : available actions
+LTP --> TGB : action sequence
+TGB --> TO : task plan
+TO --> TG : optimized plan
+TG --> EXE : execution commands
+
+' Feedback Loops
+EXE --> GS : execution results
+GS --> AG : performance feedback
+
+@enduml

@@ -1,0 +1,148 @@
+@startuml
+' MSBL Implementation Plan - Class Diagram (color-coded)
+
+skinparam class {
+    BackgroundColor<<Perception>> #D0E4F7
+    BackgroundColor<<Semantic>> #D7F7D9
+    BackgroundColor<<Execution>> #F7E1C0
+    BackgroundColor<<Milestone>> #E2D0F7
+    BackgroundColor<<Research>> #F2F2F2
+    BorderColor Black
+}
+
+title MSBL Implementation Plan - Class Diagram
+
+' Phase 1: Perception & Embeddings
+class "Month 1:\nLiterature & Prototype" <<Perception>> {
+    Tasks: Literature Review (30+ articles)
+    Tasks: Dataset Analysis (WebArena, MiniWoB++, Rico)
+    Tasks: Environment Setup (Docker, K8s, GPU)
+    Tasks: Baseline Experiments (YOLOv8, OCR)
+    Tasks: Tech Stack Selection
+    Deliverables: SOTA Analysis, Tech Architecture, Baseline Metrics
+}
+
+class "Month 2:\nPerception Pipeline" <<Perception>> {
+    Tasks: Element Detection (YOLOv8 fine-tuning)
+    Tasks: OCR Pipeline (Tesseract + PaddleOCR)
+    Tasks: Layout Understanding (LayoutLMv3)
+    Tasks: Data Pipeline (screenshots → elements → embeddings)
+    Tasks: Quality Assessment (precision/recall)
+    Technologies: YOLOv8, LayoutLMv3, OpenCV, FastAPI
+    Research: OCR comparison, Transfer Learning, Screen resolution impact
+}
+
+class "Month 3:\nEmbedding & Storage" <<Perception>> {
+    Tasks: Multimodal Embeddings (CLIP + SentenceTransformers)
+    Tasks: Vector DB Setup (Milvus)
+    Tasks: Graph DB Setup (Neo4j)
+    Tasks: Similarity Matching
+    Tasks: Performance Testing (latency, throughput)
+    Technologies: CLIP, Milvus, Neo4j, MongoDB, Redis
+    Research: Embedding dimension, Similarity metrics, Multimodal fusion
+}
+
+' Phase 2: Semantic Layer & LLM
+class "Month 4:\nRole Classification & Entity Linking" <<Semantic>> {
+    Tasks: Role Classifier (MLP + Attention)
+    Tasks: Entity Linking (GNN)
+    Tasks: Confidence Scoring (Bayesian)
+    Tasks: Ground Truth Collection (500+ elements)
+    Tasks: Cross-validation (5-fold)
+    Technologies: PyTorch, PyG, HDBSCAN, Label Studio
+    Research: Weak supervision, Context influence, Transfer learning
+}
+
+class "Month 5:\nProcess Mining Integration" <<Semantic>> {
+    Tasks: Clickstream Processing → event logs
+    Tasks: PM4Py Integration
+    Tasks: BPG Construction (Neo4j)
+    Tasks: Process-Element Mapping
+    Tasks: Validation (BPMN comparison)
+    Technologies: PM4Py, NetworkX, BPMN-js, Graphviz
+    Research: Process discovery quality, Event granularity, Validation methods
+}
+
+class "Month 6:\nLLM Integration & Intent Mapping" <<Semantic>> {
+    Tasks: LLM Setup (LLaVA / GPT-4V)
+    Tasks: Intent Classification (NL → business intent)
+    Tasks: Action Planning (intent → UI actions)
+    Tasks: Context Grounding (BPG)
+    Tasks: Human-in-the-Loop Interface
+    Technologies: LLaVA / GPT-4V, LangChain, Streamlit
+    Research: Prompt strategies, Fine-tuning vs In-context, HITL optimization
+}
+
+' Phase 3: Execution & Enterprise
+class "Month 7:\nExecution Layer" <<Execution>> {
+    Tasks: RPA Integration (Selenium/Playwright)
+    Tasks: N8N Integration
+    Tasks: Action Executor
+    Tasks: Error Handling (retry, fallback)
+    Tasks: Real-time Monitoring
+    Technologies: Selenium, Playwright, N8N, Celery, Prometheus+Grafana
+    Research: Automation reliability, Dynamic content strategies, Speed vs accuracy
+}
+
+class "Month 8:\nEnterprise Features" <<Execution>> {
+    Tasks: Audit Trail (full logging)
+    Tasks: Security Layer (auth, encryption)
+    Tasks: Multi-tenancy
+    Tasks: API Gateway
+    Tasks: Configuration Management (UI)
+    Technologies: FastAPI + OAuth2, PostgreSQL, Kubernetes, Traefik, React
+    Research: Compliance, Performance overhead, Scalability patterns
+}
+
+class "Month 9:\nPerformance & Scalability" <<Execution>> {
+    Tasks: Performance Optimization (profiling, bottlenecks)
+    Tasks: Horizontal Scaling (K8s auto-scaling)
+    Tasks: Caching Strategy (Redis)
+    Tasks: Load Testing (Locust)
+    Tasks: Cost Optimization
+    Technologies: cProfile, py-spy, K8s HPA, Redis Cluster, Locust
+    Research: Scaling bottlenecks, Accuracy vs latency trade-offs, Cost-effectiveness
+}
+
+class "Month 10:\nValidation & Documentation" <<Execution>> {
+    Tasks: End-to-End Testing
+    Tasks: A/B Testing
+    Tasks: User Studies
+    Tasks: Technical Documentation
+    Tasks: Research Paper
+    Technologies: Pytest, Sphinx, Docker Compose, LaTeX
+    Research: Evaluation metrics, User experience, Lessons learned
+}
+
+' Milestones
+class PoC <<Milestone>> {
+    Month: 3
+}
+class MVP <<Milestone>> {
+    Month: 6
+}
+class Production <<Milestone>> {
+    Month: 9
+}
+class Enterprise <<Milestone>> {
+    Month: 10
+}
+
+' Associations
+"Month 1:\nLiterature & Prototype" --> "Month 2:\nPerception Pipeline"
+"Month 2:\nPerception Pipeline" --> "Month 3:\nEmbedding & Storage"
+"Month 3:\nEmbedding & Storage" --> "Month 4:\nRole Classification & Entity Linking"
+"Month 4:\nRole Classification & Entity Linking" --> "Month 5:\nProcess Mining Integration"
+"Month 5:\nProcess Mining Integration" --> "Month 6:\nLLM Integration & Intent Mapping"
+"Month 6:\nLLM Integration & Intent Mapping" --> "Month 7:\nExecution Layer"
+"Month 7:\nExecution Layer" --> "Month 8:\nEnterprise Features"
+"Month 8:\nEnterprise Features" --> "Month 9:\nPerformance & Scalability"
+"Month 9:\nPerformance & Scalability" --> "Month 10:\nValidation & Documentation"
+
+' Milestone connections
+PoC --> "Month 3:\nEmbedding & Storage"
+MVP --> "Month 6:\nLLM Integration & Intent Mapping"
+Production --> "Month 9:\nPerformance & Scalability"
+Enterprise --> "Month 10:\nValidation & Documentation"
+
+@enduml

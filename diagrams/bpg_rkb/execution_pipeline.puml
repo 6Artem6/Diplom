@@ -1,0 +1,234 @@
+@startuml Execution Pipeline Architecture
+
+!theme aws-orange
+title Полный пайплайн исполнения: от User Intent до Action Execution
+skinparam linetype ortho
+
+actor "👤 User" as User
+
+' === INPUT LAYER ===
+package "📥 INPUT CAPTURE & PROCESSING" #E8F4FD {
+
+  rectangle "🎤 Intent Capture" #LightBlue {
+    rectangle "Natural Language\n• Speech-to-text\n• Text normalization\n• Intent parsing" as NLInput
+    rectangle "Visual Context\n• Screen capture\n• Element detection\n• Layout analysis" as VisualInput
+  }
+
+  rectangle "📸 Multi-Platform Screenshot Engine" #LightGreen {
+    rectangle "Web Screenshots\n**Tech**: Playwright/Selenium\n• Full page capture\n• Element highlighting\n• DOM structure export" as WebScreenshot
+    rectangle "Desktop Screenshots\n**Tech**: PyAutoGUI/Windows API\n• Multi-monitor support\n• Active window detection\n• Element accessibility tree" as DesktopScreenshot
+    rectangle "Mobile Screenshots\n**Tech**: Appium/ADB\n• Device screen capture\n• Touch coordinate mapping\n• App state detection" as MobileScreenshot
+  }
+
+  rectangle "📊 Clickstream Collector" #LightYellow {
+    rectangle "Web Events\n**Tech**: Browser extensions\n• Mouse/keyboard events\n• Page navigation tracking\n• Form interaction logs" as WebEvents
+    rectangle "Desktop Events\n**Tech**: Windows hooks/macOS CGEvent\n• Global input monitoring\n• Application focus tracking\n• Window state changes" as DesktopEvents
+    rectangle "Mobile Events\n**Tech**: UIAutomator/XCUITest\n• Touch gesture recording\n• App lifecycle events\n• Screen orientation changes" as MobileEvents
+  }
+}
+
+' === CORE PROCESSING ===
+package "🧠 CORE BPG + LLM PROCESSING" #F0F8FF {
+
+  rectangle "Knowledge Base Layer" #E8F5E8 {
+    rectangle "🏗️ BPG Knowledge Store\n**Tech**: Neo4j + PostgreSQL\n• Entity relationships\n• Process patterns\n• Business constraints\n• UI element mappings" as BPGStore
+    rectangle "📚 Vector Knowledge\n**Tech**: Pinecone/Milvus\n• Semantic entity search\n• Pattern similarity\n• Context matching" as VectorStore
+  }
+
+  rectangle "🤖 LLM Orchestration Layer" #FFF8E1 {
+    rectangle "🎯 Intent Analysis\n**Tech**: GPT-4 + fine-tuned model\n• User goal extraction\n• Context understanding\n• Ambiguity resolution" as IntentAnalysis
+    rectangle "🔍 Context Enrichment\n**Tech**: Custom Python service\n• BPG context assembly\n• Prompt optimization\n• Token budget management" as ContextEnrichment
+    rectangle "👁️ Visual Understanding\n**Tech**: GPT-4V + CLIP\n• Screenshot analysis\n• Element identification\n• Spatial relationships" as VisualUnderstanding
+    rectangle "📋 Action Planning\n**Tech**: GPT-4 + business rules\n• Step sequence generation\n• Validation checks\n• Error handling plans" as ActionPlanning
+  }
+}
+
+' === EXECUTION LAYER ===
+package "⚡ MULTI-PLATFORM EXECUTION LAYER" #F5F0FF {
+
+  rectangle "🌐 Web Execution Engine" #E6F7FF {
+    rectangle "Browser Control\n**Tech**: Playwright/Selenium\n• Element interaction\n• JavaScript execution\n• Page navigation\n• Cookie/session management" as BrowserControl
+    rectangle "Smart Selectors\n**Tech**: Custom algorithms\n• Dynamic CSS selectors\n• XPath fallbacks\n• Visual element matching\n• Text-based identification" as WebSelectors
+  }
+
+  rectangle "🖥️ Desktop Execution Engine" #F0FFF0 {
+    rectangle "Windows Automation\n**Tech**: pyautogui + Windows API\n• Window management\n• Keyboard/mouse simulation\n• Accessibility API integration\n• OCR text recognition" as WindowsAutomation
+    rectangle "macOS Automation\n**Tech**: PyObjC + AppleScript\n• Cocoa API integration\n• Accessibility inspector\n• System events handling" as MacAutomation
+    rectangle "Linux Automation\n**Tech**: python-xlib + AT-SPI\n• X11 window management\n• Accessibility toolkit\n• Desktop environment APIs" as LinuxAutomation
+  }
+
+  rectangle "📱 Mobile Execution Engine" #FFF0F5 {
+    rectangle "Android Automation\n**Tech**: Appium + UIAutomator2\n• Touch gestures\n• App activities\n• System UI interaction\n• Device capabilities" as AndroidAutomation
+    rectangle "iOS Automation\n**Tech**: Appium + XCUITest\n• UI element hierarchy\n• Touch and gesture actions\n• App lifecycle management\n• Device permissions" as iOSAutomation
+  }
+
+  rectangle "🔧 Execution Coordinator" #FFFACD {
+    rectangle "Platform Adapter\n**Tech**: Factory pattern\n• Platform detection\n• Adapter selection\n• Command translation\n• Error standardization" as PlatformAdapter
+    rectangle "Action Executor\n**Tech**: Async task queue\n• Command queuing\n• Parallel execution\n• Retry mechanisms\n• State verification" as ActionExecutor
+    rectangle "Real-time Monitoring\n**Tech**: Event-driven architecture\n• Execution tracking\n• Performance metrics\n• Error detection\n• Recovery triggers" as RealtimeMonitor
+  }
+}
+
+' === FEEDBACK LAYER ===
+package "🔄 FEEDBACK & ADAPTATION" #E6F3FF {
+  rectangle "📊 Execution Analytics\n**Tech**: InfluxDB + Grafana\n• Performance monitoring\n• Success rate tracking\n• Error pattern analysis\n• User behavior insights" as ExecutionAnalytics
+  rectangle "🎓 Learning Engine\n**Tech**: MLflow + custom algorithms\n• Pattern optimization\n• Selector refinement\n• Context improvement\n• Prompt evolution" as LearningEngine
+  rectangle "🔄 Knowledge Updates\n**Tech**: Event sourcing\n• BPG enrichment\n• Pattern discovery\n• Rule refinement\n• Template evolution" as KnowledgeUpdates
+}
+
+' === DATA FLOWS ===
+
+' Input Flow
+User --> NLInput : "Add item to cart"
+User --> VisualInput : Current screen
+
+NLInput --> IntentAnalysis : Natural language
+VisualInput --> WebScreenshot : Web page
+VisualInput --> DesktopScreenshot : Desktop app
+VisualInput --> MobileScreenshot : Mobile app
+
+WebScreenshot --> VisualUnderstanding : Base64 image + DOM
+DesktopScreenshot --> VisualUnderstanding : Screenshot + accessibility tree
+MobileScreenshot --> VisualUnderstanding : Screenshot + UI hierarchy
+
+' Context Processing
+IntentAnalysis --> ContextEnrichment : Parsed intent
+BPGStore --> ContextEnrichment : Business context
+VectorStore --> ContextEnrichment : Similar patterns
+ContextEnrichment --> ActionPlanning : Enriched prompt
+
+VisualUnderstanding --> ActionPlanning : Visual analysis
+ActionPlanning --> PlatformAdapter : Action sequence
+
+' Execution Flow
+PlatformAdapter --> BrowserControl : Web commands
+PlatformAdapter --> WindowsAutomation : Desktop commands (Windows)
+PlatformAdapter --> MacAutomation : Desktop commands (macOS)
+PlatformAdapter --> LinuxAutomation : Desktop commands (Linux)
+PlatformAdapter --> AndroidAutomation : Mobile commands (Android)
+PlatformAdapter --> iOSAutomation : Mobile commands (iOS)
+
+BrowserControl --> ActionExecutor : Browser actions
+WindowsAutomation --> ActionExecutor : Windows actions
+MacAutomation --> ActionExecutor : macOS actions
+LinuxAutomation --> ActionExecutor : Linux actions
+AndroidAutomation --> ActionExecutor : Android actions
+iOSAutomation --> ActionExecutor : iOS actions
+
+ActionExecutor --> RealtimeMonitor : Execution results
+
+' Feedback Loop
+RealtimeMonitor --> ExecutionAnalytics : Performance data
+ExecutionAnalytics --> LearningEngine : Analytics insights
+LearningEngine --> KnowledgeUpdates : Optimization suggestions
+KnowledgeUpdates --> BPGStore : Updated patterns
+
+' Clickstream Integration
+WebEvents --> BPGStore : Web interaction patterns
+DesktopEvents --> BPGStore : Desktop usage patterns
+MobileEvents --> BPGStore : Mobile interaction patterns
+
+' === TECHNOLOGY STACK DETAILS ===
+
+note right of WebScreenshot
+**Web Screenshot Tech:**
+• Playwright headless browsers
+• Full page + element screenshots
+• DOM tree extraction
+• Network request logging
+• Performance metrics capture
+
+**Data Format:**
+```json
+{
+  "screenshot": "base64_image_data",
+  "dom": "html_structure",
+  "url": "current_page_url",
+  "viewport": {"width": 1920, "height": 1080},
+  "timestamp": "2024-01-20T10:30:00Z"
+}
+```
+end note
+
+note right of DesktopScreenshot
+**Desktop Screenshot Tech:**
+• Windows: Win32 API + UI Automation
+• macOS: CGImage + Accessibility API
+• Linux: X11 + AT-SPI
+
+**Data Format:**
+```json
+{
+  "screenshot": "base64_image_data",
+  "accessibility_tree": "ui_elements",
+  "active_window": "window_info",
+  "cursor_position": {"x": 100, "y": 200},
+  "timestamp": "2024-01-20T10:30:00Z"
+}
+```
+end note
+
+note right of BrowserControl
+**Web Command Execution:**
+```python
+# Playwright example
+async def execute_click(selector, page):
+    element = await page.wait_for_selector(selector)
+    await element.click()
+
+    # Verify action success
+    await page.wait_for_load_state('networkidle')
+    return await capture_result_screenshot()
+```
+
+**Command Types:**
+• click(selector)
+• type(selector, text)
+• navigate(url)
+• scroll(direction, amount)
+• wait(condition, timeout)
+end note
+
+note right of WindowsAutomation
+**Desktop Command Execution:**
+```python
+# Windows automation example
+import pyautogui
+import win32gui
+
+def execute_desktop_click(x, y):
+    # Move to coordinates
+    pyautogui.moveTo(x, y)
+
+    # Click element
+    pyautogui.click()
+
+    # Verify action (screenshot comparison)
+    return capture_verification_screenshot()
+```
+
+**Coordinate Translation:**
+• GPT-4V provides relative coordinates
+• Convert to absolute screen coordinates
+• Handle multi-monitor setups
+end note
+
+note bottom
+**Key Data Flow Summary:**
+
+1. **Input Capture**: Multi-platform screenshot + clickstream collection
+2. **Context Assembly**: BPG knowledge + user intent + visual analysis
+3. **LLM Processing**: GPT-4V analyzes screenshots + GPT-4 plans actions
+4. **Command Translation**: Platform-specific action commands generation
+5. **Execution**: Automated interaction with target applications
+6. **Verification**: Post-action screenshot comparison + success validation
+7. **Learning**: Performance data feeds back into BPG knowledge updates
+
+**Critical Integration Points:**
+• Screenshot → GPT-4V (base64 encoding, size optimization)
+• BPG Context → LLM Prompt (token budget optimization)
+• LLM Output → Platform Commands (structured JSON parsing)
+• Execution Results → BPG Updates (pattern refinement)
+end note
+
+@enduml

@@ -1,0 +1,306 @@
+@startuml Detailed_Implementation_Phases
+!theme aws-orange
+title Детализированные фазы реализации BPG системы
+skinparam linetype ortho
+skinparam dpi 300
+scale 0.85
+skinparam defaultFontColor Black
+skinparam legend {
+  BackgroundColor white
+  BorderColor black
+  FontColor black
+}
+
+start
+
+partition "📊 PoC PHASE (Months 1-3)" #F0F8FF {
+
+  :📅 Month 1: Foundation;
+  note right
+**Month 1: Foundation**
+
+Core Computer Vision
+ - YOLOv8 integration (Week 1-2)
+ - OCR pipeline setup (Week 3)
+ - Basic element detection (Week 4)
+
+Basic Graph Storage
+ - Neo4j database setup (Week 1)
+ - Basic node/edge models (Week 2)
+ - Simple CRUD operations (Week 3-4)
+
+Simple NLU Integration
+ - GPT-4 API integration (Week 1-2)
+ - Intent parsing pipeline (Week 3)
+ - Basic prompt engineering (Week 4)
+
+Manual Template Creation
+ - E-commerce entity templates (Week 1-2)
+ - Basic relationship patterns (Week 3)
+ - Process pattern definitions (Week 4)
+  end note
+
+  :📅 Month 2: Integration;
+  note right
+**Month 2: Integration**
+
+LayoutML Integration
+ - LayoutML API integration (Week 5-6)
+ - Page structure analysis (Week 7)
+ - Element hierarchy detection (Week 8)
+
+Cross-View Prototype
+ - Visual similarity algorithms (Week 5-6)
+ - Multi-page element matching (Week 7)
+ - Consistency validation (Week 8)
+
+Entity Extraction
+ - Screenshot-based extraction (Week 5)
+ - Entity-to-template matching (Week 6)
+ - Confidence scoring (Week 7-8)
+
+Template Validation
+ - Manual validation UI (Week 5-6)
+ - Template accuracy testing (Week 7)
+ - Performance benchmarking (Week 8)
+  end note
+
+  :📅 Month 3: PoC Demo;
+  note right
+**Month 3: PoC Demo**
+
+CLIP Embeddings
+ - CLIP model integration (Week 9-10)
+ - Multimodal embeddings (Week 11)
+ - Similarity search optimization (Week 12)
+
+Pattern Matching
+ - Intent-to-pattern mapping (Week 9-10)
+ - Pattern ranking algorithms (Week 11)
+ - Business rule validation (Week 12)
+
+Runtime Coordination
+ - Playwright RPA integration (Week 9)
+ - Coordinate extraction (Week 10-11)
+ - Action execution pipeline (Week 12)
+
+PoC Demo System
+ - End-to-end demo preparation (Week 11)
+ - Performance optimization (Week 12)
+ - Stakeholder presentation (Week 12)
+  end note
+}
+
+partition "🔧 PRE-PRODUCTION PHASE (Months 4-6)" #E8F5E8 {
+
+  :📅 Month 4: Microservices Foundation;
+  note right
+**Month 4: Microservices Foundation**
+
+Service Decomposition
+ - Service boundary definition (Week 13-14)
+ - API contract design (Week 15)
+ - Inter-service communication (Week 16)
+
+FastAPI Implementation
+ - NLU Service implementation (Week 13-14)
+ - Perception Service development (Week 15)
+ - Graph Service creation (Week 16)
+
+Docker Containerization
+ - Dockerfile creation (Week 13)
+ - Multi-stage builds (Week 14)
+ - Service orchestration (Week 15-16)
+
+Open Source Analysis
+ - Analysis pipeline design (Week 13-14)
+ - Automated extraction tools (Week 15)
+ - Template generation logic (Week 16)
+  end note
+
+  :📅 Month 5: Advanced Features;
+  note right
+**Month 5: Advanced Features**
+
+Multi-turn NLU
+ - Conversation context management (Week 17-18)
+ - Domain adaptation mechanisms (Week 19)
+ - Uncertainty quantification (Week 20)
+
+LLM Pattern Discovery
+ - Business document analysis (Week 17-18)
+ - Pattern inference algorithms (Week 19)
+ - Confidence-weighted suggestions (Week 20)
+
+Advanced Cross-View
+ - Multi-page consistency tracking (Week 17)
+ - Visual similarity optimization (Week 18-19)
+ - Performance benchmarking (Week 20)
+
+Workflow State Machine
+ - State machine implementation (Week 17-18)
+ - Error handling mechanisms (Week 19)
+ - Recovery strategies (Week 20)
+  end note
+
+  :📅 Month 6: System Integration;
+  note right
+**Month 6: System Integration**
+
+Kubernetes Deployment
+ - Cluster setup and configuration (Week 21-22)
+ - Service mesh implementation (Week 23)
+ - Auto-scaling configuration (Week 24)
+
+Template Library (200+)
+ - 10 open-source system analysis (Week 21-22)
+ - Template validation and curation (Week 23)
+ - Cross-domain mapping creation (Week 24)
+
+HITL Integration
+ - Human validation interface (Week 21)
+ - Expert review workflows (Week 22-23)
+ - Feedback integration mechanisms (Week 24)
+
+Performance Testing
+ - Load testing implementation (Week 21)
+ - Performance optimization (Week 22-23)
+ - Scalability validation (Week 24)
+  end note
+}
+
+partition "🚀 PRODUCTION PHASE (Months 7-8)" #FFF8E1 {
+
+  :📅 Month 7: Production Infrastructure;
+  note right
+**Month 7: Production Infrastructure**
+
+Auto-scaling & Load Balancing
+ - Production cluster setup (Week 25-26)
+ - Load balancer configuration (Week 27)
+ - Auto-scaling policies (Week 28)
+
+Enterprise Onboarding Pipeline
+ - Site discovery automation (Week 25-26)
+ - Business document processing (Week 27)
+ - Template matching engine (Week 28)
+
+Automated Testing Suite
+ - Unit test coverage >90% (Week 25)
+ - Integration test automation (Week 26-27)
+ - End-to-end test scenarios (Week 28)
+
+Multi-level Caching
+ - Redis cluster setup (Week 25)
+ - Multi-level cache strategy (Week 26-27)
+ - Cache invalidation logic (Week 28)
+  end note
+
+  :📅 Month 8: Production Ready;
+  note right
+**Month 8: Production Ready**
+
+Production Monitoring
+ - Metrics collection setup (Week 29)
+ - Alerting and dashboards (Week 30-31)
+ - Performance analytics (Week 32)
+
+Expert Validation UI
+ - Domain expert interface (Week 29-30)
+ - Validation workflow design (Week 31)
+ - Feedback integration (Week 32)
+
+A/B Testing Framework
+ - A/B test infrastructure (Week 29)
+ - Experiment design tools (Week 30-31)
+ - Statistical analysis (Week 32)
+
+Security & Compliance
+ - GDPR compliance implementation (Week 29)
+ - Security audit and fixes (Week 30-31)
+ - Audit logging system (Week 32)
+  end note
+}
+
+partition "🏢 ENTERPRISE PHASE (Months 9-10)" #F5F0FF {
+
+  :📅 Month 9: Advanced Features;
+  note right
+**Month 9: Advanced Features**
+
+Predictive Analytics
+ - Business intelligence dashboard (Week 33-34)
+ - Predictive modeling (Week 35)
+ - ROI analysis tools (Week 36)
+
+Template Evolution Engine
+ - Cross-enterprise pattern sharing (Week 33-34)
+ - Template optimization algorithms (Week 35)
+ - Community contribution system (Week 36)
+
+Custom Model Fine-tuning
+ - Domain-specific model training (Week 33-34)
+ - Custom embedding optimization (Week 35)
+ - Performance fine-tuning (Week 36)
+
+Multi-tenant Architecture
+ - Tenant isolation architecture (Week 33)
+ - Resource allocation management (Week 34-35)
+ - Billing and usage tracking (Week 36)
+  end note
+
+  :📅 Month 10: Market Readiness;
+  note right
+**Month 10: Market Readiness**
+
+Business Intelligence
+ - Advanced reporting tools (Week 37-38)
+ - Custom dashboard creation (Week 39)
+ - Data export capabilities (Week 40)
+
+Community Platform
+ - Community template sharing (Week 37-38)
+ - Expert collaboration tools (Week 39)
+ - Knowledge base management (Week 40)
+
+Uncertainty-aware AI
+ - Uncertainty quantification (Week 37)
+ - Risk assessment tools (Week 38-39)
+ - Confidence calibration (Week 40)
+
+Enterprise Integrations
+ - Enterprise SSO integration (Week 37)
+ - API gateway for customers (Week 38-39)
+ - Third-party tool connectors (Week 40)
+  end note
+}
+
+stop
+
+legend bottom
+**Ресурсы по фазам:**
+
+PoC (Months 1-3)
+ - Team: 3-4 разработчика
+ - Infrastructure: Развертывание на локальных серверах / cloud credits
+ - Budget: $15K-25K (API credits, cloud resources, tools)
+
+Pre-Production (Months 4-6)
+ - Team: 5-6 разработчиков
+ - Infrastructure: Kubernetes cluster, GPU nodes
+ - Budget: $30K-50K (infrastructure scaling, additional tools)
+
+Production (Months 7-8)
+ - Team: 5-7 разработчиков + DevOps
+ - Infrastructure: Production-grade cluster
+ - Budget: $25K-40K (production infrastructure, monitoring)
+
+Enterprise (Months 9-10)
+ - Team: 6-8 разработчиков + продуктовые роли
+ - Infrastructure: Multi-tenant, enterprise-grade
+ - Budget: $35K-60K (advanced features, compliance)
+
+**Total: $105K-175K за 10 месяцев**
+end legend
+
+@enduml

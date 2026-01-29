@@ -1,0 +1,305 @@
+@startuml Detailed_Modern_Tech_Architecture
+!theme aws-orange
+title Детальная технологическая архитектура: BPG+LLM с современными технологиями
+skinparam linetype ortho
+skinparam package {
+  BackgroundColor #F8F8FF
+  BorderColor #4169E1
+}
+
+' === Client Layer ===
+package "🖥️ CLIENT LAYER" #F0F8FF {
+  rectangle "Browser Extension / Desktop App" #LightBlue {
+    rectangle "💻 User Interface\n• Natural language input\n• Visual feedback display\n• HITL interaction interface" as UI
+    rectangle "🎯 Intent Capture\n• Voice/text processing\n• Multimodal preprocessing\n• Context-aware parsing" as IntentCapture
+    rectangle "📸 Visual Context Collector\n• Screenshot capture + GPT-4V\n• Page state detection\n• Multimodal element analysis" as VisualCollector
+    rectangle "⚡ Action Executor\n• Platform-specific automation\n• Template-based execution\n• Real-time adaptation" as ClientExecutor
+    rectangle "📝 Feedback Collector\n• Execution success tracking\n• User satisfaction logging\n• Learning data collection" as FeedbackCollector
+
+    UI -[hidden]-> IntentCapture
+    IntentCapture -[hidden]-> VisualCollector
+    VisualCollector -[hidden]-> ClientExecutor
+    ClientExecutor -[hidden]-> FeedbackCollector
+  }
+}
+
+' === API Gateway Layer with Modern Features ===
+package "🌐 ENHANCED API GATEWAY LAYER" #E8F5E8 {
+  rectangle "Intelligent Request Router" #LightGreen {
+    rectangle "🛠️ Smart Complexity Analyzer\n• Intent complexity scoring\n• Model routing optimization\n• Cost-aware load balancing" as SmartGateway
+    rectangle "💾 Prompt Cache Gateway\n• OpenAI/Anthropic caching\n• Redis fallback layer\n• Smart cache invalidation" as CacheGateway
+    rectangle "🔗 RAG Context Coordinator\n• Multi-source knowledge gathering\n• Vector similarity orchestration\n• Context priority management" as RAGCoordinator
+    rectangle "📝 Structured Response Assembly\n• Pydantic schema validation\n• Type safety enforcement\n• Business rule compliance" as StructuredAssembly
+
+    SmartGateway -[hidden]-> CacheGateway
+    CacheGateway -[hidden]-> RAGCoordinator
+    RAGCoordinator -[hidden]-> StructuredAssembly
+  }
+}
+
+' === Enhanced Core Processing Services ===
+package "🧠 ENHANCED PROCESSING SERVICES" #FFF8E1 {
+
+  rectangle "RAG-Enhanced BPG Services" #LightYellow {
+    rectangle "Business Entity Service\n• Cross-view entity linking\n• Multimodal similarity matching\n• Vector embedding generation" as EntityService
+    rectangle "Process Template Service\n• Parameterized workflow storage\n• Template-based execution\n• Success pattern vectorization" as ProcessService
+    rectangle "Business Rules Engine\n• Function calling validation\n• Constraint checking tools\n• Real-time rule evaluation" as RulesEngine
+    rectangle "Vector Knowledge Store\n• FAISS/Pinecone integration\n• Semantic similarity search\n• BPG pattern embeddings" as VectorStore
+    rectangle "Context State Manager\n• Session state tracking\n• MCP resource coordination\n• Multi-turn conversation state" as StateManager
+
+    EntityService -[hidden]-> ProcessService
+    ProcessService -[hidden]-> RulesEngine
+    RulesEngine -[hidden]-> VectorStore
+    VectorStore -[hidden]-> StateManager
+  }
+
+  rectangle "Advanced Prompt Engineering" #LightCoral {
+    rectangle "RAG Context Extractor\n• Vector similarity search\n• Graph traversal queries\n• Knowledge relevance ranking" as RAGExtractor
+    rectangle "MCP Integration Service\n• Standardized knowledge access\n• External system connectors\n• Plugin orchestration" as MCPService
+    rectangle "Dynamic Prompt Assembly\n• Context compression (3K→1.5K tokens)\n• Template-based construction\n• Multi-modal prompt fusion" as PromptAssembly
+    rectangle "Prompt Optimization Engine\n• A/B testing framework\n• Cost/performance analytics\n• Response quality tracking" as PromptOptimization
+
+    RAGExtractor -[hidden]-> MCPService
+    MCPService -[hidden]-> PromptAssembly
+    PromptAssembly -[hidden]-> PromptOptimization
+  }
+
+  rectangle "Multi-LLM Agent Services" #Lavender {
+    rectangle "Intent Understanding Agent\n• GPT-4 Turbo integration\n• Business context processing\n• Structured output generation" as IntentAgent
+    rectangle "Multimodal Analysis Agent\n• GPT-4V screenshot analysis\n• Cross-view entity detection\n• Visual-textual synthesis" as MultimodalAgent
+    rectangle "Action Planning Agent\n• Claude-3.5 integration\n• Function calling orchestration\n• Business rule validation" as PlanningAgent
+    rectangle "Template Execution Agent\n• Pattern-based automation\n• Parameter substitution\n• Validation checkpoint execution" as ExecutionAgent
+    rectangle "Learning & Adaptation Agent\n• Pattern recognition\n• Knowledge base updates\n• Continuous improvement" as LearningAgent
+
+    IntentAgent -[hidden]-> MultimodalAgent
+    MultimodalAgent -[hidden]-> PlanningAgent
+    PlanningAgent -[hidden]-> ExecutionAgent
+    ExecutionAgent -[hidden]-> LearningAgent
+  }
+}
+
+' === Enhanced Data Storage Layer ===
+package "🗄️ MODERNIZED STORAGE LAYER" #F5F0FF {
+
+  rectangle "RAG Knowledge Storage" #Thistle {
+    rectangle "Neo4j Graph Database\n• Business process relationships\n• Cross-view entity mappings\n• MCP resource definitions" as Neo4jStore
+    rectangle "Vector Database (FAISS/Pinecone)\n• BPG pattern embeddings\n• Semantic similarity indices\n• Multimodal feature vectors" as VectorDatabase
+    rectangle "Process Templates (PostgreSQL)\n• Parameterized workflows\n• Success metrics & analytics\n• Template performance data" as ProcessStorage
+    rectangle "Context & Cache Store (Redis)\n• Session state persistence\n• Prompt response caching\n• Real-time context management" as CacheStore
+
+    Neo4jStore -[hidden]-> VectorDatabase
+    VectorDatabase -[hidden]-> ProcessStorage
+    ProcessStorage -[hidden]-> CacheStore
+  }
+
+  rectangle "Function & Tool Storage" #MistyRose {
+    rectangle "Function Registry (PostgreSQL)\n• Business logic functions\n• Tool definitions & schemas\n• Function call patterns" as FunctionStore
+    rectangle "Performance Metrics (InfluxDB)\n• LLM response times & costs\n• Success rates by model\n• RAG effectiveness metrics" as MetricsStore
+    rectangle "Conversation History (PostgreSQL)\n• Multi-turn conversations\n• Context evolution tracking\n• Structured interaction logs" as ConversationStore
+    rectangle "MCP Resource Store (PostgreSQL)\n• External system mappings\n• Plugin configurations\n• Resource access patterns" as MCPStore
+
+    FunctionStore -[hidden]-> MetricsStore
+    MetricsStore -[hidden]-> ConversationStore
+    ConversationStore -[hidden]-> MCPStore
+  }
+}
+
+' === External AI Services with Modern Stack ===
+package "🤖 MODERN AI SERVICES INTEGRATION" #E6F3FF {
+  rectangle "Primary LLM Providers" #LightBlue {
+    [OpenAI GPT-4/GPT-4V\n• Structured outputs\n• Function calling\n• Native prompt caching] as OpenAI
+    [Anthropic Claude-3.5\n• Computer use capability\n• Long context windows\n• Advanced reasoning] as Claude
+    [Local LLM (Llama 3.1)\n• Privacy-sensitive operations\n• Cost optimization\n• Offline capabilities] as LocalLLM
+  }
+
+  rectangle "Specialized AI Services" #LightCyan {
+    [OpenAI Embeddings API\n• text-embedding-3-large\n• Multimodal embeddings\n• Vector generation] as EmbeddingAPI
+    [Computer Vision APIs\n• OCR & element detection\n• Visual similarity\n• Layout analysis] as CVApis
+    [MCP Protocol Services\n• Standardized connectors\n• Resource management\n• Tool orchestration] as MCPServices
+  }
+}
+
+' === Enhanced Technology Connections ===
+
+' Client to Gateway with modern flow
+UI --> SmartGateway : user_intent + complexity_score
+VisualCollector --> RAGCoordinator : multimodal_context + screenshot
+FeedbackCollector --> StructuredAssembly : execution_feedback + metrics
+
+' Enhanced Gateway processing
+SmartGateway --> CacheGateway : complexity_routing + cache_check
+CacheGateway --> RAGCoordinator : cache_miss + context_request
+RAGCoordinator --> StructuredAssembly : enriched_context + validation_rules
+
+' RAG-Enhanced Knowledge Flow
+EntityService --> RAGExtractor : business_entities + cross_view_mappings
+ProcessService --> RAGExtractor : workflow_templates + success_patterns
+VectorStore --> RAGExtractor : semantic_similarity + pattern_matching
+StateManager --> RAGExtractor : current_context + session_state
+
+' MCP Integration Flow
+RAGExtractor --> MCPService : knowledge_gaps + external_requirements
+MCPService --> PromptAssembly : external_context + system_integration
+PromptAssembly --> PromptOptimization : assembled_prompts + context_fusion
+
+' Enhanced LLM Agent Flow
+PromptOptimization --> IntentAgent : optimized_enriched_prompts
+IntentAgent --> MultimodalAgent : structured_intent + business_context
+MultimodalAgent --> PlanningAgent : visual_analysis + cross_modal_synthesis
+PlanningAgent --> ExecutionAgent : validated_action_plan + function_calls
+ExecutionAgent --> LearningAgent : execution_results + performance_metrics
+
+' Enhanced Storage Connections
+EntityService --> Neo4jStore : graph_operations + relationship_management
+ProcessService --> ProcessStorage : template_crud + performance_tracking
+RAGExtractor --> VectorDatabase : similarity_search + embedding_operations
+StateManager --> CacheStore : state_persistence + context_caching
+MCPService --> MCPStore : resource_management + plugin_coordination
+
+' Modern AI Integration
+IntentAgent --> OpenAI : structured_gpt4_calls + function_calling
+MultimodalAgent --> OpenAI : gpt4v_multimodal_analysis
+PlanningAgent --> Claude : claude35_action_planning + reasoning
+ExecutionAgent --> LocalLLM : privacy_sensitive_operations
+RAGExtractor --> EmbeddingAPI : text_embedding_generation
+MCPService --> MCPServices : standardized_protocol_calls
+
+' Enhanced Learning Loops
+LearningAgent --> EntityService : cross_view_mapping_improvements
+LearningAgent --> ProcessService : template_optimization + success_tracking
+LearningAgent --> VectorStore : embedding_quality_improvement
+LearningAgent --> PromptOptimization : prompt_effectiveness_feedback
+LearningAgent --> MCPService : external_integration_optimization
+
+' === Technology Specifications ===
+note right of OpenAI
+**LLM Integration Strategy:**
+• Primary: GPT-4 Turbo for complex reasoning
+• Visual: GPT-4V for screenshot analysis
+• Structured: Native structured output support
+• Caching: OpenAI prompt caching when available
+• Fallback: Claude-3.5 for redundancy
+• Local: Llama 3.1 for privacy-sensitive operations
+
+**Cost Optimization:**
+• Smart routing based on complexity score
+• Prompt caching (60-80% savings)
+• Context compression techniques
+end note
+
+note right of VectorDatabase
+**RAG Implementation Details:**
+• Vector Store: FAISS for fast local search
+• Cloud Scale: Pinecone for production scaling
+• Embeddings: OpenAI text-embedding-3-large
+• Search Strategy: Hybrid semantic + keyword
+• Performance: <200ms retrieval latency
+• Accuracy: 85%+ relevance on BPG patterns
+
+**Knowledge Pipeline:**
+1. Embed BPG patterns and entities
+2. Create vector index with metadata
+3. Semantic search with filters
+4. Re-rank by business relevance
+end note
+
+note right of MCPService
+**MCP Protocol Implementation:**
+```typescript
+// MCP Server for BPG Access
+interface BPGMCPServer {
+  getBusinessEntities(domain: string): Entity[]
+  getProcessPatterns(context: string): Pattern[]
+  validateBusinessRule(rule: string): boolean
+}
+
+// Usage in LLM context
+const bpgServer = new BPGMCPServer()
+const entities = await bpgServer.getBusinessEntities("ecommerce")
+```
+
+**Benefits:**
+• Standardized knowledge access
+• Plugin architecture for extensibility
+• Type-safe external integrations
+end note
+
+note right of StructuredAssembly
+**Structured Outputs with Pydantic:**
+```python
+from pydantic import BaseModel, Field
+from typing import List, Optional
+
+class GUIAction(BaseModel):
+    action_type: str = Field(..., description="Type of GUI action")
+    target_element: str = Field(..., description="CSS selector or xpath")
+    parameters: dict = Field(default_factory=dict)
+    confidence: float = Field(..., ge=0.0, le=1.0)
+    reasoning: str = Field(..., description="Business logic explanation")
+
+class AutomationPlan(BaseModel):
+    actions: List[GUIAction]
+    fallback_strategy: Optional[str] = None
+    estimated_duration: int = Field(..., description="Seconds")
+    risk_level: str = Field(..., regex="^(low|medium|high)$")
+
+# LLM Integration
+response = openai.chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": prompt}],
+    response_format={"type": "json_schema",
+                    "json_schema": AutomationPlan.model_json_schema()}
+)
+```
+end note
+
+note right of ProcessStorage
+**Function Calling Architecture:**
+```python
+from typing import Dict, Any
+
+@tool
+def validate_business_constraint(entity_id: str, action: str, context: Dict[str, Any]) -> bool:
+    """Validate action against business rules from BPG"""
+    bpg_rules = neo4j.get_business_rules(entity_id)
+    return all(rule.validate(action, context) for rule in bpg_rules)
+
+@tool
+def get_similar_workflows(current_context: Dict[str, Any]) -> List[Dict]:
+    """Retrieve similar successful workflows from BPG"""
+    embeddings = openai_embeddings.embed(str(current_context))
+    similar = faiss_index.search(embeddings, k=5)
+    return [workflow.to_dict() for workflow in similar]
+
+@tool
+def execute_pattern_template(template_id: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
+    """Execute parameterized business process template"""
+    template = bpg.get_pattern_template(template_id)
+    return template.execute_with_validation(parameters)
+```
+
+**Tool Integration:**
+• Deterministic business logic execution
+• BPG knowledge access functions
+• Validation and constraint checking
+• Template-based pattern execution
+end note
+
+note bottom
+**Key Architectural Decisions:**
+
+**RAG over Fine-tuning:** In-context learning with dynamic knowledge retrieval
+**MCP for Extensibility:** Standardized protocol for knowledge source integration
+**Structured Outputs:** Pydantic schemas for type safety and parseability
+**Function Calling:** Deterministic tool-based architecture for business logic
+**Prompt Caching:** Aggressive caching strategy for cost optimization
+**Multimodal Processing:** Selective use for cross-view entity linking
+
+**Technology Rationale:**
+• Proven technologies with strong community support
+• Cost-effective scaling through intelligent routing
+• Type safety and reliability through structured outputs
+• Extensibility through MCP protocol adoption
+end note
+
+@enduml

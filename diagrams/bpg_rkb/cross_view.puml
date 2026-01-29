@@ -1,0 +1,508 @@
+@startuml Cross-View Entity Linking Flowchart
+
+title Cross-View Entity Linking Algorithm - Detailed Flowchart
+
+scale 1024 width
+skinparam dpi 150
+
+start
+
+:Получить набор скриншотов;
+note right
+  **Входные данные:**
+  • screenshots = [img1.png, img2.png, ...]
+  • metadata = {timestamp, page_url, session_id}
+
+  **Цель:** Найти одинаковые сущности
+  в разных представлениях GUI
+end note
+
+:Предобработка изображений;
+note left
+  **Код:**
+  ```python
+  for screenshot in screenshots:
+      # Нормализация размера
+      img = resize_image(screenshot, target_size=(1920, 1080))
+      # Улучшение качества
+      img = enhance_contrast(img)
+      preprocessed_images.append(img)
+  ```
+end note
+
+partition "Извлечение признаков" {
+
+  :Детекция UI элементов;
+  note right
+    **LayoutLM + YOLO подход:**
+
+    ```python
+    ui_elements = []
+    for image in preprocessed_images:
+        # Детекция кнопок, форм, карточек
+        detected = yolo_model.detect(image,
+                                   classes=["button", "form", "card", "table"])
+
+        for detection in detected:
+            element = {
+                "bbox": detection.bbox,  # x,y,w,h
+                "type": detection.class_name,
+                "confidence": detection.confidence,
+                "screenshot_id": image.id
+            }
+            ui_elements.append(element)
+    ```
+
+    **Что получаем:** Список всех UI элементов
+    с их координатами и типами
+  end note
+
+  :OCR извлечение текста;
+  note left
+    **PaddleOCR обработка:**
+
+    ```python
+    text_regions = []
+    for element in ui_elements:
+        # Вырезать область элемента
+        cropped = crop_image(image, element.bbox)
+
+        # Извлечь текст
+        ocr_result = paddle_ocr.ocr(cropped)
+
+        if ocr_result:
+            text_region = {
+                "text": clean_text(ocr_result[0][1][0]),
+                "confidence": ocr_result[0][1][1],
+                "bbox": element.bbox,
+                "element_id": element.id
+            }
+            text_regions.append(text_region)
+    ```
+
+    **Результат:** Текстовое содержимое каждого UI элемента
+  end note
+
+  :Генерация визуальных эмбеддингов;
+  note right
+    **CLIP Visual Encoding:**
+
+    ```python
+    visual_embeddings = []
+    for element in ui_elements:
+        # Вырезать изображение элемента
+        element_image = crop_image(screenshot, element.bbox)
+
+        # Сгенерировать эмбеддинг через CLIP
+        embedding = clip_model.encode_image(element_image)
+
+        visual_embeddings.append({
+            "element_id": element.id,
+            "embedding": embedding,  # 512-мерный вектор
+            "bbox": element.bbox
+        })
+    ```
+
+    **Получаем:** 512-мерные векторы для каждого UI элемента
+  end note
+
+  :Генерация текстовых эмбеддингов;
+  note left
+    **SentenceTransformer Encoding:**
+
+    ```python
+    text_embeddings = []
+    for text_region in text_regions:
+        if text_region.text.strip():
+            # Генерация семантического эмбеддинга
+            embedding = sentence_model.encode(text_region.text)
+
+            text_embeddings.append({
+                "element_id": text_region.element_id,
+                "text": text_region.text,
+                "embedding": embedding,  # 384-мерный вектор
+                "confidence": text_region.confidence
+            })
+    ```
+  end note
+
+  :Анализ layout паттернов;
+  note right
+    **Layout Signature Generation:**
+
+    ```python
+    layout_signatures = []
+    for element in ui_elements:
+        # Нормализованные координаты (0-1)
+        norm_x = element.bbox.x / screenshot.width
+        norm_y = element.bbox.y / screenshot.height
+        norm_w = element.bbox.width / screenshot.width
+        norm_h = element.bbox.height / screenshot.height
+
+        # Layout признаки
+        layout_sig = {
+            "position": [norm_x, norm_y],
+            "size": [norm_w, norm_h],
+            "aspect_ratio": norm_w / norm_h,
+            "area": norm_w * norm_h,
+            "center": [norm_x + norm_w/2, norm_y + norm_h/2]
+        }
+        layout_signatures.append(layout_sig)
+    ```
+  end note
+}
+
+partition "Вычисление сходства" {
+
+  :Вычислить попарное сходство элементов;
+  note left
+    **Multi-modal Similarity:**
+
+    Для каждой пары элементов (i, j):
+    ```python
+    def calculate_similarity(element_i, element_j):
+        # Визуальное сходство (cosine similarity)
+        visual_sim = cosine_similarity(
+            visual_embeddings[i],
+            visual_embeddings[j]
+        )
+
+        # Текстовое сходство
+        if has_text(element_i) and has_text(element_j):
+            text_sim = cosine_similarity(
+                text_embeddings[i],
+                text_embeddings[j]
+            )
+        else:
+            text_sim = 0.0
+
+        return visual_sim, text_sim
+    ```
+  end note
+
+  :Вычислить layout сходство;
+  note right
+    **Layout Distance Calculation:**
+
+    ```python
+    def layout_similarity(layout_i, layout_j):
+        # Расстояние между центрами
+        center_dist = euclidean_distance(
+            layout_i.center, layout_j.center
+        )
+
+        # Сходство размеров
+        size_sim = 1 - abs(layout_i.area - layout_j.area)
+
+        # Сходство пропорций
+        ratio_sim = 1 - abs(
+            layout_i.aspect_ratio - layout_j.aspect_ratio
+        )
+
+        # Комбинированная оценка layout
+        layout_score = (size_sim + ratio_sim) / 2 *
+                      (1 - center_dist)
+        return layout_score
+    ```
+  end note
+
+  :Объединить оценки сходства;
+  note left
+    **Combined Similarity Score:**
+
+    ```python
+    def combined_similarity(elem_i, elem_j):
+        visual_sim, text_sim = calculate_similarity(elem_i, elem_j)
+        layout_sim = layout_similarity(elem_i, elem_j)
+
+        # Временной бонус (если из одной сессии)
+        temporal_bonus = 0.1 if same_session(elem_i, elem_j) else 0.0
+
+        # Взвешенная комбинация
+        final_score = (
+            0.4 * visual_sim +      # Визуальные признаки
+            0.3 * text_sim +        # Текстовое содержимое
+            0.2 * layout_sim +      # Layout паттерны
+            0.1 * temporal_bonus    # Временной контекст
+        )
+
+        return final_score
+    ```
+  end note
+}
+
+partition "Кластеризация" {
+
+  :Создать матрицу расстояний;
+  note right
+    **Distance Matrix Construction:**
+
+    ```python
+    n_elements = len(ui_elements)
+    distance_matrix = np.zeros((n_elements, n_elements))
+
+    for i in range(n_elements):
+        for j in range(n_elements):
+            if i != j:
+                similarity = combined_similarity(elements[i], elements[j])
+                # Конвертируем similarity в distance
+                distance_matrix[i][j] = 1.0 - similarity
+            else:
+                distance_matrix[i][j] = 0.0
+    ```
+  end note
+
+  :Применить HDBSCAN кластеризацию;
+  note left
+    **HDBSCAN Clustering:**
+
+    ```python
+    from sklearn.cluster import HDBSCAN
+
+    clusterer = HDBSCAN(
+        metric="precomputed",        # Используем готовую матрицу
+        min_cluster_size=3,          # Минимум 3 элемента в кластере
+        min_samples=2,               # Минимум 2 соседа
+        cluster_selection_epsilon=0.3 # Порог расстояния
+    )
+
+    cluster_labels = clusterer.fit_predict(distance_matrix)
+    ```
+
+    **Результат:** Каждому элементу присвоен номер кластера
+    (-1 означает шум/outlier)
+  end note
+
+  :Вычислить уверенность кластеров;
+  note right
+    **Cluster Confidence Calculation:**
+
+    ```python
+    cluster_confidences = {}
+    for cluster_id in set(cluster_labels):
+        if cluster_id == -1:  # Пропустить шум
+            continue
+
+        cluster_elements = [i for i, label in enumerate(cluster_labels)
+                           if label == cluster_id]
+
+        # Внутрикластерное сходство
+        intra_similarities = []
+        for i in cluster_elements:
+            for j in cluster_elements:
+                if i != j:
+                    sim = 1 - distance_matrix[i][j]
+                    intra_similarities.append(sim)
+
+        confidence = np.mean(intra_similarities)
+        cluster_confidences[cluster_id] = confidence
+    ```
+  end note
+}
+
+if (Есть кластеры с низкой уверенностью?) then (yes)
+
+  partition "LLM Валидация" {
+
+    :Подготовить данные для LLM;
+    note left
+      **LLM Input Preparation:**
+
+      ```python
+      uncertain_clusters = [cid for cid, conf in cluster_confidences.items()
+                           if conf < 0.6]
+
+      for cluster_id in uncertain_clusters:
+          cluster_elements = get_cluster_elements(cluster_id)
+
+          llm_input = {
+              "images": [crop_element_image(elem) for elem in cluster_elements],
+              "texts": [get_element_text(elem) for elem in cluster_elements],
+              "contexts": [get_element_context(elem) for elem in cluster_elements]
+          }
+      ```
+    end note
+
+    :Сформировать промпт для LLM;
+    note right
+      **LLM Validation Prompt:**
+
+      ```
+      "I have found these UI elements that might represent
+      the same business entity across different screenshots:
+
+      Element 1:
+      - Image: [base64_image_1]
+      - Text: "{extracted_text_1}"
+      - Context: Found on {page_1} at position {position_1}
+
+      Element 2:
+      - Image: [base64_image_2]
+      - Text: "{extracted_text_2}"
+      - Context: Found on {page_2} at position {position_2}
+
+      Element 3:
+      - Image: [base64_image_3]
+      - Text: "{extracted_text_3}"
+      - Context: Found on {page_3} at position {position_3}
+
+      Questions:
+      1. Do these elements represent the same business entity?
+      2. What type of entity is this (Person, Product, Order, etc.)?
+      3. What are the key identifying attributes?
+      4. Your confidence level (0-100)?
+      5. Brief explanation of your reasoning
+
+      Please respond in JSON format."
+      ```
+    end note
+
+    :Отправить запрос к LLM;
+    note left
+      **LLM API Call:**
+
+      ```python
+      response = openai.ChatCompletion.create(
+          model="gpt-4-vision-preview",
+          messages=[{
+              "role": "user",
+              "content": [
+                  {"type": "text", "text": prompt_text},
+                  {"type": "image_url", "image_url": {"url": image1_b64}},
+                  {"type": "image_url", "image_url": {"url": image2_b64}},
+                  {"type": "image_url", "image_url": {"url": image3_b64}}
+              ]
+          }],
+          max_tokens=500
+      )
+      ```
+    end note
+
+    :Обработать ответ LLM;
+    note right
+      **LLM Response Processing:**
+
+      ```python
+      try:
+          llm_result = json.loads(response.choices[0].message.content)
+
+          validation_result = {
+              "is_same_entity": llm_result.get("same_entity", False),
+              "entity_type": llm_result.get("entity_type", "Unknown"),
+              "confidence": llm_result.get("confidence", 0) / 100.0,
+              "reasoning": llm_result.get("reasoning", ""),
+              "attributes": llm_result.get("attributes", [])
+          }
+
+      except json.JSONDecodeError:
+          # Fallback: попробовать извлечь ключевую информацию
+          validation_result = parse_llm_response_fallback(response.content)
+      ```
+    end note
+
+    if (LLM подтверждает связь?) then (yes)
+      :Принять кластер с LLM уверенностью;
+      note left
+        ```python
+        # Обновить уверенность кластера
+        cluster_confidences[cluster_id] = max(
+            cluster_confidences[cluster_id],
+            validation_result.confidence
+        )
+
+        # Добавить LLM метаданные
+        clusters[cluster_id].llm_validated = True
+        clusters[cluster_id].entity_type = validation_result.entity_type
+        ```
+      end note
+    else (no)
+      :Разбить кластер или пометить как неопределенный;
+      note right
+        ```python
+        # Если LLM не согласен, разбиваем кластер
+        if validation_result.confidence < 0.5:
+            # Помечаем элементы как отдельные сущности
+            for elem_idx in cluster_elements:
+                cluster_labels[elem_idx] = create_new_cluster_id()
+
+        # Или помечаем для human review
+        uncertain_clusters.append({
+            "cluster_id": cluster_id,
+            "reason": "llm_disagreement",
+            "elements": cluster_elements
+        })
+        ```
+      end note
+    endif
+  }
+
+else (no)
+  :Все кластеры имеют высокую уверенность;
+endif
+
+:Создать финальные cross-view entities;
+note left
+  **Final Entity Creation:**
+
+  ```python
+  cross_view_entities = []
+
+  for cluster_id, confidence in cluster_confidences.items():
+      if confidence >= 0.6:  # Порог принятия
+          cluster_elements = get_cluster_elements(cluster_id)
+
+          entity = CrossViewEntity(
+              entity_id=generate_uuid(),
+              cluster_id=cluster_id,
+              confidence=confidence,
+              representations=[],
+              attributes=extract_common_attributes(cluster_elements)
+          )
+
+          # Добавить все представления сущности
+          for elem in cluster_elements:
+              representation = EntityRepresentation(
+                  screenshot_id=elem.screenshot_id,
+                  bbox=elem.bbox,
+                  visual_embedding=elem.visual_embedding,
+                  text_content=elem.text_content,
+                  ui_type=elem.type
+              )
+              entity.representations.append(representation)
+
+          cross_view_entities.append(entity)
+  ```
+end note
+
+:Сохранить результаты в базе данных;
+note right
+  **Database Storage:**
+
+  ```python
+  # Сохранить в vector database для быстрого поиска
+  for entity in cross_view_entities:
+      vector_db.store(
+          id=entity.entity_id,
+          embeddings=entity.get_average_embedding(),
+          metadata={
+              "confidence": entity.confidence,
+              "representations_count": len(entity.representations),
+              "entity_type": entity.entity_type,
+              "llm_validated": entity.llm_validated
+          }
+      )
+
+  # Сохранить в relational DB для структурированных запросов
+  for entity in cross_view_entities:
+      db.execute("""
+          INSERT INTO cross_view_entities
+          (entity_id, confidence, entity_type, created_at)
+          VALUES (?, ?, ?, ?)
+      """, (entity.entity_id, entity.confidence,
+            entity.entity_type, datetime.now()))
+  ```
+end note
+
+stop
+
+@enduml

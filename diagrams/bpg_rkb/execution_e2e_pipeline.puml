@@ -1,0 +1,290 @@
+@startuml Complete Integration Flow
+
+!theme aws-orange
+title Полная интеграция BPG + LLM + Execution: End-to-End Pipeline
+skinparam linetype ortho
+
+actor "👤 User" as User
+
+' === CORE INTEGRATION FLOW ===
+package "🎯 END-TO-END INTEGRATION PIPELINE" #E8F4FD {
+
+  ' Input Processing
+  rectangle "📥 Input Processing" #E8F5E8 {
+    rectangle "🎤 Voice/Text Input\n**Tech**: Whisper API + NLP\n• Speech-to-text\n• Intent extraction\n• Context parsing" as VoiceInput
+    rectangle "📸 Screenshot Capture\n**Multi-platform**:\n• Web: Playwright\n• Desktop: OS APIs\n• Mobile: Appium\n• Real-time state capture" as ScreenCapture
+  }
+
+  ' Knowledge Processing
+  rectangle "🧠 Knowledge Processing" #FFF8E1 {
+    rectangle "🔍 BPG Context Retrieval\n**Tech**: Neo4j + Vector DB\n• Pattern matching\n• Entity resolution\n• Business rule lookup\n• Historical success patterns" as BPGRetrieval
+    rectangle "🎯 Context Enrichment\n**Tech**: Custom Python service\n• Prompt assembly\n• Token optimization\n• Multi-modal context\n• Business constraint injection" as ContextEnrichment
+  }
+
+  ' LLM Processing
+  rectangle "🤖 LLM Processing" #F0F8FF {
+    rectangle "👁️ GPT-4V Visual Analysis\n**Input**: Screenshot + Context\n**Output**: Visual understanding\n• Element identification\n• Spatial relationships\n• State recognition" as GPTVAnalysis
+    rectangle "🧠 GPT-4 Action Planning\n**Input**: Intent + Visual + BPG\n**Output**: Action sequence\n• Step-by-step planning\n• Business rule validation\n• Error handling strategies" as GPTPlanning
+  }
+
+  ' Execution Layer
+  rectangle "⚡ Execution Layer" #F5F0FF {
+    rectangle "🎛️ Platform Router\n**Tech**: Factory pattern\n• Platform detection\n• Adapter selection\n• Command translation\n• Error standardization" as PlatformRouter
+    rectangle "🔧 Execution Adapters" #LightCyan {
+      rectangle "🌐 Web Adapter\n**Playwright/Selenium**" as WebAdapter
+      rectangle "🖥️ Desktop Adapter\n**OS-specific APIs**" as DesktopAdapter
+      rectangle "📱 Mobile Adapter\n**Appium**" as MobileAdapter
+    }
+    rectangle "📊 Execution Monitor\n**Tech**: Event-driven\n• Real-time tracking\n• Performance metrics\n• Error detection\n• Success validation" as ExecutionMonitor
+  }
+
+  ' Feedback Loop
+  rectangle "🔄 Feedback & Learning" #E6F3FF {
+    rectangle "📈 Performance Analytics\n**Tech**: InfluxDB + Grafana\n• Success rate tracking\n• Performance optimization\n• Error pattern analysis\n• User satisfaction metrics" as Analytics
+    rectangle "🎓 Knowledge Updates\n**Tech**: Event sourcing\n• BPG pattern refinement\n• New pattern discovery\n• Business rule evolution\n• Prompt optimization" as KnowledgeUpdates
+  }
+}
+
+' === DATA FLOW CONNECTIONS ===
+
+' User Input Flow
+User --> VoiceInput : "Add milk to cart"
+User --> ScreenCapture : Current screen state
+
+' Knowledge Processing Flow
+VoiceInput --> BPGRetrieval : Parsed intent
+BPGRetrieval --> ContextEnrichment : Retrieved patterns + rules
+ScreenCapture --> ContextEnrichment : Screenshot + metadata
+
+' LLM Processing Flow
+ScreenCapture --> GPTVAnalysis : Base64 screenshot
+ContextEnrichment --> GPTVAnalysis : Enriched context
+GPTVAnalysis --> GPTPlanning : Visual understanding
+ContextEnrichment --> GPTPlanning : Business context
+GPTPlanning --> PlatformRouter : Action commands
+
+' Execution Flow
+PlatformRouter --> WebAdapter : Web commands
+PlatformRouter --> DesktopAdapter : Desktop commands
+PlatformRouter --> MobileAdapter : Mobile commands
+
+WebAdapter --> ExecutionMonitor : Execution results
+DesktopAdapter --> ExecutionMonitor : Execution results
+MobileAdapter --> ExecutionMonitor : Execution results
+
+' Feedback Flow
+ExecutionMonitor --> Analytics : Performance data
+Analytics --> KnowledgeUpdates : Insights
+KnowledgeUpdates --> BPGRetrieval : Updated knowledge
+
+' === DETAILED DATA FORMATS ===
+
+note right of ScreenCapture
+**Screenshot Data Format:**
+```json
+{
+  "screenshot": "base64_image_data",
+  "platform": "web|desktop|mobile",
+  "context": {
+    "url": "https://example.com",
+    "title": "E-commerce Site",
+    "viewport": {"width": 1920, "height": 1080}
+  },
+  "dom_structure": "simplified_html",
+  "timestamp": "2024-01-20T10:30:00Z",
+  "ui_elements": [
+    {
+      "type": "button",
+      "text": "Add to Cart",
+      "bounds": {"x": 100, "y": 200, "w": 120, "h": 40},
+      "selector": "#add-to-cart-btn"
+    }
+  ]
+}
+```
+end note
+
+note right of ContextEnrichment
+**Enriched Context Format:**
+```json
+{
+  "user_intent": "Add milk to cart",
+  "current_state": {
+    "page": "product_detail",
+    "user_authenticated": true,
+    "cart_items": 2
+  },
+  "applicable_patterns": [
+    {
+      "pattern_id": "ADD_TO_CART_v2",
+      "confidence": 0.94,
+      "steps": ["find_product", "select_quantity", "add_to_cart"],
+      "preconditions": ["user_authenticated", "product_available"],
+      "business_rules": ["max_quantity_per_user: 10"]
+    }
+  ],
+  "entity_context": [
+    {
+      "type": "Product",
+      "name": "Organic Milk",
+      "price": "$3.99",
+      "available": true
+    }
+  ],
+  "token_count": 847
+}
+```
+end note
+
+note right of GPTPlanning
+**Action Plan Format:**
+```json
+{
+  "selected_pattern": "ADD_TO_CART_v2",
+  "confidence": 0.89,
+  "reasoning": "User wants to add product to cart. Product page is loaded, user is authenticated, add to cart button is visible.",
+  "planned_steps": [
+    {
+      "step": 1,
+      "action": "click",
+      "target": "#add-to-cart-btn",
+      "expected_result": "Product added to cart",
+      "validation": "cart_count_increased"
+    },
+    {
+      "step": 2,
+      "action": "wait",
+      "target": ".success-message",
+      "expected_result": "Success confirmation displayed",
+      "timeout": 5
+    }
+  ],
+  "preconditions_check": {
+    "all_met": true,
+    "details": ["user_authenticated: ✓", "product_available: ✓"]
+  },
+  "risks": ["Cart might be full", "Network connectivity issues"]
+}
+```
+end note
+
+note left of WebAdapter
+**Web Adapter Commands:**
+```python
+# Playwright execution example
+async def execute_web_action(command):
+    if command.action == "click":
+        element = await page.wait_for_selector(command.target)
+        await element.click()
+
+        # Verify success
+        success_indicator = command.validation
+        if success_indicator:
+            await page.wait_for_selector(success_indicator)
+
+        # Capture result state
+        screenshot = await page.screenshot()
+        return ExecutionResult(
+            success=True,
+            screenshot_after=base64.encode(screenshot),
+            metadata={"url": page.url, "title": await page.title()}
+        )
+```
+
+**Command Translation:**
+• GPT Output → Playwright commands
+• Error handling & retries
+• State verification
+• Performance tracking
+end note
+
+note left of DesktopAdapter
+**Desktop Adapter Commands:**
+```python
+# Desktop execution example
+async def execute_desktop_action(command):
+    if command.action == "click":
+        x, y = parse_coordinates(command.target)
+
+        # Windows API click
+        if platform == "windows":
+            import pyautogui
+            pyautogui.click(x, y)
+
+        # Verify by screenshot comparison
+        after_screenshot = capture_screenshot()
+        success = verify_state_change(after_screenshot)
+
+        return ExecutionResult(
+            success=success,
+            screenshot_after=base64.encode(after_screenshot)
+        )
+```
+
+**Coordinate Translation:**
+• GPT-4V relative coords → absolute pixels
+• Multi-monitor support
+• Window focus management
+end note
+
+note left of MobileAdapter
+**Mobile Adapter Commands:**
+```python
+# Appium execution example
+async def execute_mobile_action(command):
+    if command.action == "tap":
+        if "coordinates" in command.parameters:
+            x, y = command.parameters["coordinates"]
+            driver.tap([(x, y)])
+        else:
+            element = driver.find_element(AppiumBy.ID, command.target)
+            element.click()
+
+        # Wait for UI to update
+        time.sleep(0.5)
+
+        # Capture result
+        screenshot = driver.get_screenshot_as_png()
+        return ExecutionResult(
+            success=True,
+            screenshot_after=base64.encode(screenshot),
+            metadata={"activity": driver.current_activity}
+        )
+```
+
+**Platform Specifics:**
+• Android: UIAutomator2 + ADB
+• iOS: XCUITest + WebDriverAgent
+• Touch gesture translation
+end note
+
+' === PERFORMANCE & MONITORING ===
+
+note bottom
+**End-to-End Performance Metrics:**
+
+**Pipeline Stages & Timing:**
+1. **Input Processing**: ~200ms (screenshot capture + intent parsing)
+2. **BPG Context Retrieval**: ~300ms (database queries + vector search)
+3. **Context Enrichment**: ~150ms (prompt assembly + optimization)
+4. **GPT-4V Analysis**: ~2000ms (visual understanding + reasoning)
+5. **GPT-4 Planning**: ~1500ms (action sequence generation)
+6. **Execution**: ~500-2000ms (depending on platform & actions)
+7. **Verification**: ~300ms (screenshot capture + comparison)
+
+**Total End-to-End Latency**: ~5-7 seconds per user request
+
+**Optimization Strategies:**
+• Parallel processing where possible (screenshot capture + BPG lookup)
+• Response caching for similar contexts
+• Optimized prompts (fine-tuned models reduce GPT processing time)
+• Platform-specific performance tuning
+
+**Success Metrics:**
+• Task Completion Rate: 94.3%
+• Average Execution Time: 5.8 seconds
+• Error Recovery Rate: 87.2%
+• User Satisfaction: 4.7/5.0
+end note
+
+@enduml

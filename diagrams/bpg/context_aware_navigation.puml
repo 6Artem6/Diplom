@@ -1,0 +1,142 @@
+@startuml Context_Aware_Navigation_System
+!theme aws-orange
+title Контекстно-осведомленная система навигации с состояниями
+skinparam linetype ortho
+skinparam state {
+  FontColor Black
+  BorderColor Black
+}
+
+[*] --> SessionInitialization
+
+' === Homepage ===
+state "🏠 Homepage Context" as Homepage #LightGreen {
+  state "Anonymous User" as AnonHome #White
+  state "Authenticated User" as AuthHome #MintCream
+
+  AnonHome : available_actions = search, browse, login, register
+  AnonHome : cart_state = empty
+  AnonHome : permissions = public_content
+
+  AuthHome : available_actions = search, browse, profile, logout
+  AuthHome : cart_state = persistent
+  AuthHome : permissions = public_content, user_content
+}
+
+' === Search ===
+state "🔍 Search Context" as SearchContext #LightYellow {
+  state "Search Input" as SearchInput #White
+  state "Search Results" as SearchResults #LemonChiffon
+  state "Filtered Results" as FilteredResults #LightGoldenRodYellow
+
+  SearchInput : available_elements = search_box, search_button
+  SearchInput : required_input = search_term
+  SearchInput : navigation_options = back_to_home
+
+  SearchResults : available_elements = result_items, filters, pagination
+  SearchResults : context_data = search_term, result_count
+  SearchResults : actions = refine_search, select_item, apply_filter
+
+  FilteredResults : available_elements = filtered_items, active_filters, clear_filters
+  FilteredResults : context_data = active_filters, filtered_count
+  FilteredResults : actions = modify_filters, select_item, clear_all
+}
+
+' === Product ===
+state "🛍️ Product Context" as ProductContext #LightBlue {
+  state "Product List" as ProductList #White
+  state "Product Detail" as ProductDetail #AliceBlue
+  state "Product Comparison" as ProductComparison #LightCyan
+
+  ProductList : available_elements = product_cards, list_controls
+  ProductList : display_mode = grid, list, compact
+  ProductList : actions = view_detail, add_to_cart, compare
+
+  ProductDetail : available_elements = product_info, add_to_cart, reviews
+  ProductDetail : context_data = product_id, variant_selection
+  ProductDetail : actions = add_to_cart, view_reviews, back_to_list
+
+  ProductComparison : available_elements = comparison_table, select_winner
+  ProductComparison : context_data = compared_products[]
+  ProductComparison : actions = add_to_cart, remove_from_comparison
+}
+
+' === Cart ===
+state "🛒 Cart Context" as CartContext #LightCoral {
+  state "Empty Cart" as EmptyCart #White
+  state "Cart with Items" as CartWithItems #MistyRose
+  state "Cart Checkout" as CartCheckout #LightPink
+
+  EmptyCart : available_elements = empty_message, continue_shopping
+  EmptyCart : cart_state = {items:0, total:$0}
+  EmptyCart : actions = continue_shopping
+
+  CartWithItems : available_elements = cart_items, quantity_controls, checkout_button
+  CartWithItems : cart_state = {items:n, total:$amount}
+  CartWithItems : actions = modify_quantity, remove_item, checkout, continue_shopping
+
+  CartCheckout : available_elements = order_summary, payment_form, shipping_form
+  CartCheckout : required_data = shipping_address, payment_method
+  CartCheckout : actions = complete_order, back_to_cart
+}
+
+' === User ===
+state "👤 User Context" as UserContext #Thistle {
+  state "Login Flow" as LoginFlow #White
+  state "User Profile" as UserProfile #Lavender
+  state "Order History" as OrderHistory #MistyRose
+
+  LoginFlow : available_elements = login_form, register_link, forgot_password
+  LoginFlow : required_input = username, password
+  LoginFlow : actions = login, register, reset_password
+
+  UserProfile : available_elements = profile_info, edit_form, preferences
+  UserProfile : user_permissions = edit_profile, view_orders
+  UserProfile : actions = edit_profile, view_orders, logout
+
+  OrderHistory : available_elements = order_list, order_details, reorder_button
+  OrderHistory : context_data = user_orders[], order_status
+  OrderHistory : actions = view_order_detail, reorder, track_order
+}
+
+' === Session ===
+state "📊 Session Management" as SessionMgmt #LightGray {
+  SessionMgmt : current_page = PageNode
+  SessionMgmt : user_state = UserState
+  SessionMgmt : cart_state = CartState
+  SessionMgmt : navigation_history = PageHistory[]
+  SessionMgmt : available_transitions = NavigationOption[]
+}
+
+' === Context Transitions ===
+[*] --> Homepage : session_start
+Homepage --> SearchContext : search_initiated
+Homepage --> ProductContext : browse_products
+Homepage --> UserContext : login_clicked
+Homepage --> CartContext : cart_accessed
+
+SearchContext --> ProductContext : product_selected
+SearchContext --> Homepage : home_clicked
+SearchInput --> SearchResults : search_submitted
+SearchResults --> FilteredResults : filter_applied
+FilteredResults --> SearchResults : filter_cleared
+
+ProductContext --> CartContext : add_to_cart
+ProductContext --> SearchContext : back_to_results
+ProductDetail --> ProductList : back_to_list
+ProductList --> ProductDetail : product_clicked
+
+CartContext --> ProductContext : continue_shopping
+CartContext --> UserContext : login_required_for_checkout
+EmptyCart --> ProductContext : continue_shopping
+CartWithItems --> CartCheckout : checkout_clicked
+
+UserContext --> Homepage : login_completed
+UserContext --> CartContext : after_authentication
+LoginFlow --> UserProfile : login_successful
+
+' === Legend ===
+state "📖 Легенда\n\n🏠 Homepage = Главная страница\n🔍 Search = Поиск\n🛍️ Product = Товары\n🛒 Cart = Корзина\n👤 User = Пользователь\n📊 SessionMgmt = Сессия" as Legend #White
+Legend -[hidden]-> Homepage
+
+@enduml

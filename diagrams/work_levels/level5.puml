@@ -1,0 +1,181 @@
+@startuml
+!theme plain
+skinparam linetype ortho
+
+skinparam rectangle {
+  Shadowing false
+  BorderColor black
+  FontSize 9
+  FontName Arial
+}
+skinparam arrow {
+  Color darkblue
+  FontSize 8
+}
+skinparam package {
+  BorderColor darkorange
+  FontColor darkorange
+  FontSize 11
+  FontStyle bold
+}
+
+title Уровень 5: Сервисы развертывания и интеграции\nПроизводственная архитектура SiteGPT
+
+' =======================
+' LOCAL DEPLOYMENT SERVICES
+' =======================
+package "LOCAL DEPLOYMENT SERVICES" #F0F8FF {
+  rectangle "CoreSiteGPTService\n\n+ start_service()\n+ process_request()\n+ manage_cache()\n+ handle_auth()\n- core_modules: Dict\n- cache_manager: CacheManager\n- auth_handler: AuthHandler" as CSGS #E0F0FF
+  rectangle "LocalExecutionEngine\n\n+ execute_workflow()\n+ manage_browser()\n+ handle_resources()\n+ monitor_performance()\n- playwright_manager: PlaywrightManager\n- resource_pool: ResourcePool\n- performance_monitor: Monitor" as LEE #E0F0FF
+  rectangle "LocalCacheService\n\n+ cache_embeddings()\n+ store_graphs()\n+ manage_models()\n+ cleanup_old_data()\n- embedding_cache: EmbeddingCache\n- graph_storage: GraphStorage\n- model_registry: ModelRegistry" as LCS #E0F0FF
+  rectangle "ConfigurationManager\n\n+ load_config()\n+ manage_profiles()\n+ handle_updates()\n+ validate_settings()\n- config_parser: ConfigParser\n- profile_manager: ProfileManager\n- validator: ConfigValidator" as CM #E0F0FF
+}
+
+' =======================
+' CORPORATE DEPLOYMENT SERVICES
+' =======================
+package "CORPORATE DEPLOYMENT SERVICES" #F8F0FF {
+  rectangle "EnterpriseAuthService\n\n+ authenticate_user()\n+ manage_permissions()\n+ integrate_ldap()\n+ audit_access()\n- ldap_connector: LDAPConnector\n- permission_engine: PermissionEngine\n- audit_logger: AuditLogger" as EAS #F0E8FF
+  rectangle "CorporateDataService\n\n+ manage_corp_data()\n+ handle_compliance()\n+ encrypt_sensitive()\n+ backup_data()\n- compliance_engine: ComplianceEngine\n- encryption_service: EncryptionService\n- backup_manager: BackupManager" as CDS #F0E8FF
+  rectangle "RoleBasedOrchestrator\n\n+ orchestrate_by_role()\n+ manage_workflows()\n+ handle_approvals()\n+ track_activities()\n- role_engine: RoleEngine\n- approval_system: ApprovalSystem\n- activity_tracker: ActivityTracker" as RBO #F0E8FF
+  rectangle "ComplianceMonitor\n\n+ monitor_compliance()\n+ generate_reports()\n+ handle_violations()\n+ update_policies()\n- compliance_rules: ComplianceRules\n- report_generator: ReportGenerator\n- policy_engine: PolicyEngine" as CMon #F0E8FF
+}
+
+' =======================
+' CLOUD DEPLOYMENT SERVICES
+' =======================
+package "CLOUD DEPLOYMENT SERVICES" #F0FFF0 {
+  rectangle "MLModelHubService\n\n+ serve_models()\n+ update_models()\n+ distribute_updates()\n+ monitor_usage()\n- model_repository: ModelRepository\n- distribution_service: DistributionService\n- usage_analytics: UsageAnalytics" as MMHS #E8FFE8
+  rectangle "GlobalKnowledgeService\n\n+ share_patterns()\n+ aggregate_learning()\n+ distribute_knowledge()\n+ maintain_quality()\n- pattern_database: PatternDatabase\n- learning_aggregator: LearningAggregator\n- quality_controller: QualityController" as GKS #E8FFE8
+  rectangle "ScalableOrchestrator\n\n+ scale_resources()\n+ load_balance()\n+ manage_clusters()\n+ optimize_costs()\n- auto_scaler: AutoScaler\n- load_balancer: LoadBalancer\n- cost_optimizer: CostOptimizer" as SO #E8FFE8
+  rectangle "APIGatewayService\n\n+ route_requests()\n+ manage_rate_limits()\n+ handle_authentication()\n+ monitor_apis()\n- request_router: RequestRouter\n- rate_limiter: RateLimiter\n- api_monitor: APIMonitor" as AGS #E8FFE8
+}
+
+' =======================
+' EXTERNAL INTEGRATION SERVICES
+' =======================
+package "EXTERNAL INTEGRATION SERVICES" #FFF8F0 {
+  rectangle "WorkflowIntegrationService\n\n+ integrate_n8n()\n+ connect_zapier()\n+ manage_webhooks()\n+ handle_callbacks()\n- n8n_connector: N8NConnector\n- zapier_connector: ZapierConnector\n- webhook_manager: WebhookManager" as WIS #FFF0E8
+  rectangle "BrowserAutomationService\n\n+ manage_playwright()\n+ handle_headfull()\n+ coordinate_sessions()\n+ monitor_browsers()\n- playwright_pool: PlaywrightPool\n- headfull_manager: HeadfullManager\n- session_coordinator: SessionCoordinator" as BAS #FFF0E8
+  rectangle "ExternalAPIService\n\n+ connect_external_apis()\n+ manage_credentials()\n+ handle_rate_limits()\n+ cache_responses()\n- api_connectors: Dict[APIConnector]\n- credential_manager: CredentialManager\n- response_cache: ResponseCache" as EAPIS #FFF0E8
+  rectangle "NotificationService\n\n+ send_notifications()\n+ manage_channels()\n+ handle_alerts()\n+ track_deliveries()\n- notification_channels: NotificationChannels\n- alert_manager: AlertManager\n- delivery_tracker: DeliveryTracker" as NS #FFF0E8
+}
+
+' =======================
+' AI-ENHANCED SERVICES
+' =======================
+package "AI-ENHANCED SERVICES" #FFF0F8 {
+  rectangle "ComputerVisionService\n\n+ analyze_screenshots()\n+ detect_elements()\n+ extract_text()\n+ compare_visuals()\n- yolo_detector: YOLODetector\n- ocr_engine: OCREngine\n- visual_comparator: VisualComparator" as CVS #FFE8F0
+  rectangle "ConversationalAIService\n\n+ process_natural_language()\n+ generate_workflows()\n+ explain_actions()\n+ handle_dialogue()\n- nlp_processor: NLPProcessor\n- workflow_generator: WorkflowGenerator\n- explanation_engine: ExplanationEngine" as CAIS #FFE8F0
+  rectangle "AdaptiveLearningService\n\n+ continuous_learning()\n+ pattern_discovery()\n+ model_adaptation()\n+ knowledge_transfer()\n- learning_engine: LearningEngine\n- pattern_miner: PatternMiner\n- adaptation_manager: AdaptationManager" as ALS #FFE8F0
+  rectangle "PersonalizationService\n\n+ personalize_workflows()\n+ adapt_interfaces()\n+ learn_preferences()\n+ optimize_experience()\n- user_profiler: UserProfiler\n- preference_engine: PreferenceEngine\n- experience_optimizer: ExperienceOptimizer" as PS #FFE8F0
+}
+
+' =======================
+' INFRASTRUCTURE SERVICES
+' =======================
+package "INFRASTRUCTURE SERVICES" #F8F8FF {
+  rectangle "MonitoringService\n\n+ monitor_health()\n+ collect_metrics()\n+ detect_anomalies()\n+ generate_alerts()\n- health_checker: HealthChecker\n- metrics_collector: MetricsCollector\n- anomaly_detector: AnomalyDetector" as MS #F0F0FF
+  rectangle "LoggingService\n\n+ centralized_logging()\n+ log_analysis()\n+ search_logs()\n+ archive_data()\n- log_aggregator: LogAggregator\n- log_analyzer: LogAnalyzer\n- log_searcher: LogSearcher" as LS #F0F0FF
+  rectangle "SecurityService\n\n+ handle_security()\n+ encrypt_data()\n+ manage_certificates()\n+ scan_vulnerabilities()\n- security_scanner: SecurityScanner\n- encryption_manager: EncryptionManager\n- cert_manager: CertificateManager" as SS #F0F0FF
+  rectangle "BackupService\n\n+ backup_data()\n+ restore_data()\n+ manage_snapshots()\n+ verify_integrity()\n- backup_manager: BackupManager\n- restore_service: RestoreService\n- integrity_checker: IntegrityChecker" as BS #F0F0FF
+}
+
+' =======================
+' SERVICE INTERACTIONS
+' =======================
+
+' Local services interactions
+CSGS --> LEE : execution requests
+LEE --> LCS : cache operations
+LCS --> CM : configuration data
+CM --> CSGS : updated configs
+
+' Corporate services interactions
+EAS --> CDS : authenticated requests
+CDS --> RBO : corporate data
+RBO --> CMon : role-based workflows
+CMon --> EAS : compliance reports
+
+' Cloud services interactions
+MMHS --> GKS : model updates
+GKS --> SO : knowledge distribution
+SO --> AGS : scalable endpoints
+AGS --> MMHS : API requests
+
+' Integration services interactions
+WIS --> BAS : workflow automation
+BAS --> EAPIS : browser coordination
+EAPIS --> NS : API responses
+NS --> WIS : notifications
+
+' AI services interactions
+CVS --> CAIS : visual analysis
+CAIS --> ALS : conversation data
+ALS --> PS : learning insights
+PS --> CVS : personalization data
+
+' Cross-deployment integration
+CSGS --> MMHS : model requests
+EAS --> AGS : enterprise API calls
+RBO --> WIS : corporate workflows
+LEE --> BAS : execution coordination
+
+' Infrastructure support
+MS --> all : monitoring
+LS --> all : logging
+SS --> all : security
+BS --> all : backup
+
+' AI enhancement integration
+CVS --> LEE : visual automation
+CAIS --> RBO : natural language workflows
+ALS --> GKS : continuous learning
+PS --> CSGS : personalized experiences
+
+note right of CSGS
+**CoreSiteGPTService**
+• FastAPI REST interface
+• WebSocket real-time updates
+• Plugin architecture
+• Resource management
+• Health monitoring
+end note
+
+note right of EAS
+**EnterpriseAuthService**
+• SAML/OAuth2 support
+• Multi-factor authentication
+• Role-based access control
+• Single sign-on integration
+• Audit trail generation
+end note
+
+note right of MMHS
+**MLModelHubService**
+• Containerized model serving
+• A/B testing framework
+• Model versioning
+• Performance monitoring
+• Auto-scaling capabilities
+end note
+
+note right of CVS
+**ComputerVisionService**
+• Real-time image processing
+• GPU acceleration
+• Batch processing support
+• Model caching
+• Result validation
+end note
+
+note right of MS
+**MonitoringService**
+• Prometheus metrics
+• Grafana dashboards
+• PagerDuty integration
+• Custom alerting rules
+• Performance analytics
+end note
+
+@enduml

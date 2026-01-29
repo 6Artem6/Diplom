@@ -1,0 +1,120 @@
+@startuml
+!theme plain
+skinparam linetype ortho
+
+skinparam rectangle {
+  Shadowing false
+  BorderColor black
+  FontSize 12
+  FontName Arial
+}
+skinparam arrow {
+  Color darkblue
+  FontSize 10
+}
+skinparam package {
+  BorderColor darkred
+  FontColor darkred
+  FontSize 14
+  FontStyle bold
+}
+
+title Уровень 1: Концептуальная архитектура диссертации\nSiteGPT - Интеллектуальная система веб-автоматизации
+
+' =======================
+' НАУЧНЫЕ ВКЛАДЫ ДИССЕРТАЦИИ
+' =======================
+package "НАУЧНЫЕ ВКЛАДЫ И НОВИЗНА" #FFE6E6 {
+  rectangle "Адаптивная экстракция\nвеб-структур" as ADAPTIVE #FFB3B3
+  rectangle "Семантическое моделирование\nвеб-интерфейсов" as SEMANTIC #FFB3B3
+  rectangle "Самовосстанавливающиеся\nвеб-автоматы" as SELFHEALING #FFB3B3
+  rectangle "Многоуровневая архитектура\nвеб-понимания" as MULTILEVEL #FFB3B3
+}
+
+' =======================
+' ТЕОРЕТИЧЕСКИЕ ОСНОВЫ
+' =======================
+package "ТЕОРЕТИЧЕСКИЕ ОСНОВЫ" #E6F3FF {
+  rectangle "Теория графов\nвеб-структур" as GRAPH_THEORY #B3D9FF
+  rectangle "Машинное обучение\nдля веб-понимания" as ML_THEORY #B3D9FF
+  rectangle "Формальные модели\nвеб-автоматизации" as FORMAL_MODELS #B3D9FF
+  rectangle "Семантика\nDOM-структур" as DOM_SEMANTICS #B3D9FF
+}
+
+' =======================
+' ПРАКТИЧЕСКИЕ КОМПОНЕНТЫ
+' =======================
+package "ПРАКТИЧЕСКАЯ РЕАЛИЗАЦИЯ" #E6FFE6 {
+  rectangle "Интеллектуальный\nвеб-краулер" as INTELLIGENT_CRAWLER #B3FFB3
+  rectangle "Адаптивный граф\nсайта" as ADAPTIVE_GRAPH #B3FFB3
+  rectangle "Семантический движок\nдействий" as SEMANTIC_ENGINE #B3FFB3
+  rectangle "Система выполнения\nзадач" as EXECUTION_SYSTEM #B3FFB3
+}
+
+' =======================
+' ЭКСПЕРИМЕНТАЛЬНАЯ ВАЛИДАЦИЯ
+' =======================
+package "ЭКСПЕРИМЕНТАЛЬНАЯ ВАЛИДАЦИЯ" #FFF0E6 {
+  rectangle "Метрики эффективности\nадаптации" as ADAPTATION_METRICS #FFD9B3
+  rectangle "Сравнительный анализ\nс существующими решениями" as COMPARATIVE #FFD9B3
+  rectangle "Валидация на реальных\nвеб-системах" as REAL_VALIDATION #FFD9B3
+  rectangle "Оценка качества\nсемантического понимания" as SEMANTIC_QUALITY #FFD9B3
+}
+
+' =======================
+' СВЯЗИ МЕЖДУ УРОВНЯМИ
+' =======================
+
+' Научные вклады основаны на теории
+GRAPH_THEORY --> ADAPTIVE : графовые модели
+ML_THEORY --> SEMANTIC : ML для семантики
+FORMAL_MODELS --> SELFHEALING : формальные автоматы
+DOM_SEMANTICS --> MULTILEVEL : понимание структур
+
+' Теория реализуется в практике
+GRAPH_THEORY --> ADAPTIVE_GRAPH : теория графов
+ML_THEORY --> INTELLIGENT_CRAWLER : ML алгоритмы
+FORMAL_MODELS --> SEMANTIC_ENGINE : формальные модели
+DOM_SEMANTICS --> EXECUTION_SYSTEM : семантика DOM
+
+' Практика валидируется экспериментально
+ADAPTIVE_GRAPH --> ADAPTATION_METRICS : метрики адаптации
+INTELLIGENT_CRAWLER --> COMPARATIVE : сравнение подходов
+SEMANTIC_ENGINE --> REAL_VALIDATION : реальные тесты
+EXECUTION_SYSTEM --> SEMANTIC_QUALITY : качество понимания
+
+' Связи научных вкладов
+ADAPTIVE --> INTELLIGENT_CRAWLER : реализация адаптации
+SEMANTIC --> ADAPTIVE_GRAPH : семантические графы
+SELFHEALING --> SEMANTIC_ENGINE : самовосстановление
+MULTILEVEL --> EXECUTION_SYSTEM : многоуровневая архитектура
+
+note top of ADAPTIVE
+**Новизна 1**: Адаптивная экстракция
+• Автоматическое распознавание паттернов веб-сайтов
+• Динамическая адаптация к изменениям структуры
+• Самообучающиеся алгоритмы анализа
+end note
+
+note top of SEMANTIC
+**Новизна 2**: Семантическое моделирование
+• Понимание смысла веб-элементов
+• Контекстный анализ пользовательских интерфейсов
+• Семантические эмбеддинги DOM-структур
+end note
+
+note top of SELFHEALING
+**Новизна 3**: Самовосстановление
+• Автоматическое восстановление после изменений
+• Интеллектуальные стратегии поиска элементов
+• Адаптивные селекторы и локаторы
+end note
+
+note top of MULTILEVEL
+**Новизна 4**: Многоуровневая архитектура
+• Иерархическое понимание веб-структур
+• Интеграция различных уровней абстракции
+• Масштабируемая архитектура понимания
+end note
+
+@enduml

@@ -1,0 +1,100 @@
+@startwbs
+* План реализации BPG (10 месяцев)
+** PoC Phase (Месяцы 1-3)
+*** Core Vision Pipeline
+**** YOLOv8 + OCR integration
+**** LayoutML integration
+**** CLIP embeddings
+**** Performance optimization
+*** Basic BPG Structure
+**** Neo4j with basic entity/pattern nodes
+**** Cross-view matching prototype
+**** Pattern matching algorithms
+**** PoC demo ready
+*** Simple NLU
+**** GPT-4 API integration
+**** Entity extraction from screenshots
+**** Intent-to-pattern mapping
+**** Confidence scoring
+*** Manual Template Library
+**** 20-30 handcrafted templates
+**** E-commerce domain templates
+**** Validation with 3 test sites
+**** 50+ templates validated
+*** Element Detection
+**** Basic UI element detection
+**** Bounding box accuracy >80%
+**** Runtime coordinate extraction
+**** Playwright integration
+
+** Pre-Production Phase (Месяцы 4-6)
+*** Microservices Architecture
+**** Service decomposition planning
+**** FastAPI services
+**** Docker containerization
+**** Kubernetes deployment
+*** Template Automation
+**** Open-source analysis pipeline
+**** Automated template extraction
+**** LLM-enhanced pattern discovery
+**** 200+ templates from 10 systems
+*** Advanced NLU
+**** Multi-turn conversation support
+**** Context-aware intent resolution
+**** Domain-specific fine-tuning
+**** Uncertainty quantification
+*** Cross-View Matching
+**** Algorithm development
+**** Visual similarity scoring
+**** Multi-page consistency
+**** Performance optimization
+*** Workflow Engine
+**** State machine design
+**** Basic workflow execution
+**** Error handling & recovery
+**** HITL integration
+
+** Production Phase (Месяцы 7-8)
+*** Scalable Infrastructure
+**** Load balancing
+**** Auto-scaling
+**** Monitoring
+*** Enterprise Onboarding
+**** Onboarding pipeline
+**** Site discovery automation
+**** Expert validation UI
+*** Quality Assurance
+**** Testing framework
+**** Automated testing suite
+**** A/B testing
+*** Performance Optimization
+**** Caching strategy
+**** Multi-level caching
+**** Database optimization
+*** Security Compliance
+**** Security audit planning
+**** GDPR compliance
+**** Audit logging
+
+** Enterprise Phase (Месяцы 9-10)
+*** Advanced Analytics
+**** Metrics dashboard
+**** Predictive analytics
+**** Business intelligence
+*** Cross-Enterprise Learning
+**** Pattern sharing
+**** Template evolution engine
+**** Community contributions
+*** AI Enhancement
+**** Advanced LLM integration
+**** Custom fine-tuning
+**** Uncertainty-aware AI
+*** Enterprise Features
+**** RBAC
+**** Multi-tenant architecture
+**** Integrations
+*** Market Expansion
+**** Market research
+**** Customer acquisition
+**** Partnerships
+@endwbs

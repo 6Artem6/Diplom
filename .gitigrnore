@@ -1,0 +1,5 @@
+models/*
+debug/*
+.idea/*
+__pycache__
+*.pt

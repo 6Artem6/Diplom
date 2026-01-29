@@ -1,0 +1,201 @@
+@startuml Screenshot_to_GUI_Flow
+!theme aws-orange
+title Сопоставление скриншота с BPG данными до выполнения GUI действий
+
+skinparam linetype ortho
+skinparam defaultFontColor black
+top to bottom direction
+
+' === Input Processing ===
+package "🖼️ Screenshot Input Processing" #LightBlue {
+  rectangle Input
+  note right of Input
+    📱 Current Screenshot
+    • user_screen_capture.png (1920x1080, timestamp)
+
+    🔍 YOLO Object Detection
+    • Обнаружение UI элементов
+
+    📝 OCR Text Recognition
+    • Извлечение текста
+
+    📐 Layout Analysis
+    • Структура интерфейса
+
+    **Технический стек:**
+    • YOLOv8
+    • PaddleOCR
+    • OpenCV
+    • Custom layout parser
+  end note
+}
+
+' === Entity Matching ===
+package "🎯 Entity Layer Matching" #LightGreen {
+  rectangle Entity
+  note right of Entity
+    🔗 Cross-view Matching → EntityNode
+
+    🛍️ Product: "Хлеб Бородинский" ($0.85)
+    🛒 Cart: пустая
+    🔍 Search: активное поле
+
+    💡 Confidence:
+    • Product 0.92
+    • Cart 0.88
+    • Search 0.95
+    • Scene 0.91
+
+    **Process:**
+    • CLIP similarity
+    • OCR fuzzy match
+    • Historical patterns
+    • Schema consistency
+  end note
+}
+
+' === Pattern Recognition ===
+package "⚙️ Pattern Layer Recognition" #LightYellow {
+  rectangle Pattern
+  note right of Pattern
+    📋 Context Analysis
+    🎯 Active Pattern Detection
+
+    IF search_field active → product_search
+    ELSE IF product visible → product_browse
+    ELSE → unknown
+
+    📊 Confidence: 0.87
+  end note
+}
+
+' === Workflow Preparation ===
+package "🔧 Workflow Layer Preparation" #LightCoral {
+  rectangle Workflow
+  note right of Workflow
+    📝 Load Workflow Template
+    🎯 Map UI Elements → WorkflowNode
+
+    🔧 Selector Generation:
+    • search_field → input[data-testid='search']
+    • filter_price → button[aria-label='price filter']
+    • add_to_cart → button.add-cart-btn
+    • cart_icon → div.cart-indicator
+
+    📊 Selector Confidence:
+    • search_field 0.93
+    • filter_price 0.78
+    • add_to_cart 0.85
+    • cart_icon 0.91
+
+    **Strategy:**
+    • CSS selectors
+    • XPath
+    • Visual coords
+    • OCR fallback
+  end note
+}
+
+' === User Intent Integration ===
+package "👤 User Intent Integration" #Lavender {
+  rectangle Intent
+  note right of Intent
+    💬 User Prompt:
+    "Найди хлеб до $1 и закажи"
+
+    🤖 Intent Parsed:
+    • action=search_and_order
+    • product="хлеб"
+    • max_price="$1"
+
+    🎯 Alignment:
+    IF UI matches intent → Score 0.89
+    ELSE → Navigation Required
+  end note
+}
+
+' === Action Sequence Planning ===
+package "📋 Action Sequence Planning" #Moccasin {
+  rectangle Plan
+  note right of Plan
+    🎯 Generate Action Sequence
+
+    📝 Planned Actions:
+    1. type(search_field, "хлеб") [0.93]
+    2. click(filter_price_button) [0.78]
+    3. set_price_filter("$1") [0.82]
+    4. scan_results() [0.70]
+    5. click(add_to_cart, first_item) [0.85]
+  end note
+}
+
+' === Execution with Feedback ===
+package "🚀 RPA Execution with Feedback" #PaleGreen {
+  rectangle Execution
+  note right of Execution
+    🤖 Execute Next Action
+    📸 Capture Screenshot
+    🔍 Verify Outcome
+
+    IF success → Confidence +0.05
+    ELSE → try alternative selector
+    IF none → Escalate to HITL
+  end note
+}
+
+' === Post-execution Learning ===
+package "🎓 Post-execution Learning" #LightGreen {
+  rectangle Learning
+  note right of Learning
+    📊 Collect Metrics:
+    • Success rate
+    • Time
+    • Fallbacks
+    • User confirmations
+
+    🔄 Update BPG:
+    • EntityNode
+    • PatternNode
+    • WorkflowNode
+    • UIElementNode
+
+    💾 Store Provenance Chain
+
+    **Feedback:**
+    • Successful selectors ↑
+    • Failed selectors ↓
+    • New UI → EntityNode
+    • Pattern variations → templates
+    • User corrections → ground truth
+  end note
+}
+
+' === Connections ===
+Input -down-> Entity
+Entity -down-> Pattern
+Pattern -down-> Workflow
+Workflow -down-> Intent
+Intent -down-> Plan
+Plan -down-> Execution
+Execution -down-> Learning
+
+' === Legend (вместо отдельного note) ===
+skinparam legendBackgroundColor white
+skinparam legendBorderColor black
+skinparam legendFontColor black
+
+legend bottom
+  == 🔑 Ключевые особенности ==
+  1. Multi-modal Perception
+     • YOLO, OCR, CLIP, Cross-view matching
+  2. Real-time BPG Querying
+     • Neo4j Cypher, Vector search, GNN predictions
+  3. Adaptive Selector Strategy
+     • CSS, XPath, Visual fallback, OCR
+  4. Continuous Learning Loop
+     • Feedback, templates, corrections, retraining
+  5. Explainable Decision Trail
+     • Evidence linking, Confidence, Human validation
+end legend
+
+@enduml

@@ -1,0 +1,163 @@
+@startuml GUI_Discovery_BPG_Construction
+!theme aws-orange
+title Построение BPG через автоматический обход GUI сайта
+
+' === Глобальные настройки ===
+skinparam linetype ortho
+skinparam defaultFontColor black
+skinparam dpi 300
+scale 0.3
+
+skinparam activity {
+  BackgroundColor #F0F8FF
+  BorderColor #4169E1
+}
+
+skinparam legend {
+  BackgroundColor white
+  BorderColor black
+  FontColor black
+}
+
+start
+
+' === Initial Site Analysis ===
+partition "🌐 Initial Site Discovery" #LightBlue {
+  :🏠 Start from Homepage\nentry_url = "https://site.com";
+  :📸 Capture Initial Screenshot\nbaseline_layout.png;
+  :🔍 LayoutML Analysis\nИзвлечение структуры страницы;
+  :📋 Detect Navigation Elements\n- Main menu links\n- Footer links\n- Breadcrumbs\n- Search forms\n- Login/Register buttons;
+  :📝 Create PageNode\npage_type=homepage\nurl_pattern="/"\nlayout_signature=hash(dom);
+
+  note right
+    LayoutML Integration:
+    - DOM tree extraction
+    - Visual element grouping
+    - Semantic role detection
+    - Link/form identification
+  end note
+}
+
+' === Systematic Site Crawling ===
+partition "🕷️ Systematic GUI Crawling" #LightGreen {
+  :📂 Initialize Crawl Queue\nqueue=[links], visited={}, signatures={};
+  repeat
+    :🔗 Get Next Link\nnext_url = queue.pop();
+    :🌐 Navigate to URL\nselenium.get(next_url);
+    :📸 Capture Screenshot\npage.png;
+    :🏗️ LayoutML Page Analysis\nExtract structure+elements;
+    :🔍 Generate Page Signature\nsignature=hash(dom+elements+forms+links);
+
+    if (Page signature exists?) then (yes)
+      :🔄 Mark as Duplicate Layout;
+      if (Different data detected?) then (yes)
+        :📊 Create Data Variant Link\nstore dynamic areas;
+      endif
+    else (new)
+      :✨ Create New PageNode\nid=uuid, type=classify(), url_pattern=extract();
+      :🔗 Extract Page Elements\n- Navigation\n- Forms\n- Actions\n- Content\n- Data;
+    endif
+
+    :🔍 Discover New Links\nfilter+enqueue;
+  repeat while (Queue not empty AND limit not reached?)
+}
+
+' === Cross-view Entity Linking ===
+partition "🔗 Cross-view Entity Linking" #LightYellow {
+  :🧠 Similarity Analysis\nСравнение элементов;
+
+  split
+    :🎨 Visual Similarity\n- SIFT/ORB\n- CLIP\n- Color/shape;
+  split again
+    :📝 Textual Similarity\n- OCR\n- Embeddings\n- Fuzzy match;
+  split again
+    :🏗️ Structural Similarity\n- DOM paths\n- CSS classes\n- Positions;
+  end split
+
+  :🔗 Create Cross-view Links\nExamples:\nProductCard list↔grid↔detail\nCartIcon↔CartPage↔CartWidget\nUserMenu↔UserProfile\nSearchBox↔SearchPage;
+  :📊 Entity Confidence Scoring\nCombine visual+text+structural;
+
+  note right
+    Cross-view Matching:
+    - Same entity, different views
+    - Enables state tracking
+    - Supports navigation consistency
+  end note
+}
+
+' === Navigation Pattern Discovery ===
+partition "🗺️ Navigation Pattern Discovery" #Lavender {
+  :🔍 Analyze Navigation Flows;
+  :📊 Detect Patterns\n- Hierarchical\n- Search-based\n- Process-driven\n- Modal-based;
+  :⚙️ Create PatternNodes\nbrowse_category, search_filter, add_to_cart, auth_flow;
+  :🔗 Map Navigation Links\nPageNode→PageNode\nweight=frequency\ncontext=preconditions;
+
+  note right
+    Navigation Patterns:
+    - Encoded as PatternNodes
+    - Include preconditions (login, cart)
+    - Multi-step navigation
+    - Handle dynamic loading
+  end note
+}
+
+' === Business Process Extraction ===
+partition "💼 Business Process Extraction" #PaleGreen {
+  :🎯 Identify Business Entities;
+  :📋 Entity Types\nUser, Product, Order, Search, Category;
+  :⚙️ Extract Business Patterns\nregistration, search+purchase, order_mgmt, browsing;
+  :🔄 Link Patterns to Navigation\nBusinessPattern→NavigationPattern;
+}
+
+' === Caching and Optimization ===
+partition "💾 Caching Strategy" #Moccasin {
+  :🗄️ Multi-level Caching\nL1: Elements\nL2: Pages\nL3: Patterns;
+  :🔄 Invalidation\n- TTL\n- Version change\n- User refresh\n- A/B detection;
+  :📈 Metrics\nHit rate, speed, latency, memory;
+
+  note right
+    Intelligent Caching:
+    - Preload next pages
+    - Cache popular flows
+    - Optimize for workflows
+    - Balance memory vs CPU
+  end note
+}
+
+stop
+
+' === Legend ===
+legend right
+ЛЕГЕНДА — Key Technical Implementation
+
+1. LayoutML Integration
+- DOM extraction
+- Visual grouping
+- Semantic roles
+- Cross-page correlation
+
+2. Page Signature Generation
+- Structural hashing
+- Layout fingerprint
+- Functional fingerprint
+- Ignore dynamic data
+
+3. Navigation Graph Construction
+- PageNode + NavigationElementNode
+- Transition scoring
+- Preconditions (auth/state)
+
+4. Cross-view Entity Resolution
+- Multimodal similarity
+- Confidence-weighted linking
+- Temporal consistency
+- User validation
+
+5. Business Process Mining
+- Form analysis
+- Workflow recognition
+- State modeling
+- Dependency mapping
+end legend
+
+@enduml

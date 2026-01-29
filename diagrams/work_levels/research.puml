@@ -1,0 +1,188 @@
+@startuml
+!theme plain
+skinparam linetype ortho
+
+skinparam rectangle {
+  Shadowing false
+  BorderColor black
+  FontSize 10
+  FontName Arial
+}
+skinparam arrow {
+  Color darkblue
+  FontSize 9
+}
+skinparam package {
+  BorderColor darkred
+  FontColor darkred
+  FontSize 12
+  FontStyle bold
+}
+
+title Интегрированная исследовательская архитектура SiteGPT\nС последними научными достижениями и инновациями
+
+' =======================
+' НОВЫЕ НАУЧНЫЕ ВКЛАДЫ (обновленные)
+' =======================
+package "ПЕРЕДОВЫЕ НАУЧНЫЕ ДОСТИЖЕНИЯ" #FFE0E0 {
+  rectangle "Контекстуально-осведомленная\nавтоматизация\n\n• Cross-page context propagation\n• Temporal context understanding\n• Multi-session context memory\n• Context-driven adaptation" as CONTEXT_AWARE #FF9999
+
+  rectangle "Нейро-символьное\nвеб-понимание\n\n• Neural pattern recognition\n• Symbolic reasoning integration\n• Explainable AI decisions\n• Hybrid learning approaches" as NEURO_SYMBOLIC #FF9999
+
+  rectangle "Мета-обучение для\nвеб-адаптации\n\n• Few-shot domain adaptation\n• Transfer learning optimization\n• Meta-gradient approaches\n• Cross-site knowledge transfer" as META_LEARNING #FF9999
+
+  rectangle "Самосупервизированное\nобучение структур\n\n• Contrastive learning for DOM\n• Masked language modeling for UI\n• Self-supervised embeddings\n• Unsupervised pattern discovery" as SELF_SUPERVISED #FF9999
+}
+
+' =======================
+' ИННОВАЦИОННЫЕ ТЕХНОЛОГИИ
+' =======================
+package "ТЕХНОЛОГИЧЕСКИЕ ИННОВАЦИИ" #E0FFE0 {
+  rectangle "Трансформеры для\nDOM-понимания\n\n• DOM-BERT architecture\n• Hierarchical attention\n• Positional encoding for trees\n• Cross-attention mechanisms" as DOM_TRANSFORMERS #99FF99
+
+  rectangle "Графовые нейронные\nсети для сайтов\n\n• Site-level GNN\n• Message passing algorithms\n• Graph attention networks\n• Dynamic graph learning" as GRAPH_NEURAL #99FF99
+
+  rectangle "Мультимодальное\nслияние данных\n\n• Visual-DOM alignment\n• Text-image fusion\n• Audio-visual integration\n• Sensor data incorporation" as MULTIMODAL #99FF99
+
+  rectangle "Федеративное обучение\nпаттернов\n\n• Privacy-preserving learning\n• Distributed pattern mining\n• Cross-organization sharing\n• Decentralized updates" as FEDERATED #99FF99
+}
+
+' =======================
+' РАСШИРЕННЫЕ МЕТОДОЛОГИИ
+' =======================
+package "РАСШИРЕННЫЕ МЕТОДОЛОГИИ" #E0E0FF {
+  rectangle "Адверсариальная\nустойчивость\n\n• Robust feature extraction\n• Adversarial training\n• Defense mechanisms\n• Uncertainty quantification" as ADVERSARIAL #9999FF
+
+  rectangle "Каузальное моделирование\nвзаимодействий\n\n• Causal inference for UI\n• Intervention modeling\n• Counterfactual reasoning\n• Causal graph construction" as CAUSAL #9999FF
+
+  rectangle "Активное обучение\nс обратной связью\n\n• Uncertainty-based sampling\n• Human-in-the-loop training\n• Query strategy optimization\n• Annotation efficiency" as ACTIVE_LEARNING #9999FF
+
+  rectangle "Онлайн обучение\nи адаптация\n\n• Streaming pattern updates\n• Concept drift detection\n• Adaptive forgetting\n• Real-time model updates" as ONLINE_LEARNING #9999FF
+}
+
+' =======================
+' ИНТЕГРАЦИЯ С СУЩЕСТВУЮЩЕЙ АРХИТЕКТУРОЙ
+' =======================
+package "ИНТЕГРАЦИЯ С CORE SITEGPT" #FFFACD {
+  rectangle "Enhanced Pattern Analyzer\n\n+ analyze_with_transformers()\n+ apply_meta_learning()\n+ use_causal_inference()\n- transformer_model: DOMTransformer\n- meta_learner: MetaLearner\n- causal_engine: CausalEngine" as EPA #F0E68C
+
+  rectangle "Adaptive Semantic Embedding\n\n+ generate_contextual_embeddings()\n+ apply_self_supervision()\n+ multimodal_fusion()\n- context_encoder: ContextEncoder\n- self_supervised_model: SSLModel\n- fusion_network: FusionNetwork" as ASE #F0E68C
+
+  rectangle "Intelligent Execution Engine\n\n+ context_aware_execution()\n+ adversarial_robust_actions()\n+ online_adaptation()\n- context_manager: ContextManager\n- robust_executor: RobustExecutor\n- online_learner: OnlineLearner" as IEE #F0E68C
+
+  rectangle "Federated Learning Coordinator\n\n+ coordinate_federated_learning()\n+ aggregate_global_patterns()\n+ preserve_privacy()\n- federation_manager: FederationManager\n- aggregation_service: AggregationService\n- privacy_engine: PrivacyEngine" as FLC #F0E68C
+}
+
+' =======================
+' ЭКСПЕРИМЕНТАЛЬНАЯ ВАЛИДАЦИЯ (расширенная)
+' =======================
+package "РАСШИРЕННАЯ ЭКСПЕРИМЕНТАЛЬНАЯ ВАЛИДАЦИЯ" #F0F8FF {
+  rectangle "Бенчмарки для веб-понимания\n\n• WebQA benchmark\n• SiteNav challenge\n• UI understanding metrics\n• Cross-domain evaluation" as WEB_BENCHMARKS #E0F0FF
+
+  rectangle "Метрики устойчивости и адаптации\n\n• Adversarial robustness\n• Adaptation speed\n• Forgetting resistance\n• Transfer effectiveness" as ROBUSTNESS_METRICS #E0F0FF
+
+  rectangle "Человеко-машинная эвалюация\n\n• User study protocols\n• Explainability assessment\n• Trust measurement\n• Usability evaluation" as HUMAN_EVAL #E0F0FF
+
+  rectangle "Долгосрочные исследования\n\n• Performance over time\n• Drift adaptation\n• Learning curve analysis\n• Maintenance requirements" as LONGITUDINAL #E0F0FF
+}
+
+' =======================
+' СВЯЗИ НАУЧНЫХ ДОСТИЖЕНИЙ С ТЕХНОЛОГИЯМИ
+' =======================
+
+CONTEXT_AWARE --> DOM_TRANSFORMERS : contextual understanding
+NEURO_SYMBOLIC --> GRAPH_NEURAL : symbolic-neural integration
+META_LEARNING --> MULTIMODAL : meta-learning for modalities
+SELF_SUPERVISED --> FEDERATED : self-supervised federation
+
+' =======================
+' СВЯЗИ С МЕТОДОЛОГИЯМИ
+' =======================
+
+DOM_TRANSFORMERS --> ADVERSARIAL : robust transformers
+GRAPH_NEURAL --> CAUSAL : causal graph networks
+MULTIMODAL --> ACTIVE_LEARNING : multimodal active learning
+FEDERATED --> ONLINE_LEARNING : federated online learning
+
+' =======================
+' ИНТЕГРАЦИЯ С CORE КОМПОНЕНТАМИ
+' =======================
+
+CONTEXT_AWARE --> EPA : enhanced pattern analysis
+DOM_TRANSFORMERS --> ASE : transformer embeddings
+ADVERSARIAL --> IEE : robust execution
+FEDERATED --> FLC : federated coordination
+
+NEURO_SYMBOLIC --> EPA : symbolic reasoning
+MULTIMODAL --> ASE : multimodal embeddings
+ONLINE_LEARNING --> IEE : online adaptation
+META_LEARNING --> FLC : meta-learning coordination
+
+' =======================
+' СВЯЗИ С ЭКСПЕРИМЕНТАЛЬНОЙ ВАЛИДАЦИЕЙ
+' =======================
+
+EPA --> WEB_BENCHMARKS : pattern analysis evaluation
+ASE --> ROBUSTNESS_METRICS : embedding robustness
+IEE --> HUMAN_EVAL : execution evaluation
+FLC --> LONGITUDINAL : long-term federation study
+
+' =======================
+' ОБРАТНЫЕ СВЯЗИ ДЛЯ УЛУЧШЕНИЯ
+' =======================
+
+WEB_BENCHMARKS --> CONTEXT_AWARE : benchmark insights
+ROBUSTNESS_METRICS --> ADVERSARIAL : robustness requirements
+HUMAN_EVAL --> NEURO_SYMBOLIC : explainability needs
+LONGITUDINAL --> META_LEARNING : long-term adaptation needs
+
+note top of CONTEXT_AWARE
+**Контекстуально-осведомленная автоматизация**
+НОВИЗНА: Первая система, которая сохраняет и
+использует контекст между страницами и сессиями
+для более интеллектуальной автоматизации веб-задач
+end note
+
+note top of DOM_TRANSFORMERS
+**Трансформеры для DOM**
+ИННОВАЦИЯ: Специализированная архитектура
+трансформера для понимания иерархических
+DOM-структур с позиционным кодированием для деревьев
+end note
+
+note top of ADVERSARIAL
+**Адверсариальная устойчивость**
+ВКЛАД: Первое исследование устойчивости
+веб-автоматизации к adversarial изменениям
+в HTML/CSS/JS коде веб-страниц
+end note
+
+note right of EPA
+**Enhanced Pattern Analyzer**
+Интеграция всех новых методов:
+• Transformer-based analysis
+• Meta-learning adaptation
+• Causal inference
+• Adversarial robustness
+• Contextual understanding
+end note
+
+note right of FLC
+**Federated Learning Coordinator**
+Координация распределенного обучения:
+• Cross-organization knowledge sharing
+• Privacy-preserving aggregation
+• Global pattern discovery
+• Decentralized model updates
+• Collaborative intelligence
+end note
+
+note bottom of WEB_BENCHMARKS
+**Новые бенчмарки для веб-понимания**
+• WebDOM-10K: Large-scale DOM dataset
+• SiteNav-Challenge: Navigation benchmark
+• UIUnderstand-Suite: UI comprehension tests
+• CrossSite-Transfer: Transfer learning eval
+end note
+
+@enduml

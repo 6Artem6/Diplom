@@ -1,0 +1,354 @@
+@startuml Modern_Cross_View_Entity_Linking
+
+title Modern Cross-View Entity Linking: Foundation Models + Layout Understanding
+
+scale 1024 width
+skinparam dpi 150
+
+start
+
+:Получить набор скриншотов GUI;
+note right
+  **Входные данные:**
+  • screenshots = [img1.png, img2.png, ...]
+  • metadata = {timestamp, page_url, session_id, domain}
+
+  **Цель:** Найти одинаковые бизнес-сущности
+  в разных GUI представлениях
+end note
+
+partition "Modern Multi-Modal Analysis" {
+
+  :Specialized GUI Detection;
+  note left
+    **YOLO11 GUI-Specialized Detection:**
+    ```python
+    gui_detector = YOLO('yolo11-gui-elements.pt')
+
+    ui_elements = []
+    for screenshot in screenshots:
+        detections = gui_detector(screenshot,
+            classes=["button", "card", "form", "input",
+                   "table", "modal", "navigation", "dropdown"])
+
+        for det in detections:
+            element = UIElement(
+                bbox=det.bbox,
+                type=det.class_name,
+                confidence=det.confidence,
+                visual_features=det.features,  # Прямо из YOLO
+                screenshot_id=screenshot.id
+            )
+            ui_elements.append(element)
+    ```
+    **Преимущество:** Специализация для GUI, встроенные features
+  end note
+
+  if (Сложный layout?) then (yes)
+    :Layout Understanding Enhancement;
+    note right
+      **LayoutLMv3 для сложных spatial relationships:**
+      ```python
+      layout_enhancer = LayoutLMv3.from_pretrained("microsoft/layoutlmv3-base")
+
+      for screenshot in complex_layouts:
+          # LayoutLM для spatial awareness
+          layout_features = layout_enhancer.extract_features(
+              screenshot,
+              detected_elements=ui_elements,
+              return_spatial_relationships=True
+          )
+
+          # Enhance UI elements с layout context
+          for element in ui_elements:
+              element.spatial_context = layout_features.get_context(element.id)
+              element.hierarchical_position = layout_features.get_hierarchy(element.id)
+      ```
+      **Используем LayoutLM селективно:** только для complex layouts
+    end note
+  else (no)
+    :Simple Layout Analysis;
+    note left
+      **Lightweight spatial analysis:**
+      ```python
+      def simple_layout_analysis(ui_elements):
+          for element in ui_elements:
+              # Normalize coordinates
+              element.norm_pos = normalize_bbox(element.bbox)
+
+              # Find spatial neighbors
+              element.neighbors = find_spatial_neighbors(element, ui_elements)
+
+              # Detect visual groupings
+              element.visual_group = detect_visual_group(element, ui_elements)
+      ```
+      **80% cases:** Simple approach sufficient
+    end note
+  endif
+
+  :Foundation Model Analysis;
+  note right
+    **GPT-4V для semantic understanding:**
+    ```python
+    def analyze_entities_batch(ui_elements_groups):
+        # Group elements по screenshots для batch processing
+
+        batch_prompt = f"""
+        Analyze these UI elements for business entity identification:
+
+        {format_elements_for_analysis(ui_elements_groups)}
+
+        For each element, identify:
+        1. Business entity type (Customer, Product, Order, etc.)
+        2. Key attributes visible
+        3. Likely same entities across different views
+        4. Confidence level
+
+        Return structured JSON.
+        """
+
+        response = gpt4v_client.analyze(
+            images=extract_element_images(ui_elements_groups),
+            prompt=batch_prompt,
+            response_format="json_schema"
+        )
+
+        return parse_entity_analysis(response)
+    ```
+    **Batch processing:** Cost-effective foundation model usage
+  end note
+}
+
+partition "Intelligent Similarity Computation" {
+
+  :Multi-Modal Embedding Generation;
+  note left
+    **Foundation model embeddings:**
+    ```python
+    class ModernEmbeddingGenerator:
+        def __init__(self):
+            self.clip_model = CLIPModel.from_pretrained("openai/clip-vit-large-patch14")
+            self.sentence_model = SentenceTransformer('all-mpnet-base-v2')
+
+        def generate_composite_embedding(self, ui_element):
+            # Visual embedding (specialized для GUI)
+            visual_emb = self.clip_model.encode_image(
+                ui_element.cropped_image
+            )
+
+            # Text embedding (если есть text)
+            text_emb = self.sentence_model.encode(
+                ui_element.text_content
+            ) if ui_element.text_content else np.zeros(384)
+
+            # Layout embedding (simple but effective)
+            layout_emb = self.encode_layout_features(
+                ui_element.spatial_context
+            )
+
+            # Composite embedding
+            return np.concatenate([visual_emb, text_emb, layout_emb])
+    ```
+  end note
+
+  :Smart Similarity Calculation;
+  note right
+    **Adaptive similarity computation:**
+    ```python
+    def calculate_adaptive_similarity(element1, element2):
+        # Base similarity через embeddings
+        base_sim = cosine_similarity(
+            element1.composite_embedding,
+            element2.composite_embedding
+        )
+
+        # Context-aware adjustments
+        adjustments = []
+
+        # Same domain bonus
+        if element1.domain == element2.domain:
+            adjustments.append(0.1)
+
+        # Temporal proximity bonus
+        time_diff = abs(element1.timestamp - element2.timestamp)
+        if time_diff < 3600:  # 1 hour
+            adjustments.append(0.05)
+
+        # Layout pattern matching
+        if element1.visual_group == element2.visual_group:
+            adjustments.append(0.08)
+
+        final_similarity = base_sim + sum(adjustments)
+        return min(final_similarity, 1.0)
+    ```
+  end note
+}
+
+partition "Efficient Clustering" {
+
+  :Hierarchical Clustering with Auto-Threshold;
+  note left
+    **AgglomerativeClustering с adaptive threshold:**
+    ```python
+    from sklearn.cluster import AgglomerativeClustering
+    from sklearn.metrics import silhouette_score
+
+    def adaptive_clustering(embeddings):
+        best_score = -1
+        best_clustering = None
+
+        # Try different thresholds
+        for threshold in [0.3, 0.5, 0.7, 0.8]:
+            clustering = AgglomerativeClustering(
+                n_clusters=None,
+                distance_threshold=threshold,
+                linkage='ward'
+            )
+
+            labels = clustering.fit_predict(embeddings)
+            score = silhouette_score(embeddings, labels)
+
+            if score > best_score:
+                best_score = score
+                best_clustering = labels
+
+        return best_clustering, best_score
+    ```
+  end note
+
+  :Confidence Assessment;
+  note right
+    **Multi-factor confidence scoring:**
+    ```python
+    def calculate_cluster_confidence(cluster_elements, cluster_embeddings):
+        # Intra-cluster similarity
+        intra_sim = np.mean([
+            cosine_similarity(emb1, emb2)
+            for emb1, emb2 in combinations(cluster_embeddings, 2)
+        ])
+
+        # Visual consistency
+        visual_consistency = assess_visual_consistency(cluster_elements)
+
+        # Text similarity (if available)
+        text_consistency = assess_text_consistency(cluster_elements)
+
+        # Domain consistency
+        domain_consistency = assess_domain_consistency(cluster_elements)
+
+        # Weighted combination
+        confidence = (
+            0.4 * intra_sim +
+            0.3 * visual_consistency +
+            0.2 * text_consistency +
+            0.1 * domain_consistency
+        )
+
+        return confidence
+    ```
+  end note
+}
+
+if (Есть кластеры с низкой уверенностью?) then (yes)
+
+  :Batch LLM Validation;
+  note left
+    **Cost-effective batch validation:**
+    ```python
+    def batch_validate_uncertain_clusters(uncertain_clusters):
+        # Group multiple uncertain clusters в одном API call
+
+        batch_prompt = create_batch_validation_prompt(uncertain_clusters)
+
+        validation_response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",  # Более дешевая модель
+            messages=[{
+                "role": "system",
+                "content": "You are a GUI entity linking expert."
+            }, {
+                "role": "user",
+                "content": batch_prompt
+            }],
+            response_format={"type": "json_object"},
+            temperature=0.1  # More deterministic
+        )
+
+        return parse_batch_validation_results(validation_response)
+    ```
+    **Cost optimization:** Batch processing, cheaper model
+  end note
+
+else (no)
+  :All clusters high confidence;
+endif
+
+:Create Cross-View Entity Groups;
+note right
+  **Final entity creation с metadata:**
+  ```python
+  cross_view_entities = []
+
+  for cluster_id, elements in validated_clusters.items():
+      entity = CrossViewEntity(
+          entity_id=generate_uuid(),
+          confidence=cluster_confidences[cluster_id],
+          entity_type=infer_entity_type(elements),
+
+          # Rich metadata
+          representations=[
+              EntityRepresentation(
+                  screenshot_id=elem.screenshot_id,
+                  bbox=elem.bbox,
+                  composite_embedding=elem.composite_embedding,
+                  business_attributes=elem.business_attributes
+              ) for elem in elements
+          ],
+
+          # Analysis metadata
+          analysis_metadata={
+              "detection_method": elem.detection_method,
+              "layout_complexity": elem.layout_complexity,
+              "llm_validated": cluster_id in llm_validated,
+              "confidence_factors": elem.confidence_factors
+          }
+      )
+
+      cross_view_entities.append(entity)
+  ```
+end note
+
+:Store in Vector + Graph Database;
+note left
+  **Hybrid storage для fast retrieval:**
+  ```python
+  # Vector database для similarity search
+  for entity in cross_view_entities:
+      vector_db.upsert(
+          id=entity.entity_id,
+          values=entity.average_embedding,
+          metadata=entity.get_searchable_metadata()
+      )
+
+  # Graph database для relationships
+  for entity in cross_view_entities:
+      neo4j.create_node(
+          "CrossViewEntity",
+          properties={
+              "entity_id": entity.entity_id,
+              "entity_type": entity.entity_type,
+              "confidence": entity.confidence
+          }
+      )
+
+      # Create relationships между representations
+      for repr1, repr2 in combinations(entity.representations, 2):
+          neo4j.create_relationship(
+              repr1.node_id, "SAME_ENTITY", repr2.node_id,
+              {"confidence": entity.confidence}
+          )
+  ```
+end note
+
+stop
+
+@enduml

@@ -1,0 +1,238 @@
+@startuml
+!theme plain
+skinparam rectangle {
+  Shadowing false
+  BorderColor black
+  FontSize 10
+}
+
+title Оркестрация сложных Workflow: циклы, ветвления и параллельное выполнение
+
+' =======================
+' Ввод и анализ Workflow
+' =======================
+package "Ввод и анализ Workflow" as WIA {
+  rectangle ЗапросПользователя as UWR #lightblue
+  rectangle ПарсерWorkflow as WP #lightblue
+  rectangle АнализаторСложности as CA_COMPLEX #lightgreen
+  rectangle АнализаторЗависимостей as DA #lightgreen
+}
+
+note right of WP
+**Парсер Workflow**
+• **Обработка естественного языка**: извлечение интентов
+• **Структурированный ввод**: JSON/YAML описания
+• **Визуальный Workflow**: парсинг drag-n-drop интерфейсов
+• **Сопоставление шаблонов**: типовые паттерны
+end note
+
+note right of CA_COMPLEX
+**Анализатор сложности**
+• **Обнаружение циклов**: выявление и оптимизация
+• **Анализ ветвлений**: построение условной логики
+• **Определение параллельных возможностей**: независимые задачи
+• **Оценка ресурсов**: память, время, API вызовы
+end note
+
+' =======================
+' Планирование и оптимизация
+' =======================
+package "Планирование и оптимизация Workflow" as WPO {
+  rectangle КомпиляторWorkflow as WC_COMPILE #yellow
+  rectangle ПланировщикИсполнения as EP #yellow
+  rectangle ПланировщикРесурсов as RS #orange
+  rectangle ДвижокПараллельности as PE_PAR #orange
+  rectangle ДвижокОптимизаций as OE_WF #orange
+}
+
+note right of WC_COMPILE
+**Компилятор Workflow**
+• **Построение DAG**: ориентированный ацикличный граф с циклами
+• **Компиляция условной логики**: if-then-else
+• **Развёртка циклов**: оптимизация конечных итераций
+• **Инъекция обработки ошибок**: retry/fallback механизмы
+end note
+
+note right of PE_PAR
+**Движок параллельности**
+• **Анализ независимости задач**: безопасное параллельное выполнение
+• **Выявление конфликтов ресурсов**: управление общими ресурсами
+• **Балансировка нагрузки**: оптимальное распределение
+• **Синхронизация**: точки join/barrier
+end note
+
+' =======================
+' Внешняя интеграция
+' =======================
+package "Внешняя интеграция" as EI {
+  rectangle КоннекторN8N as N8N_CONN #lightcyan
+  rectangle КоннекторZapier as ZAP_CONN #lightcyan
+  rectangle APIGateway as API_GW #lightcyan
+  rectangle МенеджерWebhooks as WM #lightcyan
+  rectangle ПроксиВнешнихСервисов as ESP #lightcyan
+}
+
+note right of N8N_CONN
+**Коннектор n8n**
+• **Двунаправленная синхронизация**: импорт/экспорт workflow
+• **Генерация нод**: автоматизация веба
+• **Реальная синхронизация исполнения**: статусы
+• **Проброс ошибок**: межсистемная обработка
+end note
+
+note right of API_GW
+**API Gateway**
+• **Интеграция с известными API**: готовые коннекторы
+• **Rate limiting**: контроль квот
+• **Управление аутентификацией**: токены/OAuth
+• **Кэширование ответов**: ускорение
+end note
+
+' =======================
+' Движок исполнения
+' =======================
+package "Движок исполнения" as EE {
+  rectangle ОркестраторWorkflow as WO_EXEC #lightyellow
+  rectangle ИсполнительЗадач as TE #lightyellow
+  rectangle ПараллельныйИсполнитель as PE_EXEC_WF #lightgreen
+  rectangle ИсполнительЦиклов as CE #lightgreen
+  rectangle ИсполнительУсловий as COND_E #lightgreen
+  rectangle ОбработчикОшибок as EH #lightcoral
+  rectangle МенеджерСостояний as SM_STATE #lightgray
+}
+
+note right of WO_EXEC
+**Оркестратор Workflow**
+• **Координация исполнения**: планирование и мониторинг
+• **Управление состоянием**: контекст и переменные
+• **Отслеживание прогресса**: статусы выполнения
+• **Управление ресурсами**: память, соединения, потоки
+end note
+
+note right of CE
+**Исполнитель циклов**
+• **Управление циклами**: for/while
+• **Контекст итераций**: переменные цикла
+• **Условия выхода**: прерывание
+• **Защита от бесконечных циклов**: механизмы безопасности
+end note
+
+note right of COND_E
+**Исполнитель условий**
+• **Оценка логики**: сложные условия
+• **Выбор ветки**: динамические пути
+• **Контекстные решения**: на основе состояния
+• **Мультиветвление**: параллельные пути при возможности
+end note
+
+' =======================
+' Мониторинг и контроль
+' =======================
+package "Мониторинг и контроль" as MC {
+  rectangle МониторИсполнения as EM #lightsteelblue
+  rectangle ТрекерПроизводительности as PT #lightsteelblue
+  rectangle АнализаторОшибок as EA #lightcoral
+  rectangle ИнтерфейсВмешательстваЧеловека as HII #lightpink
+  rectangle ОтладчикWorkflow as WD #lightpink
+}
+
+note right of EM
+**Монитор исполнения**
+• **Реальное время**: отслеживание прогресса
+• **Детекция узких мест**: анализ производительности
+• **Мониторинг ресурсов**: CPU, память, сеть
+• **SLA контроль**: время выполнения
+end note
+
+note right of HII
+**Интерфейс вмешательства человека**
+• **Ручное управление**: override
+• **Точки утверждения**: согласования
+• **Обработка исключений**: ручное разрешение
+• **Онлайн-коммуникация**: чат/уведомления
+end note
+
+' =======================
+' Шаблоны и обучение
+' =======================
+package "Шаблоны и обучение" as TL {
+  rectangle ДвижокШаблоновWorkflow as WTE #lightyellow
+  rectangle ОбучательПаттернов as PL #lightyellow
+  rectangle АнализаторУспеха as SA_SUCCESS #lightgreen
+  rectangle ОбучательОптимизаций as OL #lightgreen
+}
+
+note right of WTE
+**Движок шаблонов Workflow**
+• **Типовые паттерны**: e-commerce, CRM, Data processing
+• **Кастомизация**: адаптация параметрами
+• **Версионирование**: отслеживание эволюции
+• **Обмен шаблонами**: сообщество
+end note
+
+note right of PL
+**Обучатель паттернов**
+• **Выявление повторяющихся структур**
+• **Анализ успешных сценариев**
+• **Распознавание неудач**
+• **Предложения оптимизаций**
+end note
+
+' =======================
+' Потоки данных
+' =======================
+
+' Input Analysis Flow
+UWR --> WP : запрос workflow
+WP --> CA_COMPLEX : распарсенный workflow
+CA_COMPLEX --> DA : анализ сложности
+DA --> WC_COMPILE : граф зависимостей
+
+' Planning Flow
+WC_COMPILE --> EP : скомпилированный workflow
+EP --> RS : план исполнения
+RS --> PE_PAR : распределение ресурсов
+PE_PAR --> OE_WF : план параллелизации
+OE_WF --> WO_EXEC : оптимизированный план
+
+' External Integration Flow
+WO_EXEC --> N8N_CONN : workflow для n8n
+WO_EXEC --> ZAP_CONN : workflow для zapier
+WO_EXEC --> API_GW : вызовы API
+API_GW --> ESP : внешние сервисы
+WO_EXEC --> WM : управление webhooks
+
+' Execution Flow
+WO_EXEC --> TE : исполнение задач
+TE --> PE_EXEC_WF : параллельные задачи
+TE --> CE : циклы
+TE --> COND_E : условия
+TE --> EH : обработка ошибок
+TE --> SM_STATE : обновление состояния
+
+' Monitoring Flow
+WO_EXEC --> EM : статусы исполнения
+EM --> PT : данные производительности
+TE --> EA : анализ ошибок
+EA --> EH : разрешение ошибок
+EM --> HII : вмешательство человека
+HII --> WO_EXEC : ручной контроль
+
+' Learning Flow
+EM --> SA_SUCCESS : результаты исполнения
+SA_SUCCESS --> PL : паттерны успеха
+PL --> WTE : шаблоны
+EA --> OL : анализ неудач
+OL --> OE_WF : обновления оптимизаций
+
+' Debugging Flow
+HII --> WD : запросы на отладку
+WD --> SM_STATE : проверка состояния
+WD --> EM : анализ исполнения
+WD --> HII : отладочная информация
+
+' Template Flow
+WTE --> WC_COMPILE : шаблоны workflow
+WTE --> EP : планы шаблонов
+
+@enduml

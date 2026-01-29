@@ -1,0 +1,127 @@
+@startuml MSBL_MultiLevel_BPG_Pipeline
+title MSBL — многоуровневая декомпозиция запроса и построение BPG
+
+skinparam linetype ortho
+skinparam rectangle {
+  RoundCorner 6
+  BorderColor #444
+}
+
+actor "👤 Пользователь" as User
+
+' === Inputs ===
+package "Входные данные" #LightSteelBlue {
+  rectangle "Screenshots\nClickstreams\nProcessLogs\nDBSchema\nBusinessDocs" as Inputs
+}
+
+' === Perception ===
+package "Perception (evidence)" #LightYellow {
+  rectangle "UI Element Detection\nOCR\nLayout Parsing\nCross-view Matching" as Perception
+}
+
+' === Embeddings / Index ===
+package "Embeddings & Index" #Thistle {
+  rectangle "Multimodal Embeddings\nVectorDB (NN search)" as Embeddings
+}
+
+' === Multi-level Graph ===
+package "Многоуровневый BPG" #PaleGreen {
+  rectangle "Entity Layer" as EntityLayer
+  rectangle "Pattern Layer" as PatternLayer
+  rectangle "Workflow Layer" as WorkflowLayer
+  rectangle "GraphDB (Neo4j)" as GraphDB
+  rectangle "GNN (role classification, link prediction)" as GNN
+
+  EntityLayer -down-> PatternLayer
+  PatternLayer -down-> WorkflowLayer
+  WorkflowLayer -down-> GraphDB
+}
+
+' === Semantic / NLU ===
+package "Semantic / NLU" #LightPink {
+  rectangle "NLU / Intent Parser" as NLU
+  rectangle "Entity Linker" as EntityLinker
+  rectangle "Pattern Resolver" as PatternResolver
+  rectangle "Planner / LLM (PromptDecomposer)" as Planner
+  rectangle "Confidence Aggregator" as ConfAgg
+}
+
+' === Orchestration ===
+package "Orchestration & Execution" #Moccasin {
+  rectangle "Orchestrator" as Orchestrator
+  rectangle "RPA Executor (GUI emulation)" as Executor
+  rectangle "HITL Gateway" as HITL
+}
+
+' === Monitoring ===
+package "Monitoring & Learning" #LightGreen {
+  rectangle "Audit Logger / Traces" as Audit
+  rectangle "Metrics / Dashboards" as Metrics
+  rectangle "Active Learner" as ActiveLearner
+}
+
+' === Потоки ===
+User --> NLU
+Inputs --> Perception
+Inputs --> Embeddings
+
+Perception --> Embeddings
+Perception --> GraphDB
+Embeddings --> GraphDB
+
+NLU --> EntityLinker
+EntityLinker --> GraphDB
+EntityLinker --> NLU
+
+NLU --> PatternResolver
+PatternResolver --> GraphDB
+PatternResolver --> NLU
+
+NLU --> Planner
+Planner --> GraphDB
+Planner --> Orchestrator
+
+Planner --> ConfAgg
+ConfAgg --> Orchestrator
+
+Orchestrator --> Executor
+Executor --> Perception
+Perception --> Orchestrator
+Orchestrator --> HITL
+
+Executor --> Audit
+Audit --> ActiveLearner
+ActiveLearner --> GNN
+ActiveLearner --> GraphDB
+ActiveLearner --> NLU
+
+GraphDB ..[#Gray,dashed]-> HITL
+
+' === Notes ===
+note right of EntityLayer
+Entity Layer:
+- бизнес-сущности (Product, Student, Order)
+- UI элементы
+- атрибуты и provenance
+end note
+
+note right of PatternLayer
+Pattern Layer:
+- типовые процессы (create, order, grade)
+- pre/post условия
+- связь с сущностями
+end note
+
+note right of WorkflowLayer
+Workflow Layer:
+- action templates (click, type, filter)
+- fallback/recovery
+end note
+
+note bottom of ConfAgg
+Confidence Aggregator:
+- собирает уверенности шагов
+- решает auto/assist/HITL
+end note
+
+@enduml

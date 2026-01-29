@@ -1,0 +1,11 @@
+models/*
+debug/*
+.idea/*
+__pycache__
+*.pt
+.cursor/*
+.venv/*
+.cursor
+.venv
+*.pyc
+*.log

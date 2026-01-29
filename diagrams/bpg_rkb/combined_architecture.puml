@@ -1,0 +1,85 @@
+@startuml Combined_BPG_LLM_Architecture
+!theme aws-orange
+title Объединённая архитектура: BPG + LLM Agents + Execution Flow
+skinparam linetype ortho
+skinparam package {
+  BackgroundColor #F8F8FF
+  BorderColor #4169E1
+}
+left to right direction
+
+' === Phase 1: User Input ===
+package "📥 User Input Layer" #LightBlue {
+  rectangle "User Input\n• Text & Voice\n• Screenshot" as UserInput
+  rectangle "Initial Context Assembly" as InitialContext
+  UserInput --> InitialContext : multi-modal context
+}
+
+' === Phase 2: BPG Knowledge ===
+package "🧠 Knowledge Layer (BPG)" #LightGreen {
+  rectangle "Entity Service" as EntityService
+  rectangle "Process Template Service" as ProcessService
+  rectangle "Business Rules Engine" as RulesEngine
+  rectangle "Knowledge Context Assembly" as KnowledgeAssembly
+  InitialContext --> KnowledgeAssembly : context request
+  KnowledgeAssembly --> EntityService : query entities
+  KnowledgeAssembly --> ProcessService : query templates
+  KnowledgeAssembly --> RulesEngine : query rules
+}
+
+' === Phase 3: Prompt & LLM ===
+package "🔧 LLM Orchestration Layer" #LightYellow {
+  rectangle "Prompt Engineering Service" as PromptService
+  rectangle "Intent Understanding Agent (GPT-4)" as IntentAgent
+  rectangle "Visual Reasoning Agent (GPT-4V)" as VisualAgent
+  rectangle "Action Planning Agent (Claude-3)" as PlanningAgent
+  KnowledgeAssembly --> PromptService : relevant knowledge
+  PromptService --> IntentAgent : enriched prompt
+  PromptService --> VisualAgent : enriched visual prompt
+  PromptService --> PlanningAgent : integrated prompt
+}
+
+' === Phase 4: Execution Layer ===
+package "⚡ Execution Layer" #Lavender {
+  rectangle "Execution Guidance Agent" as ExecutionAgent
+  rectangle "Platform Execution Service" as PlatformExec
+  rectangle "Step Validation & Recovery" as ValidationRecovery
+  PlanningAgent --> ExecutionAgent : action plan
+  ExecutionAgent --> PlatformExec : execute step
+  PlatformExec --> ValidationRecovery : post-action state
+  ValidationRecovery --> ExecutionAgent : feedback / recovery
+}
+
+' === Phase 5: Learning Layer ===
+package "🎓 Learning & Knowledge Evolution" #PaleGreen {
+  rectangle "Learning Controller" as LearningCtrl
+  rectangle "Knowledge Update Service" as KnowledgeUpdate
+  ValidationRecovery --> LearningCtrl : execution metrics
+  LearningCtrl --> KnowledgeUpdate : update knowledge & patterns
+  KnowledgeUpdate --> EntityService : refine entities
+  KnowledgeUpdate --> ProcessService : refine templates
+  LearningCtrl --> PromptService : optimize prompts
+}
+
+' === External AI & Storage ===
+package "🤖 External AI Services" #E6F3FF {
+  [OpenAI GPT-4 / GPT-4V] as OpenAI
+  [Claude-3 API] as Claude
+  [Local LLM] as LocalLLM
+}
+IntentAgent --> OpenAI
+VisualAgent --> OpenAI
+PlanningAgent --> Claude
+ExecutionAgent --> LocalLLM
+
+package "🗄️ Data Storage Layer" #F5F0FF {
+  rectangle "Neo4j / Pinecone" as KnowledgeDB
+  rectangle "Redis / PostgreSQL" as ContextDB
+  EntityService --> KnowledgeDB
+  ProcessService --> KnowledgeDB
+  RulesEngine --> KnowledgeDB
+  InitialContext --> ContextDB
+  ValidationRecovery --> ContextDB
+}
+
+@enduml

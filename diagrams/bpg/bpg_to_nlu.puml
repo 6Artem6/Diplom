@@ -1,0 +1,159 @@
+@startuml Corrected_Iterative_NLU_Enrichment
+!theme aws-orange
+title Исправленное итеративное обогащение NLU (GUI-ориентированная система)
+
+' === Глобальные настройки ===
+skinparam linetype ortho
+skinparam defaultFontColor black
+skinparam activity {
+  BackgroundColor #F0F8FF
+  BorderColor #4169E1
+}
+skinparam legend {
+  BackgroundColor white
+  BorderColor black
+  FontColor black
+}
+
+start
+
+:👤 Пользовательский запрос\n"Найди хлеб до $1 и закажи";
+
+' === Step 1: Initial NLU Parse ===
+partition "1️⃣ Initial Parse (NLU)" #LightBlue {
+  :🤖 Intent Parser (GPT-4)\nПарсинг запроса на намерения;
+  :📝 Первичный результат\n- intent: search_and_purchase\n- search_term: "хлеб"\n- price_constraint: "до $1"\n- final_action: "закажи";
+  note right
+    Отличие от предыдущей версии:
+    - Не знаем товаров на сайте
+    - Работаем с GUI элементами
+    - "хлеб" = поисковый термин
+  end note
+}
+
+' === Step 2: Page Context Enrichment ===
+partition "2️⃣ Page Context Enrichment" #LightGreen {
+  :📍 Current Page Analysis;
+  :📊 Запрос к BPG Entity Layer;
+  :🎯 Current Page: Homepage\npage_type=landing_page\navailable_actions=[search, browse, login];
+  :🔍 Available GUI Elements\nSearchBox, CategoryMenu, LoginButton, CartIcon;
+  note right
+    GUI Entity Focus:
+    - PageNode текущей страницы
+    - UIElementNodes
+    - NavigationElementNodes
+    - Без данных о товарах
+  end note
+}
+
+' === Step 3: Navigation Pattern Resolution ===
+partition "3️⃣ Navigation Pattern Suggestion" #LightYellow {
+  :⚙️ Pattern Resolver → BPG Pattern Layer;
+  :📋 Intent-to-Navigation Mapping\nsearch_and_purchase → navigate_to_search_page;
+  :🎯 Navigation Patterns\n1. direct_header_search (0.92)\n2. browse_category_then_search (0.78)\n3. login_first_then_search (0.45);
+  :✅ Selected Pattern: direct_header_search;
+  note right
+    Pattern Layer:
+    - Навигационные последовательности
+    - Interaction templates
+    - Page transitions
+    - Без business data
+  end note
+}
+
+' === Step 4: Workflow Planning ===
+partition "4️⃣ Workflow Planning" #LightCoral {
+  :📋 Planner → Workflow Layer;
+  :🔧 Navigation Workflow Expansion\n1. locate_search_element()\n2. input_search_term("хлеб")\n3. submit_search()\n4. wait_for_results_page()\n5. apply_price_filter("$1")\n6. locate_suitable_product()\n7. add_to_cart_first_match()\n8. verify_cart_updated();
+  note right
+    Workflow содержит:
+    - GUI interactions
+    - Page transitions
+    - Validation steps
+  end note
+}
+
+' === Step 5: Element Linking Strategy ===
+partition "5️⃣ Element Linking Strategy" #Lavender {
+  :🔗 Runtime Element Linking;
+  :📊 Process\n- SearchBox → LayoutML\n- PriceFilter → results page\n- ProductCards → pattern matching\n- AddToCartButton → link product;
+  :🎯 Linking Confidence\nVisual=0.89\nStructural=0.84\nTextual=0.91\nConsistency=0.87\nOverall=0.88;
+  note right
+    Ключевое отличие:
+    - Linking во время выполнения
+    - Cross-view matching
+    - Confidence scores
+    - Fallback strategies
+  end note
+}
+
+' === Step 6: Context State Management ===
+partition "6️⃣ Context State Management" #PaleGreen {
+  :📊 Context Tracking;
+  :🎯 Current State\npage=Homepage\nuser=anon\ncart=empty\nsearch=none;
+  :🔄 Updates During Execution\n- After search: search_context="хлеб"\n- After results: page=SearchResultsPage\n- After filter: filters=[≤$1]\n- After add_to_cart: cart=[product];
+  :⚠️ Context Validation\nVerify transitions, elements, state consistency;
+  note right
+    Context Management:
+    - Нет данных о товарах
+    - Только GUI state
+    - Validation of pages/elements
+  end note
+}
+
+' === Step 7: Execution with Real-time Linking ===
+partition "7️⃣ Execution with Real-time Element Linking" #Moccasin {
+  repeat
+    :🤖 Execute Next Workflow Step;
+    :📸 Capture Screenshot;
+    :🔗 Real-time Linking;
+    if (Element linked?) then (yes)
+      :📍 Get Coordinates;
+      :🤖 Perform RPA Action;
+      :✅ Verify Result;
+    else (no)
+      :🔄 Try Fallback;
+      if (Fallback success?) then (yes)
+        :📍 Use Alt Coordinates;
+      else (no)
+        :👥 Escalate to HITL;
+        stop
+      endif
+    endif
+    :📊 Update Context State;
+  repeat while (More steps?)
+}
+
+stop
+
+' === Legend ===
+legend right
+ЛЕГЕНДА — Key Technical Notes
+
+1. GUI-First Approach
+- Работаем с интерфейсом, не с данными
+- "Хлеб" = поисковый термин
+- Entity Layer = PageNodes + UIElementNodes
+
+2. Navigation-Aware Planning
+- Паттерны навигации в Pattern Layer
+- Учёт текущей страницы и переходов
+- Multi-step workflows
+
+3. Runtime Element Linking
+- WorkflowNodes linkуются во время выполнения
+- Cross-view matching
+- Координаты для RPA
+
+4. Context State Management
+- Отслеживание current_page, user_state, cart_state
+- Валидация доступности элементов
+- Обработка ошибок навигации
+
+5. No Product Data Assumptions
+- Нет знаний о товарах
+- Работаем с GUI patterns
+- Обучение на уровне UI elements
+end legend
+
+@enduml

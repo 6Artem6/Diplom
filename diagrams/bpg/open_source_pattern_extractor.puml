@@ -1,0 +1,547 @@
+@startuml Open_Source_Pattern_Extraction
+!theme aws-orange
+title Алгоритм извлечения шаблонных паттернов из эталонных open-source систем
+skinparam linetype ortho
+
+skinparam legend {
+  BackgroundColor white
+  BorderColor #4169E1
+  FontColor black
+}
+
+start
+
+partition "📚 **Phase 1: Reference System Selection**" #LightBlue {
+  :🎯 **Curated Open Source Systems:**
+
+**E-commerce:**
+• Shopify (Ruby on Rails)
+• WooCommerce (WordPress/PHP)
+• PrestaShop (PHP/Symfony)
+• OpenCart (PHP/MVC)
+
+**CRM:**
+• SugarCRM (PHP)
+• SuiteCRM (PHP)
+• Vtiger CRM (PHP)
+• EspoCRM (PHP/Backbone.js)
+
+**ERP:**
+• ERPNext (Python/Frappe)
+• Odoo (Python)
+• Dolibarr (PHP)
+• Apache OFBiz (Java)
+
+**LMS:**
+• Moodle (PHP)
+• Open edX (Python/Django)
+• Canvas LMS (Ruby on Rails)
+• Chamilo (PHP);
+
+  :📊 **System Analysis Criteria:**
+• Active development (commits, releases)
+• Mature codebase (>3 years, stable API)
+• Good documentation (user guides, dev docs)
+• Large user base (production deployments)
+• Representative business processes;
+
+' === Pattern Extraction Results ===
+note right
+📊 Expected Pattern Yields:
+**E-commerce Systems (4 systems):**
+• ~50-80 entity templates
+• ~200-300 relationship templates
+• ~30-50 process templates
+• ~100-150 atomic action templates
+
+**CRM Systems (4 systems):**
+• ~40-60 entity templates
+• ~150-250 relationship templates
+• ~25-40 process templates
+• ~80-120 atomic action templates
+
+**Cross-Domain Patterns:**
+• ~20-30 universal entity categories
+• ~50-80 universal relationships
+• ~15-25 universal processes
+• ~40-60 universal atomic actions
+end note
+}
+
+partition "🔍 Phase 2: Multi-Modal Analysis" #LightGreen {
+
+  :📖 Documentation Mining;
+  note right
+    def extract_from_documentation(system_docs):
+        business_processes = []
+
+        # User manuals analysis
+        user_workflows = parse_user_guides(
+            system_docs.user_manuals,
+            extract_patterns = ["how to", "steps to", "process for"]
+        )
+
+        # API documentation analysis
+        api_patterns = analyze_api_endpoints(
+            system_docs.api_docs,
+            identify_resources = True,
+            extract_operations = True
+        )
+
+        # Database schema analysis
+        entity_relationships = extract_erd_patterns(
+            system_docs.db_schema,
+            identify_entities = True,
+            extract_relationships = True
+        )
+
+        return {
+            "workflows": user_workflows,
+            "api_patterns": api_patterns,
+            "data_model": entity_relationships
+        }
+  end note
+
+  :💻 Source Code Analysis;
+  note right
+    def analyze_source_code(codebase_path):
+        patterns = CodePatternExtractor()
+
+        # Controller/Route analysis
+        controllers = patterns.extract_controllers(
+            path = codebase_path,
+            frameworks = ["rails", "django", "laravel", "symfony"]
+        )
+
+        # Model relationships
+        models = patterns.extract_models(
+            identify_associations = True,
+            extract_validations = True,
+            find_callbacks = True
+        )
+
+        # View/Template patterns
+        ui_patterns = patterns.extract_view_patterns(
+            forms = True,
+            lists = True,
+            detail_views = True
+        )
+
+        return {
+            "business_logic": controllers,
+            "data_models": models,
+            "ui_patterns": ui_patterns
+        }
+  end note
+
+  :🌐 Live System Analysis;
+  note right
+    def analyze_running_system(demo_url):
+        crawler = SystemCrawler(demo_url)
+
+        # Automated GUI discovery
+        pages = crawler.discover_pages(
+            max_depth = 3,
+            follow_forms = True,
+            respect_robots_txt = True
+        )
+
+        # UI pattern extraction
+        ui_analyzer = UIPatternAnalyzer()
+        for page in pages:
+            page_patterns = ui_analyzer.extract_patterns(
+                screenshot = page.screenshot,
+                dom_structure = page.dom,
+                form_elements = page.forms,
+                navigation_elements = page.navigation
+            )
+
+        return ui_analyzer.consolidate_patterns()
+  end note
+
+}
+
+partition "🏷️ Phase 3: Entity & Relationship Extraction" #LightYellow {
+
+  :📊 Entity Pattern Discovery;
+  note right
+    class EntityPatternExtractor:
+        def extract_from_multiple_sources(self, system_analysis):
+            entities = {}
+
+            # From database models
+            db_entities = self.extract_from_db_models(
+                system_analysis.data_model
+            )
+
+            # From API endpoints
+            api_entities = self.extract_from_api_patterns(
+                system_analysis.api_patterns
+            )
+
+            # From UI forms and views
+            ui_entities = self.extract_from_ui_patterns(
+                system_analysis.ui_patterns
+            )
+
+            # Consolidate and categorize
+            for entity in merge_entity_sources(
+                db_entities, api_entities, ui_entities
+            ):
+                entities[entity.name] = EntityTemplate(
+                    name = entity.name,
+                    category = self.classify_entity_category(entity),
+                    attributes = entity.attributes,
+                    relationships = entity.relationships,
+                    ui_manifestations = entity.ui_patterns,
+                    source_evidence = entity.evidence
+                )
+
+            return entities
+
+        def classify_entity_category(self, entity):
+            # Rule-based classification
+            if self.has_user_attributes(entity):
+                return EntityCategory.ACTOR
+            elif self.has_transaction_patterns(entity):
+                return EntityCategory.TRANSACTION_OBJECT
+            elif self.has_hierarchical_structure(entity):
+                return EntityCategory.CONTAINER
+            elif self.has_state_machine(entity):
+                return EntityCategory.PROCESS
+            else:
+                return EntityCategory.BUSINESS_OBJECT
+  end note
+
+  :🔗 Relationship Pattern Mining;
+  note right
+    def extract_relationship_patterns(systems_data):
+        relationship_patterns = []
+
+        for system in systems_data:
+            # Database foreign keys
+            db_relationships = extract_db_relationships(
+                system.schema,
+                include_cardinality = True,
+                include_constraints = True
+            )
+
+            # Code-level associations
+            code_relationships = extract_code_associations(
+                system.models,
+                frameworks = system.framework
+            )
+
+            # UI interaction patterns
+            ui_relationships = extract_ui_interactions(
+                system.pages,
+                identify_workflows = True
+            )
+
+            # Business logic relationships
+            business_relationships = extract_business_rules(
+                system.controllers,
+                system.services
+            )
+
+            # Consolidate into templates
+            for rel in consolidate_relationships(
+                db_relationships,
+                code_relationships,
+                ui_relationships,
+                business_relationships
+            ):
+                relationship_patterns.append(
+                    RelationshipTemplate(
+                        source_category = rel.source.category,
+                        target_category = rel.target.category,
+                        relationship_type = rel.semantic_type,
+                        cardinality = rel.cardinality,
+                        business_rules = rel.constraints,
+                        evidence_strength = rel.frequency_across_systems,
+                        source_systems = rel.found_in_systems
+                    )
+                )
+
+        return relationship_patterns
+  end note
+}
+
+partition "⚙️ Phase 4: Process Pattern Extraction" #LightCoral {
+
+  :🔄 Workflow Pattern Discovery;
+  note right
+    class ProcessPatternExtractor:
+        def extract_process_patterns(self, systems_analysis):
+            process_patterns = []
+
+            # Extract from user documentation
+            doc_processes = self.extract_from_documentation(
+                systems_analysis.user_guides,
+                workflow_indicators = [
+                    "step 1", "first", "then", "next", "finally",
+                    "to [action]", "how to", "process for"
+                ]
+            )
+
+            # Extract from controller actions
+            code_processes = self.extract_from_controllers(
+                systems_analysis.controllers,
+                identify_action_sequences = True,
+                track_state_changes = True
+            )
+
+            # Extract from UI flows
+            ui_processes = self.extract_from_ui_flows(
+                systems_analysis.navigation_patterns,
+                identify_form_sequences = True,
+                track_page_transitions = True
+            )
+
+            # Cross-validate and consolidate
+            for pattern in self.consolidate_patterns(
+                doc_processes, code_processes, ui_processes
+            ):
+                process_patterns.append(
+                    ProcessPatternTemplate(
+                        name = pattern.name,
+                        category = self.classify_process_category(pattern),
+                        required_entities = pattern.entities,
+                        typical_workflow = pattern.steps,
+                        business_rules = pattern.rules,
+                        ui_requirements = pattern.ui_elements,
+                        evidence_sources = pattern.sources
+                    )
+                )
+
+            return process_patterns
+
+        def classify_process_category(self, pattern):
+            if self.is_crud_pattern(pattern):
+                return ProcessCategory.CRUD
+            elif self.is_search_pattern(pattern):
+                return ProcessCategory.SEARCH_FILTER
+            elif self.is_transaction_pattern(pattern):
+                return ProcessCategory.TRANSACTION
+            elif self.is_approval_pattern(pattern):
+                return ProcessCategory.WORKFLOW
+            else:
+                return ProcessCategory.DOMAIN_SPECIFIC
+  end note
+
+  :🤖 Atomic Action Extraction;
+  note right
+    def extract_atomic_actions(systems_ui_analysis):
+        atomic_actions = []
+
+        # Analyze common UI interactions
+        ui_interactions = aggregate_ui_interactions(
+            systems_ui_analysis,
+            group_by_element_type = True
+        )
+
+        for interaction_group in ui_interactions:
+            action_template = AtomicActionTemplate(
+                action_type = interaction_group.action_type,
+                target_element_type = interaction_group.element_type,
+                parameters = extract_common_parameters(
+                    interaction_group.instances
+                ),
+                success_indicators = identify_success_patterns(
+                    interaction_group.outcomes
+                ),
+                failure_modes = identify_failure_patterns(
+                    interaction_group.errors
+                ),
+                ui_selectors = extract_common_selectors(
+                    interaction_group.elements
+                ),
+                verification_methods = determine_verification(
+                    interaction_group.expected_outcomes
+                )
+            )
+            atomic_actions.append(action_template)
+
+        return atomic_actions
+  end note
+}
+
+
+partition "✅ Phase 5: Validation & Quality Assurance" #Lavender {
+  :🔍 Cross-System Validation;
+  note right
+def validate_extracted_patterns(patterns, source_systems):
+    validation_results = []
+
+    for pattern in patterns:
+        # Check pattern frequency across systems
+        frequency = calculate_pattern_frequency(
+            pattern, source_systems
+        )
+
+        # Validate pattern completeness
+        completeness = validate_pattern_completeness(
+            pattern,
+            required_elements=["entities", "relationships", "workflow"]
+        )
+
+        # Check business logic consistency
+        consistency = validate_business_consistency(
+            pattern,
+            against_domain_standards=True
+        )
+
+        # Assess generalizability
+        generalizability = assess_pattern_generalizability(
+            pattern,
+            across_domains=True
+        )
+
+        validation_results.append(ValidationResult(
+            pattern=pattern,
+            frequency_score=frequency,
+            completeness_score=completeness,
+            consistency_score=consistency,
+            generalizability_score=generalizability,
+            overall_quality=weighted_average([
+                frequency * 0.3,
+                completeness * 0.3,
+                consistency * 0.25,
+                generalizability * 0.15
+            ])
+        ))
+
+    return validation_results
+  end note
+
+  note right
+  :👥 Expert Review Process;
+• Generate human-readable pattern summaries
+• Compare with industry standards (BPMN, UML)
+• Domain expert validation for business accuracy
+• Developer review for technical feasibility
+  end note
+
+  note right
+  : Implementation Strategy:
+**1. Automated Analysis Pipeline:**
+• Docker containers for each system analysis
+• Parallel processing for multiple systems
+• Automated pattern extraction and consolidation
+• Quality scoring and ranking algorithms
+
+**2. Human-AI Collaboration:**
+• Automated pattern discovery with confidence scores
+• Expert review for uncertain patterns
+• Domain specialist validation for business accuracy
+• Iterative refinement based on feedback
+
+**3. Continuous Updates:**
+• Monitor source systems for updates
+• Re-analyze when significant changes detected
+• Community contribution integration
+• Version control for pattern templates
+
+**4. Quality Assurance:**
+• Multi-system cross-validation
+• Expert review workflows
+• Automated consistency checking
+• Performance benchmarking
+  end note
+}
+
+
+partition "📚 Phase 6: Template Library Construction" #PaleGreen {
+  :💾 Template Database Population;
+  note right
+def build_template_library(validated_patterns):
+    template_library = TemplateLibrary()
+
+    # High-quality patterns (score > 0.8)
+    for pattern in filter_high_quality(validated_patterns):
+        if pattern.category == "entity":
+            template_library.add_entity_template(
+                template=pattern.to_entity_template(),
+                domains=pattern.applicable_domains,
+                confidence=pattern.overall_quality
+            )
+
+        elif pattern.category == "relationship":
+            template_library.add_relationship_template(
+                template=pattern.to_relationship_template(),
+                frequency=pattern.frequency_score,
+                domains=pattern.applicable_domains
+            )
+
+        elif pattern.category == "process":
+            template_library.add_process_template(
+                template=pattern.to_process_template(),
+                complexity=pattern.complexity_score,
+                domains=pattern.applicable_domains
+            )
+
+        elif pattern.category == "atomic_action":
+            template_library.add_atomic_action_template(
+                template=pattern.to_atomic_action_template(),
+                reliability=pattern.reliability_score,
+                ui_compatibility=pattern.ui_compatibility_score
+            )
+
+    # Create cross-references and indices
+    template_library.build_similarity_indices()
+    template_library.create_domain_mappings()
+    template_library.generate_pattern_hierarchies()
+
+    return template_library
+  end note
+
+  :📊 Pattern Statistics & Metadata;
+  note right
+# Generate comprehensive statistics
+pattern_stats = {
+    "total_systems_analyzed": len(source_systems),
+    "entity_templates": len(entity_templates),
+    "relationship_templates": len(relationship_templates),
+    "process_templates": len(process_templates),
+    "atomic_action_templates": len(atomic_action_templates),
+    "domain_coverage": calculate_domain_coverage(),
+    "pattern_confidence_distribution": analyze_confidence_distribution(),
+    "cross_system_validation_scores": calculate_validation_scores()
+}
+
+# Quality metrics
+quality_report = {
+    "high_confidence_patterns": count_patterns_above_threshold(0.8),
+    "cross_validated_patterns": count_cross_validated_patterns(),
+    "domain_specific_patterns": count_domain_specific_patterns(),
+    "universal_patterns": count_universal_patterns()
+}
+  end note
+}
+
+stop
+
+' === Key Success Metrics ===
+legend top
+**🎯 Success Metrics for Pattern Extraction:**
+
+**Coverage Metrics:**
+• System analysis completion rate: >95%
+• Pattern extraction coverage: >80% of identified patterns
+• Domain representation: All major business domains
+• Cross-system pattern validation: >70% of patterns
+
+**Quality Metrics:**
+• Pattern accuracy (expert validation): >85%
+• Template applicability (new system deployment): >75%
+• Business rule compliance: >90%
+• Technical feasibility: >95%
+
+**Efficiency Metrics:**
+• Analysis automation: >80% automated
+• Pattern consolidation accuracy: >90%
+• Expert review time reduction: >60%
+• Template library update frequency: Monthly
+end legend
+
+@enduml

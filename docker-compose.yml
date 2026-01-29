@@ -1,0 +1,96 @@
+services:
+  bpg_service:
+    build:
+      context: .
+      dockerfile: src/Dockerfile
+    container_name: bpg_construction_service
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./src:/app/src
+      - ./data:/app/data  # For screenshots
+      - ./debug:/app/debug  # For visualization PNGs
+      - ./models:/app/models      # All ML models cache (persistent)
+    environment:
+      - CHROMA_PERSIST_DIR=/app/data/chroma
+      - TORCH_HOME=/app/models/torch
+      - TRANSFORMERS_CACHE=/app/models/transformers
+      - HF_HOME=/app/models/huggingface
+      - YOLO_CACHE_DIR=/app/models/yolo
+      - UI_YOLO_MODEL_PATH=/app/models/yolo/ui-elements-detection.pt
+      - DETECTION_CONFIDENCE_THRESHOLD=0.15
+      - CROSS_VIEW_SIMILARITY_THRESHOLD=0.78
+      - GUI_ANALYSIS_BACKEND=flow   # yolo_clip | pix2struct | layoutlmv3 | flow
+      - HF_HUB_OFFLINE=1
+      - TRANSFORMERS_OFFLINE=1
+      - TORCH_OFFLINE=1
+      - YOLO_OFFLINE=1
+    stdin_open: true
+    tty: true
+
+  sitegpt:
+    build: ./apps/sitegpt
+    container_name: sitegpt_app
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./apps/sitegpt:/app
+    environment:
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+    stdin_open: true
+    tty: true
+    depends_on:
+#      - vision_analyzer
+      - qdrant
+
+#  vision_analyzer:
+#    build: ./apps/vision_analyzer
+#    container_name: vision_analyzer
+#    volumes:
+#      - ./apps/vision_analyzer:/app
+#    networks:
+#      - internal_net
+#    expose:
+#      - "5001" # только внутри сети
+
+  templates:
+    build: ./apps/templates_service
+    container_name: templates_service
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./apps/templates_service:/app
+
+  test_runner:
+    build:
+      context: ./apps
+      dockerfile: ./tests/Dockerfile
+    container_name: test_runner
+    volumes:
+      - ./apps/tests:/tests
+      - ./apps/sitegpt:/sitegpt
+    depends_on:
+      - sitegpt
+      - templates
+#      - vision_analyzer
+
+  qdrant:
+    image: qdrant/qdrant:v1.15.4
+    container_name: qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+networks:
+  internal_net:
+    driver: bridge
+
+volumes:
+  qdrant_data:
+  ml_models_cache:  # Persistent cache for ML models (YOLO, CLIP, etc.)

@@ -1,0 +1,252 @@
+@startuml
+!theme plain
+skinparam rectangle {
+  Shadowing false
+  BorderColor black
+  FontSize 10
+}
+
+title Human-in-Loop Learning: Обучение новым паттернам взаимодействия
+
+' =======================
+' NOVEL INTERACTION DETECTION
+' =======================
+package "Обнаружение новых взаимодействий" as NID_PKG {
+  rectangle NovelInteractionDetector as NID #lightpink
+  rectangle FailureAnalyzer as FA #lightcoral
+  rectangle ComplexUIDetector as CUD #lightyellow
+  rectangle UnknownElementClassifier as UEC #lightgreen
+}
+
+note right of NID
+**NovelInteractionDetector**
+**ПО**: HuggingFace Transformers
+**Модели**:
+• facebook/bart-large-mnli (zero-shot)
+• Custom binary classifier (known/unknown)
+**Входные данные**:
+• DOM структура неизвестного элемента
+• CSS свойства и классы
+• JavaScript события
+• Контекст взаимодействия
+end note
+
+note right of CUD
+**ComplexUIDetector**
+**ПО**: OpenCV + Custom CNN
+**Детекция паттернов**:
+• Canvas элементы (редакторы, игры)
+• Audio/Video players с custom controls
+• Drag-n-drop интерфейсы
+• Rich text editors (WYSIWYG)
+• Custom sliders, color pickers
+end note
+
+' =======================
+' HEADFULL BROWSER MONITORING
+' =======================
+package "Headfull Browser Monitoring" as HBM_PKG {
+  rectangle HeadfulPlaywright as HP #lightsteelblue
+  rectangle UserActionRecorder as UAR #lightsteelblue
+  rectangle ScreenshotAnalyzer as SA_SCREEN #orange
+  rectangle InteractionCapture as IC #lightcyan
+  rectangle EventSequenceRecorder as ESR #lightcyan
+}
+
+note right of HP
+**HeadfulPlaywright**
+**ПО**: Playwright headful mode
+**Настройки**:
+• Медленное выполнение (slowMo: 1000ms)
+• Подсветка элементов при взаимодействии
+• Запись video и screenshots
+• DevTools включен для анализа
+end note
+
+note right of UAR
+**UserActionRecorder**
+**ПО**: Playwright + Custom Event Listener
+**Записываемые события**:
+• Клики с координатами и селекторами
+• Ввод текста с временными метками
+• Drag & drop с траекториями
+• Прокрутка и изменение размеров
+• Keyboard shortcuts и hotkeys
+end note
+
+note right of SA_SCREEN
+**ScreenshotAnalyzer**
+**ПО**: OpenCV + YOLO8
+**Анализ изображений**:
+• Сравнение до/после действия
+• Детекция изменений в UI
+• Выделение областей взаимодействия
+• Сопоставление с DOM элементами
+end note
+
+' =======================
+' HUMAN LEARNING INTERFACE
+' =======================
+package "Интерфейс обучения" as HLI_PKG {
+  rectangle LearningDashboard as LD #lightpink
+  rectangle ActionValidationUI as AVUI #lightpink
+  rectangle PatternAnnotationTool as PAT #lightyellow
+  rectangle FeedbackCollector as FC #lightgreen
+}
+
+note right of LD
+**Learning Dashboard**
+**ПО**: React + WebSocket
+**Функции**:
+• Real-time мониторинг обнаружения новых паттернов
+• Очередь задач для валидации человеком
+• Статистика обучения и точности
+• История успешных и неуспешных попыток
+end note
+
+note right of PAT
+**PatternAnnotationTool**
+**ПО**: React + Canvas API
+**Возможности**:
+• Разметка UI элементов на скриншотах
+• Создание пошаговых инструкций
+• Задание семантических меток
+• Группировка связанных действий
+end note
+
+' =======================
+' LEARNING ENGINE
+' =======================
+package "Движок обучения" as LE_PKG {
+  rectangle PatternLearner as PL #lightgreen
+  rectangle ActionTemplateGenerator as ATG #lightgreen
+  rectangle ValidationEngine as VE_VALID #orange
+  rectangle KnowledgeUpdater as KU #orange
+}
+
+note right of PL
+**PatternLearner**
+**ПО**: scikit-learn + PyTorch
+**Модели**:
+• Sequence-to-sequence для генерации действий
+• CNN для анализа визуальных паттернов
+• Random Forest для классификации типов взаимодействий
+**Обучение**:
+• Online learning с человеческой обратной связью
+• Few-shot learning для новых паттернов
+end note
+
+note right of ATG
+**ActionTemplateGenerator**
+**ПО**: Jinja2 + Custom Logic
+**Генерация шаблонов**:
+• Playwright код для воспроизведения действий
+• Параметризованные шаблоны действий
+• Условная логика для различных состояний
+• Error handling и retry стратегии
+end note
+
+' =======================
+' INTEGRATION WITH CORE SYSTEM
+' =======================
+package "Интеграция с основной системой" as CORE_INT {
+  rectangle CoreSiteGPT as CORE_SGP #lightblue
+  rectangle ActionGraphUpdater as AGU #lightgreen
+  rectangle PlaywrightExecutor as PE_EXEC #lightgray
+  rectangle TemplateStorage as TS #lightyellow
+}
+
+note right of AGU
+**ActionGraphUpdater**
+**Обновление графа действий**:
+• Добавление новых типов взаимодействий
+• Обновление семантических связей
+• Интеграция пользовательских шаблонов
+• Версионирование изменений
+end note
+
+note right of TS
+**TemplateStorage**
+**ПО**: PostgreSQL + Redis
+**Хранение**:
+• Пользовательские шаблоны действий
+• Метаданные обучения
+• Статистика использования
+• Версии и откаты шаблонов
+end note
+
+' =======================
+' EXAMPLE SCENARIOS
+' =======================
+package "Примеры сценариев" as EXAMPLES {
+  rectangle AudioEditorScenario as AES #lightyellow
+  rectangle WordPressBuilderScenario as WBS #lightyellow
+  rectangle CanvasInteractionScenario as CIS #lightyellow
+  rectangle CustomWidgetScenario as CWS #lightyellow
+}
+
+note right of AES
+**Сценарий: Обрезка аудио**
+1. **Детекция**: Canvas аудио-редактора
+2. **Мониторинг**: Запись drag для выделения участка
+3. **Обучение**: Человек показывает обрезку
+4. **Шаблон**: Генерация универсального алгоритма
+5. **Валидация**: Тест на других аудио-редакторах
+end note
+
+note right of WBS
+**Сценарий: WordPress Page Builder**
+1. **Детекция**: Drag-n-drop блоков в редакторе
+2. **Мониторинг**: Сложные взаимодействия с UI
+3. **Обучение**: Создание страницы человеком
+4. **Шаблон**: Автоматизация добавления блоков
+5. **Интеграция**: Использование в workflow
+end note
+
+' =======================
+' DATA FLOWS
+' =======================
+
+' Detection Flow
+CORE_SGP --> NID : неизвестные элементы
+NID --> FA : анализ ошибок
+FA --> CUD : сложные UI элементы
+CUD --> UEC : классификация элементов
+
+' Monitoring Flow
+UEC --> HP : запуск headfull режима
+HP --> UAR : запись действий пользователя
+UAR --> SA_SCREEN : анализ скриншотов
+SA_SCREEN --> IC : захват взаимодействий
+IC --> ESR : последовательность событий
+
+' Human Learning Flow
+ESR --> LD : данные для обучения
+LD --> AVUI : валидация действий
+AVUI --> PAT : аннотация паттернов
+PAT --> FC : сбор обратной связи
+
+' Learning Flow
+FC --> PL : обучающие данные
+PL --> ATG : выученные паттерны
+ATG --> VE_VALID : валидация шаблонов
+VE_VALID --> KU : обновление знаний
+
+' Integration Flow
+KU --> AGU : новые знания
+AGU --> CORE_SGP : обновленный граф
+ATG --> TS : сохранение шаблонов
+TS --> PE_EXEC : выполнение шаблонов
+
+' Example Scenarios Flow
+CUD --> AES : аудио редактор
+CUD --> WBS : WordPress builder
+CUD --> CIS : canvas взаимодействия
+CUD --> CWS : custom виджеты
+
+' Feedback Loop
+PE_EXEC --> NID : результаты выполнения
+LD --> HP : новые задачи для мониторинга
+VE_VALID --> LD : результаты валидации
+
+@enduml

@@ -1,0 +1,79 @@
+@startuml Confidence_Flow_Diagram
+!theme aws-orange
+title Поток Confidence Scores и механизмы принятия решений
+skinparam linetype ortho
+skinparam dpi 300
+scale 0.3
+
+start
+
+' === Confidence Sources ===
+rectangle "Confidence Sources" #LightBlue {
+  :Perception Confidence\nYOLO: 0.91 | OCR: 0.87 | Layout: 0.93;
+  :NLU Confidence\nIntent: 0.89 | Entity: 0.85 | Slot: 0.92;
+  :Graph Confidence\nPattern: 0.88 | GNN: 0.83 | Schema: 0.95;
+  :Historical Confidence\nSelector: 0.79 | Pattern: 0.84 | Feedback: 0.91;
+}
+
+' === Confidence Aggregation ===
+rectangle "Confidence Aggregation" #LightGreen {
+  :Weighted Ensemble\nα1=0.3, α2=0.25, α3=0.25, α4=0.2;
+  :Context Adjustments\nCritical -0.1 | UI +0.05 | Failures -0.15 | Expertise +0.1;
+  :Step-by-step Aggregate = 0.79;
+}
+
+' === Decision Thresholds ===
+rectangle "Decision Thresholds" #LightYellow {
+  :AUTO_EXECUTE ≥0.85;
+  :ASSISTED 0.70–0.85;
+  :HITL 0.50–0.70;
+  :BLOCK <0.50;
+}
+
+' === Dynamic Adjustments ===
+rectangle "Dynamic Adjustments" #Lavender {
+  :Financial Impact +0.15;
+  :User Level ±0.05;
+  :Urgency -0.10;
+  :Risk Domain +0.20;
+  :Adjusted Thresholds\nAUTO=0.90 | ASSISTED=0.75 | HITL=0.55;
+}
+
+' === Execution Monitoring ===
+rectangle "Execution Monitoring" #LightCoral {
+  :Begin Execution;
+  :Execute Step;
+  :Verification;
+  :Boost / Reduce Confidence;
+  :Escalate Mode;
+  :Request Human Input;
+}
+
+' === Learning and Calibration ===
+rectangle "Learning and Calibration" #PaleGreen {
+  :Collect Metrics;
+  :Model Calibration;
+  :Store Data;
+  note right
+    Calibration Metrics:
+    • Brier Score
+    • Calibration Error
+    • AUC-ROC
+    • PR curves
+  end note
+}
+
+' === Technical Implementation Notes ===
+rectangle "Implementation Notes" #LightGray {
+  note
+  Technical Implementation:
+  1. Confidence Engine (ensembles, Bayesian, Monte Carlo)
+  2. Threshold Management (dynamic, A/B testing, domain-specific)
+  3. Mode Logic (state machine, rollback, audit trail)
+  4. Learning (online, batch, feedback loop)
+  5. Monitoring (dashboards, anomaly detection, retraining)
+  end note
+}
+
+stop
+@enduml

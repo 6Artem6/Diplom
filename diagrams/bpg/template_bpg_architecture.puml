@@ -1,0 +1,242 @@
+@startuml Template_Knowledge_Base_Architecture
+!theme aws-orange
+title Многоуровневая база шаблонных знаний для BPG
+skinparam linetype ortho
+skinparam package {
+  BackgroundColor #F8F8FF
+  BorderColor #4169E1
+}
+
+' === TEMPLATE KNOWLEDGE BASE ===
+package "📚 TEMPLATE KNOWLEDGE BASE" #F0F8FF {
+
+  package "🏷️ Entity Category Templates" #LightGreen {
+    class EntityCategoryTemplate {
+      +category_id: UUID
+      +category_name: String
+      +semantic_role: SemanticRole
+      +interaction_patterns: List[InteractionType]
+      +common_attributes: List[AttributeTemplate]
+      +relationship_affinity: Map[CategoryID, RelationType]
+      --
+      +suggest_relationships(): List[RelationshipTemplate]
+      +match_entity(): Float
+    }
+    note right of EntityCategoryTemplate
+    **Entity Categories:**
+    • **Actors**: User, Admin, Manager, Customer
+    • **Objects**: Product, Order, Document, Report
+    • **Processes**: Search, Purchase, Approval, Review
+    • **Containers**: Cart, Category, Folder, Queue
+    • **Controls**: Button, Form, Filter, Navigation
+    end note
+  }
+
+  package "🔗 Relationship Templates" #LightYellow {
+    class RelationshipTemplate {
+      +relationship_id: UUID
+      +relationship_type: RelationType
+      +source_category: EntityCategory
+      +target_category: EntityCategory
+      +semantic_meaning: String
+      +cardinality: Cardinality
+      +business_rules: List[BusinessRule]
+      --
+      +validate_relationship(): Boolean
+      +suggest_inverse(): RelationshipTemplate
+    }
+    note right of RelationshipTemplate
+    **Relationship Types:**
+    • **Informational**: describes, contains, displays
+    • **Transactional**: purchases, modifies, creates
+    • **Hierarchical**: belongs_to, part_of, manages
+    • **Temporal**: precedes, triggers, schedules
+    • **Logical**: requires, excludes, implies
+    end note
+  }
+
+  package "⚙️ Process Pattern Templates" #LightCoral {
+    class ProcessPatternTemplate {
+      +pattern_id: UUID
+      +pattern_name: String
+      +pattern_category: ProcessCategory
+      +required_entities: List[EntityCategory]
+      +typical_workflow: WorkflowTemplate
+      +preconditions: List[Condition]
+      +postconditions: List[Condition]
+      +success_metrics: List[Metric]
+      --
+      +instantiate_for_domain(): ProcessPattern
+      +estimate_applicability(): Float
+    }
+    note right of ProcessPatternTemplate
+    **Process Categories:**
+    • **CRUD**: Create, Read, Update, Delete
+    • **Search & Filter**: Query, Browse, Filter, Sort
+    • **Transaction**: Purchase, Payment, Booking
+    • **Workflow**: Approval, Review, Notification
+    • **Navigation**: Browse, Drill-down, Breadcrumb
+    end note
+  }
+
+  package "🤖 Atomic Action Templates" #Thistle {
+    class AtomicActionTemplate {
+      +action_id: UUID
+      +action_type: ActionType
+      +target_element_type: UIElementType
+      +parameters: List[Parameter]
+      +expected_outcome: OutcomeCondition
+      +failure_modes: List[FailureMode]
+      +recovery_actions: List[RecoveryAction]
+      --
+      +generate_selector_strategies(): List[SelectorStrategy]
+      +create_verification_criteria(): List[Condition]
+    }
+    note right of AtomicActionTemplate
+    **Atomic Actions:**
+    • **Input**: click, type, select, upload
+    • **Navigation**: scroll, navigate, back, forward
+    • **Verification**: wait_for, assert_visible, check_text
+    • **Data**: extract_text, capture_screenshot, read_attribute
+    • **State**: save_context, restore_state, clear_cache
+    end note
+  }
+}
+
+' === REFERENCE KNOWLEDGE SOURCES ===
+package "📖 REFERENCE KNOWLEDGE SOURCES" #E8F5E8 {
+
+  package "🌐 Open Source Systems Analysis" #LightBlue {
+    class EcommerceSystems {
+      +name = "E-commerce (Shopify/WooCommerce)"
+      +patterns: Product catalog, Cart workflows, Payment flows
+    }
+    class CRMSystems {
+      +name = "CRM (SugarCRM/SuiteCRM)"
+      +patterns: Contact mgmt, Lead conversion, Opportunity tracking
+    }
+    class LMSSystems {
+      +name = "LMS (Moodle/Canvas)"
+      +patterns: Course structure, Assignment workflows, Grading
+    }
+    class ERPSystems {
+      +name = "ERP (ERPNext/Odoo)"
+    }
+    class CollabSystems {
+      +name = "Collaboration (Nextcloud)"
+    }
+  }
+
+  package "📋 Industry Standards" #LightCyan {
+    class BPMN {
+        +description: String
+    }
+    class UML {
+        +description: String
+    }
+    class ServicePatterns {
+        +description: String
+    }
+    class WCAG {
+        +description: String
+    }
+
+    note right of BPMN
+      BPMN 2.0 Standard
+      • Standard process notation
+      • Flow control patterns
+      • Event-driven processes
+    end note
+
+    note right of ServicePatterns
+      Service Design Patterns
+      • Microservice patterns
+      • Integration patterns
+      • Messaging patterns
+    end note
+  }
+}
+
+' === LLM-based Pattern Discovery ===
+package "🧠 LLM-BASED PATTERN DISCOVERY" #FFF8E1 {
+  class LLMPatternAnalyzer {
+    +analyze_business_description(): List[EntityCandidate]
+    +suggest_relationships(): List[RelationshipCandidate]
+    +infer_process_patterns(): List[ProcessPatternCandidate]
+    +validate_against_templates(): ValidationResult
+    --
+    +confidence_scoring(): Float
+    +explanation_generation(): String
+  }
+
+  class TextToGraphTransformer {
+    +parse_business_documents(): StructuredData
+    +extract_entity_mentions(): List[EntityMention]
+    +identify_process_flows(): List[ProcessFlow]
+    +map_to_templates(): MappingResult
+    --
+    +resolve_ambiguities(): ResolutionResult
+    +suggest_missing_elements(): List[Suggestion]
+  }
+}
+
+' === ENTERPRISE-SPECIFIC BPG ===
+package "🏢 ENTERPRISE-SPECIFIC BPG" #Lavender {
+  class EnterpriseEntityNode {
+    +entity_id: UUID
+    +custom_name: String
+    +template_reference: EntityCategoryTemplate
+    +domain_specific_attributes: Map[String, Any]
+    +custom_relationships: List[CustomRelationship]
+    --
+    +inherit_from_template(): TemplateProperties
+    +customize_for_domain(): CustomizationResult
+  }
+
+  class EnterprisePatternNode {
+    +pattern_id: UUID
+    +custom_pattern_name: String
+    +base_template: ProcessPatternTemplate
+    +customizations: List[Customization]
+    +domain_adaptations: List[Adaptation]
+    --
+    +generate_custom_workflow(): CustomWorkflow
+    +validate_business_rules(): ValidationResult
+  }
+
+  class CustomBusinessRule {
+    +rule_id: UUID
+    +rule_description: String
+    +affected_entities: List[EntityNode]
+    +conditions: List[Condition]
+    +actions: List[Action]
+    --
+    +evaluate_applicability(): Boolean
+    +generate_constraints(): List[Constraint]
+  }
+}
+
+' === Relationships ===
+EntityCategoryTemplate ||--o{ RelationshipTemplate : defines_possible_relationships
+ProcessPatternTemplate ||--o{ EntityCategoryTemplate : requires_entity_categories
+ProcessPatternTemplate ||--o{ AtomicActionTemplate : composed_of_actions
+AtomicActionTemplate ||--|| EntityCategoryTemplate : targets_element_type
+
+EcommerceSystems --> ProcessPatternTemplate : extract_ecommerce_patterns
+CRMSystems --> ProcessPatternTemplate : extract_crm_patterns
+BPMN --> ProcessPatternTemplate : standard_process_notation
+ServicePatterns --> RelationshipTemplate : integration_relationships
+
+LLMPatternAnalyzer --> EntityCategoryTemplate : template_matching
+TextToGraphTransformer --> ProcessPatternTemplate : pattern_discovery
+LLMPatternAnalyzer --> RelationshipTemplate : relationship_suggestion
+
+EnterpriseEntityNode --> EntityCategoryTemplate : inherits_from_template
+EnterprisePatternNode --> ProcessPatternTemplate : based_on_template
+CustomBusinessRule --> EnterpriseEntityNode : applies_to_entities
+CustomBusinessRule --> EnterprisePatternNode : constrains_patterns
+
+EnterpriseEntityNode ..> EntityCategoryTemplate : feedback_for_template_improvement
+EnterprisePatternNode ..> ProcessPatternTemplate : usage_statistics_for_refinement
+
+@enduml

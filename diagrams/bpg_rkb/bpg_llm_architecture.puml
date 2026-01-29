@@ -1,0 +1,139 @@
+@startuml Hybrid_BPG_LLM_Architecture
+!theme aws-orange
+title Гибридная архитектура: BPG как Runtime Knowledge Base для LLM Agent
+skinparam linetype ortho
+skinparam rectangle {
+  RoundCorner 8
+  BorderColor #444
+}
+
+actor "👤 Пользователь" as User
+
+' === Input Processing Layer ===
+package "📥 INPUT PROCESSING LAYER" #F0F8FF {
+  rectangle "📱 User Intent Capture\n• Natural language commands\n• Voice input processing\n• Context-aware parsing" as UserIntentCapture
+  rectangle "📸 Visual Context Capture\n• Screenshot acquisition\n• Page state detection\n• Element visibility analysis" as VisualCapture
+  rectangle "🔍 Current State Analysis\n• Page identification\n• User session context\n• Navigation history" as StateAnalysis
+}
+
+' === Business Logic Knowledge Base ===
+package "🧠 BUSINESS LOGIC KNOWLEDGE BASE" #E8F5E8 {
+
+  rectangle "Entity Knowledge Layer" #LightGreen {
+    rectangle "Business Entities\n• Customer, Product, Order\n• Attributes & constraints\n• Cross-view manifestations" as BusinessEntities
+    rectangle "GUI Element Catalog\n• Buttons, Forms, Navigation\n• Element roles & behaviors\n• Interaction patterns" as GUIElements
+    rectangle "Page Structure Map\n• Page types & purposes\n• Available actions per page\n• Navigation possibilities" as PageStructures
+    BusinessEntities -[hidden]down-> GUIElements
+    GUIElements -[hidden]down-> PageStructures
+  }
+
+  rectangle "Process Knowledge Layer" #LightYellow {
+    rectangle "Business Process Templates\n• Domain-specific workflows\n• Step sequences & dependencies\n• Success/failure criteria" as ProcessTemplates
+    rectangle "Business Rules Engine\n• Validation constraints\n• Conditional logic\n• Exception handling rules" as BusinessRules
+    rectangle "Navigation Patterns\n• Inter-page transitions\n• User journey templates\n• Context preservation rules" as NavigationPatterns
+
+    ProcessTemplates -[hidden]down-> BusinessRules
+    BusinessRules -[hidden]down-> NavigationPatterns
+  }
+
+  rectangle "Context Enrichment Layer" #LightCyan {
+    rectangle "Domain Vocabulary\n• Industry-specific terms\n• System-specific naming\n• User role contexts" as DomainVocab
+    rectangle "Historical Patterns\n• User behavior analysis\n• Successful action sequences\n• Error pattern recognition" as HistoricalPatterns
+    rectangle "Dynamic Context State\n• Current user permissions\n• Available system features\n• Temporal constraints" as DynamicContext
+
+    DomainVocab -[hidden]down-> HistoricalPatterns
+    HistoricalPatterns -[hidden]down-> DynamicContext
+  }
+
+  ' Вертикальные связи между слоями
+  PageStructures -[hidden]down-> ProcessTemplates
+  NavigationPatterns -[hidden]down-> DomainVocab
+}
+
+' === LLM Agent Orchestration ===
+package "🤖 LLM AGENT ORCHESTRATION" #FFF8E1 {
+  rectangle "Intent Understanding Agent\n• GPT-4 for complex reasoning\n• Business context integration\n• Ambiguity resolution" as IntentAgent
+  rectangle "Context Enrichment Engine\n• BPG knowledge integration\n• Multi-modal prompt construction\n• Dynamic context assembly" as ContextEnrichment
+  rectangle "Action Planning Agent\n• GPT-4V for visual understanding\n• Step-by-step action generation\n• Business rule validation" as ActionAgent
+  rectangle "Execution Coordination\n• Action sequence optimization\n• Error handling strategies\n• Human-in-loop triggers" as ExecutionCoord
+}
+
+' === Execution Layer ===
+package "⚡ EXECUTION LAYER" #F5F0FF {
+  rectangle "Platform Abstraction\n• Web browser automation\n• Desktop application control\n• Mobile device interaction" as PlatformAbstraction
+  rectangle "Action Execution Engine\n• Coordinate-based interactions\n• Element identification\n• State verification" as ActionExecution
+  rectangle "Real-time Adaptation\n• UI change detection\n• Dynamic element linking\n• Failure recovery" as RealtimeAdaptation
+}
+
+' === Feedback & Learning Loop ===
+package "🔄 FEEDBACK & LEARNING" #E6F3FF {
+  rectangle "Execution Monitoring\n• Success/failure tracking\n• Performance metrics\n• User satisfaction scoring" as ExecutionMonitoring
+  rectangle "Knowledge Base Updates\n• Pattern refinement\n• Business rule evolution\n• Template optimization" as KnowledgeUpdates
+  rectangle "LLM Prompt Evolution\n• Prompt effectiveness analysis\n• Context template improvement\n• Domain adaptation" as PromptEvolution
+}
+
+' === Data Flow Connections ===
+User --> UserIntentCapture : "Add milk to cart"
+User --> VisualCapture : Current screen state
+
+UserIntentCapture --> IntentAgent : Raw user intent
+VisualCapture --> StateAnalysis : Visual context
+StateAnalysis --> ContextEnrichment : Current state
+
+' BPG Knowledge Integration
+BusinessEntities --> ContextEnrichment : Entity definitions
+ProcessTemplates --> ContextEnrichment : Workflow templates
+BusinessRules --> ContextEnrichment : Validation constraints
+DomainVocab --> ContextEnrichment : Domain knowledge
+HistoricalPatterns --> ContextEnrichment : Behavioral insights
+DynamicContext --> ContextEnrichment : Current permissions
+
+' LLM Agent Flow
+IntentAgent --> ContextEnrichment : Parsed intent
+ContextEnrichment --> ActionAgent : Enriched prompt
+ActionAgent --> ExecutionCoord : Action plan
+ExecutionCoord --> PlatformAbstraction : Execution commands
+
+' Execution Flow
+PlatformAbstraction --> ActionExecution : Platform-specific actions
+ActionExecution --> RealtimeAdaptation : Execution feedback
+RealtimeAdaptation --> ExecutionMonitoring : Results & metrics
+
+' Learning Loop
+ExecutionMonitoring --> KnowledgeUpdates : Performance data
+ExecutionMonitoring --> PromptEvolution : LLM effectiveness
+KnowledgeUpdates --> BusinessEntities : Updated knowledge
+PromptEvolution --> ContextEnrichment : Improved prompts
+
+' === Key Innovation Highlights ===
+note right of ContextEnrichment
+**Core Innovation:**
+BPG provides business logic context
+that LLM cannot infer from visual
+information alone:
+
+• Entity relationships
+• Business process constraints
+• Domain-specific workflows
+• Historical success patterns
+end note
+
+note right of ActionAgent
+**LLM Enhancement:**
+Standard GPT-4V + Business context
+= Domain-aware automation agent
+
+Input: "Add milk to cart" + screenshot
++ BPG context about e-commerce flow
+= Precise action sequence understanding
+end note
+
+note bottom
+**Hybrid Value Proposition:**
+1. **BPG captures business logic** that LLMs don''t understand natively
+2. **LLM provides adaptive reasoning** for visual understanding and execution
+3. **Combined system** understands both "what" (business intent) and "how" (GUI interaction)
+4. **Iterative enrichment** bridges gap between user intent and system capabilities
+end note
+
+@enduml

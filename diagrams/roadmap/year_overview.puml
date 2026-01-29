@@ -1,0 +1,197 @@
+@startuml
+!theme plain
+skinparam linetype ortho
+skinparam rectangle {
+  Shadowing false
+  BorderColor black
+  FontSize 10
+  FontName Arial
+}
+skinparam package {
+  BorderColor darkviolet
+  FontColor darkviolet
+  FontSize 12
+  FontStyle bold
+}
+
+title COMPREHENSIVE SITEGPT ROADMAP\nОт концепции до защиты магистерской диссертации (10 месяцев)
+
+' =======================
+' ФАЗЫ ПРОЕКТА
+' =======================
+package "ФАЗЫ ПРОЕКТА" #E6E6FA {
+  rectangle "ФАЗА 1: FOUNDATION\n(Месяцы 1-2)\n🎯 Research Base\n🎯 Architecture Design\n🎯 Technology Selection" as PHASE1 #DDA0DD
+
+  rectangle "ФАЗА 2: DEVELOPMENT\n(Месяцы 3-4)\n🎯 Core System MVP\n🎯 Pattern Recognition\n🎯 Initial ML Models" as PHASE2 #DA70D6
+
+  rectangle "ФАЗА 3: AI INTEGRATION\n(Месяцы 5-6)\n🎯 Self-Healing System\n🎯 Semantic Understanding\n🎯 Multi-Agent Coordination" as PHASE3 #FF69B4
+
+  rectangle "ФАЗА 4: VALIDATION\n(Месяцы 7-8)\n🎯 Comprehensive Testing\n🎯 Benchmark Comparison\n🎯 Statistical Analysis" as PHASE4 #FFB6C1
+
+  rectangle "ФАЗА 5: FINALIZATION\n(Месяцы 9-10)\n🎯 Thesis Completion\n🎯 Defense Preparation\n🎯 Successful Graduation" as PHASE5 #FFC0CB
+}
+
+' =======================
+' ПАРАЛЛЕЛЬНЫЕ ТРЕКИ
+' =======================
+package "ПАРАЛЛЕЛЬНЫЕ ТРЕКИ РАБОТ" #F0FFFF {
+  rectangle "🔬 RESEARCH TRACK\n• Literature review\n• Gap analysis\n• Methodology design\n• Experimental validation\n• Results analysis\n• Scientific contribution" as RESEARCH_TRACK #E0FFFF
+
+  rectangle "💻 DEVELOPMENT TRACK\n• System architecture\n• Core implementation\n• AI integration\n• Testing & debugging\n• Performance optimization\n• Documentation" as DEV_TRACK #B0FFFF
+
+  rectangle "📝 THESIS TRACK\n• Chapter planning\n• Writing & editing\n• Literature synthesis\n• Results presentation\n• Defense preparation\n• Final submission" as THESIS_TRACK #87CEEB
+}
+
+' =======================
+' КЛЮЧЕВЫЕ КОМПОНЕНТЫ СИСТЕМЫ
+' =======================
+package "КЛЮЧЕВЫЕ КОМПОНЕНТЫ SITEGPT" #F0F8FF {
+  rectangle "🕷️ ADAPTIVE CRAWLER\n• Multi-strategy crawling\n• Respectful rate limiting\n• Session management\n• Content extraction\n• Link discovery" as CRAWLER #E0F6FF
+
+  rectangle "🧠 PATTERN RECOGNITION\n• DOM analysis\n• ML-based classification\n• Feature extraction\n• Similarity computation\n• Pattern database" as PATTERN #D0F0FF
+
+  rectangle "🔧 SELF-HEALING ENGINE\n• Failure detection\n• Recovery strategies\n• Alternative approaches\n• Learning from errors\n• Adaptation mechanisms" as HEALING #C0E8FF
+
+  rectangle "🎭 SEMANTIC UNDERSTANDING\n• Element classification\n• Context propagation\n• Interaction prediction\n• Embedding generation\n• Knowledge fusion" as SEMANTIC #B0E0FF
+
+  rectangle "⚡ ACTION EXECUTION\n• Playwright integration\n• Action planning\n• Element location\n• Interaction handling\n• Result validation" as EXECUTION #A0D8FF
+}
+
+' =======================
+' ИССЛЕДОВАТЕЛЬСКИЕ ВКЛАДЫ
+' =======================
+package "НАУЧНЫЕ ВКЛАДЫ ДИССЕРТАЦИИ" #FFF0F5 {
+  rectangle "🏆 НОВИЗНА 1\nАдаптивная экстракция\n• Self-adapting crawling strategies\n• Dynamic pattern recognition\n• Context-aware navigation\n• Learning from failures" as NOVELTY1 #FFE4E1
+
+  rectangle "🏆 НОВИЗНА 2\nСемантическое понимание\n• DOM semantic embeddings\n• Cross-page context propagation\n• Intent-based classification\n• Multimodal fusion" as NOVELTY2 #FFCCCB
+
+  rectangle "🏆 НОВИЗНА 3\nСамовосстановление\n• Predictive failure detection\n• Intelligent recovery strategies\n• Adaptive selector generation\n• Continuous learning" as NOVELTY3 #FFB6C1
+
+  rectangle "🏆 НОВИЗНА 4\nМногоагентная координация\n• Specialized micro-agents\n• Collaborative intelligence\n• Distributed decision making\n• Emergent behaviors" as NOVELTY4 #FFA0AC
+}
+
+' =======================
+' ОЦЕНКА И ВАЛИДАЦИЯ
+' =======================
+package "ЭКСПЕРИМЕНТАЛЬНАЯ ВАЛИДАЦИЯ" #F5FFFA {
+  rectangle "📊 BENCHMARK STUDIES\n• Comparison с Selenium\n• Comparison с Playwright\n• Commercial tools analysis\n• Academic baselines\n• Statistical significance" as BENCHMARKS #E0FFF4
+
+  rectangle "📈 PERFORMANCE METRICS\n• Success rate >80%\n• Adaptation time <24h\n• Recovery rate >70%\n• False positive <10%\n• Scalability testing" as METRICS #CCFFCC
+
+  rectangle "🌐 REAL-WORLD TESTING\n• 100+ diverse websites\n• Different CMS systems\n• Various complexity levels\n• Edge cases handling\n• Long-term stability" as REALWORLD #B3FFB3
+
+  rectangle "📋 USER VALIDATION\n• Usability studies\n• Expert evaluation\n• Feedback collection\n• Improvement suggestions\n• Adoption barriers" as USER #99FF99
+}
+
+' =======================
+' СВЯЗИ МЕЖДУ ФАЗАМИ
+' =======================
+
+PHASE1 --> PHASE2 : foundation -> development
+PHASE2 --> PHASE3 : MVP -> AI integration
+PHASE3 --> PHASE4 : system -> validation
+PHASE4 --> PHASE5 : results -> finalization
+
+' =======================
+' ТРЕКИ ПОДДЕРЖИВАЮТ ФАЗЫ
+' =======================
+
+RESEARCH_TRACK --> PHASE1 : research design
+RESEARCH_TRACK --> PHASE4 : experimental validation
+DEV_TRACK --> PHASE2 : core development
+DEV_TRACK --> PHASE3 : AI integration
+THESIS_TRACK --> PHASE5 : thesis completion
+
+' =======================
+' КОМПОНЕНТЫ РАЗВИВАЮТСЯ ПО ФАЗАМ
+' =======================
+
+PHASE2 --> CRAWLER : basic implementation
+PHASE2 --> PATTERN : initial recognition
+PHASE3 --> HEALING : self-healing system
+PHASE3 --> SEMANTIC : semantic understanding
+PHASE3 --> EXECUTION : action execution
+
+' =======================
+' НАУЧНЫЕ ВКЛАДЫ РЕАЛИЗУЮТСЯ
+' =======================
+
+CRAWLER --> NOVELTY1 : adaptive crawling
+PATTERN --> NOVELTY1 : pattern adaptation
+SEMANTIC --> NOVELTY2 : semantic understanding
+HEALING --> NOVELTY3 : self-healing
+EXECUTION --> NOVELTY4 : multi-agent coord
+
+' =======================
+' ВАЛИДАЦИЯ ПОДТВЕРЖДАЕТ НОВИЗНУ
+' =======================
+
+NOVELTY1 --> BENCHMARKS : adaptive comparison
+NOVELTY2 --> METRICS : semantic performance
+NOVELTY3 --> REALWORLD : healing validation
+NOVELTY4 --> USER : coordination usability
+
+BENCHMARKS --> PHASE4 : validation results
+METRICS --> PHASE4 : performance data
+REALWORLD --> PHASE4 : real testing
+USER --> PHASE5 : user studies
+
+' =======================
+' КРИТИЧЕСКИЕ ПУТИ И ЗАВИСИМОСТИ
+' =======================
+
+note top of PHASE1
+**CRITICAL SUCCESS FACTORS:**
+• Strong literature foundation
+• Clear research gaps identification
+• Robust architecture design
+• Appropriate technology selection
+• Realistic timeline planning
+end note
+
+note top of PHASE3
+**INTEGRATION CHALLENGES:**
+• Self-healing algorithm complexity
+• Multi-agent coordination overhead
+• Semantic understanding accuracy
+• Real-time adaptation requirements
+• Performance vs. intelligence tradeoff
+end note
+
+note bottom of BENCHMARKS
+**VALIDATION REQUIREMENTS:**
+• Statistical significance (p<0.05)
+• Multiple baseline comparisons
+• Diverse test scenarios
+• Reproducible experiments
+• Peer review standards
+end note
+
+note right of NOVELTY1
+**RESEARCH CONTRIBUTIONS:**
+Each novelty must demonstrate:
+• Clear advancement over state-of-art
+• Measurable performance improvement
+• Theoretical foundation
+• Practical applicability
+• Scalability potential
+end note
+
+note bottom
+**PROJECT SUCCESS METRICS:**
+🎯 **MANDATORY FOR GRADUATION:**
+• Working system demonstration
+• Thesis defense passed
+• Scientific contribution validated
+• Code and data published
+• Future work identified
+
+🚀 **EXCELLENCE INDICATORS:**
+• Conference paper acceptance
+• Industry collaboration interest
+• Patent application potential
+• Startup founding opportunity
+• PhD program admission
+end note
+
+@enduml

@@ -1,0 +1,172 @@
+@startuml
+!theme plain
+skinparam linetype ortho
+
+skinparam rectangle {
+  Shadowing false
+  BorderColor black
+  FontSize 11
+  FontName Arial
+}
+skinparam arrow {
+  Color darkblue
+  FontSize 9
+}
+skinparam package {
+  BorderColor darkgreen
+  FontColor darkgreen
+  FontSize 13
+  FontStyle bold
+}
+
+title Уровень 2: Исследовательские компоненты и методы\nДетализация научных подходов SiteGPT
+
+' =======================
+' АДАПТИВНАЯ ЭКСТРАКЦИЯ
+' =======================
+package "АДАПТИВНАЯ ЭКСТРАКЦИЯ ВЕБ-СТРУКТУР" #F0FFF0 {
+  rectangle "Multi-Strategy\nPattern Recognition" as MSPR #E0FFE0
+  rectangle "Dynamic Structure\nLearning" as DSL #E0FFE0
+  rectangle "Contextual Element\nClassification" as CEC #E0FFE0
+  rectangle "Adaptive Selector\nGeneration" as ASG #E0FFE0
+  rectangle "Change Detection\n& Response" as CDR #E0FFE0
+}
+
+' =======================
+' СЕМАНТИЧЕСКОЕ МОДЕЛИРОВАНИЕ
+' =======================
+package "СЕМАНТИЧЕСКОЕ МОДЕЛИРОВАНИЕ ИНТЕРФЕЙСОВ" #FFF0F8 {
+  rectangle "DOM Semantic\nEmbedding" as DSE #FFE0F0
+  rectangle "UI Element\nSemantic Classification" as UESC #FFE0F0
+  rectangle "Interaction Pattern\nModeling" as IPM #FFE0F0
+  rectangle "Cross-Page Context\nUnderstanding" as CPCU #FFE0F0
+  rectangle "Semantic Action\nMapping" as SAM #FFE0F0
+}
+
+' =======================
+' САМОВОССТАНАВЛИВАЮЩИЕСЯ АВТОМАТЫ
+' =======================
+package "САМОВОССТАНАВЛИВАЮЩИЕСЯ ВЕБ-АВТОМАТЫ" #F0F8FF {
+  rectangle "Resilient Locator\nStrategies" as RLS #E0F0FF
+  rectangle "Failure Pattern\nAnalysis" as FPA #E0F0FF
+  rectangle "Alternative Path\nDiscovery" as APD #E0F0FF
+  rectangle "Self-Repair\nMechanisms" as SRM #E0F0FF
+  rectangle "Robustness\nValidation" as RV #E0F0FF
+}
+
+' =======================
+' МНОГОУРОВНЕВАЯ АРХИТЕКТУРА
+' =======================
+package "МНОГОУРОВНЕВАЯ АРХИТЕКТУРА ПОНИМАНИЯ" #FFFAF0 {
+  rectangle "Hierarchical Graph\nConstruction" as HGC #FFF0E0
+  rectangle "Multi-Scale\nAnalysis" as MSA #FFF0E0
+  rectangle "Cross-Level\nConsistency" as CLC #FFF0E0
+  rectangle "Scalable Knowledge\nIntegration" as SKI #FFF0E0
+  rectangle "Unified Representation\nModel" as URM #FFF0E0
+}
+
+' =======================
+' МЕТОДЫ МАШИННОГО ОБУЧЕНИЯ
+' =======================
+package "МЕТОДЫ И АЛГОРИТМЫ ML" #F8F0FF {
+  rectangle "Unsupervised\nStructure Discovery" as USD #F0E0FF
+  rectangle "Few-Shot\nAdaptation Learning" as FSAL #F0E0FF
+  rectangle "Reinforcement Learning\nfor Actions" as RLA #F0E0FF
+  rectangle "Transfer Learning\nAcross Sites" as TLAS #F0E0FF
+  rectangle "Multi-Modal\nFusion" as MMF #F0E0FF
+}
+
+' =======================
+' ФОРМАЛЬНЫЕ МОДЕЛИ
+' =======================
+package "ФОРМАЛЬНЫЕ МОДЕЛИ И ВЕРИФИКАЦИЯ" #F0FFF0 {
+  rectangle "Web Automaton\nFormal Model" as WAFM #E8FFE8
+  rectangle "State Space\nRepresentation" as SSR #E8FFE8
+  rectangle "Transition Function\nModeling" as TFM #E8FFE8
+  rectangle "Correctness\nVerification" as CV #E8FFE8
+  rectangle "Complexity\nAnalysis" as CA #E8FFE8
+}
+
+' =======================
+' СВЯЗИ МЕЖДУ КОМПОНЕНТАМИ
+' =======================
+
+' Адаптивная экстракция ↔ Семантическое моделирование
+MSPR --> DSE : паттерны → семантика
+CEC --> UESC : классификация элементов
+DSL --> IPM : структурное обучение
+ASG --> SAM : селекторы → действия
+
+' Семантическое моделирование ↔ Самовосстановление
+UESC --> RLS : семантика → локаторы
+CPCU --> APD : контекст → альтернативы
+SAM --> SRM : действия → восстановление
+
+' Многоуровневая архитектура связана со всеми
+MSA --> MSPR : многомасштабный анализ
+HGC --> DSE : иерархические графы
+CLC --> RLS : согласованность уровней
+URM --> CPCU : единая модель
+
+' ML методы поддерживают все компоненты
+USD --> DSL : обучение без учителя
+FSAL --> CDR : few-shot адаптация
+RLA --> SRM : обучение с подкреплением
+TLAS --> APD : transfer learning
+MMF --> IPM : мультимодальность
+
+' Формальные модели обеспечивают строгость
+WAFM --> RLS : формальная модель
+SSR --> FPA : пространство состояний
+TFM --> SRM : функции переходов
+CV --> RV : верификация корректности
+
+note right of MSPR
+**Многостратегийное распознавание**
+• CSS selector patterns
+• XPath strategies
+• Visual similarity detection
+• Behavioral pattern analysis
+end note
+
+note right of DSE
+**Семантические эмбеддинги DOM**
+• Transformer-based encoding
+• Contextual element representation
+• Cross-site knowledge transfer
+• Semantic similarity metrics
+end note
+
+note right of RLS
+**Устойчивые стратегии локации**
+• Fallback selector chains
+• Semantic-based recovery
+• Visual landmark navigation
+• Probabilistic element matching
+end note
+
+note right of HGC
+**Иерархическое построение графов**
+• Multi-level abstraction
+• Page-Module-Element hierarchy
+• Cross-reference resolution
+• Scalable graph operations
+end note
+
+note right of USD
+**Обучение без учителя**
+• Pattern clustering
+• Anomaly detection
+• Structure discovery
+• Emergent behavior identification
+end note
+
+note right of WAFM
+**Формальная модель веб-автомата**
+• State-based representation
+• Transition semantics
+• Invariant properties
+• Compositional verification
+end note
+
+@enduml

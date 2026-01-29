@@ -1,0 +1,147 @@
+@startuml LLM_Pattern_Discovery_Algorithm
+!theme aws-orange
+title Алгоритм LLM-based обнаружения паттернов и предположений о связях
+skinparam linetype ortho
+skinparam activity {
+  BackgroundColor #F0F8FF
+  BorderColor #4169E1
+}
+skinparam defaultFontColor Black
+
+start
+
+legend top
+  BackgroundColor White
+  FontColor Black
+  **🎯 Key Success Factors for LLM Pattern Discovery:**
+  1. Context-Rich Prompting: Include relevant domain knowledge and templates, concrete examples, specify output format, chain-of-thought reasoning
+  2. Multi-Modal Evidence Integration: Combine LLM reasoning with template matching, GUI evidence, business document cross-check
+  3. Iterative Refinement: Continuous prompt optimization, template updates, fine-tuning, expert feedback loop
+  4. Uncertainty Management: Explicit confidence scoring, graceful degradation, human-in-the-loop, alternative suggestions
+end legend
+
+:🎯 Phase 1: Context Preparation;
+note right
+  📊 Gather Context Information:
+  • Current GUI entities
+  • Existing BPG fragments
+  • Domain specification
+  • Business documents
+  • User behavior patterns
+
+  🏷️ Load Relevant Templates:
+  ''python
+  relevant_templates = template_kb.query(...)
+  template_context = format_for_llm(...)
+  ''
+
+  **Performance Targets Phase 1:**
+  • Ensure all relevant context is loaded
+  • Validate template queries return results
+end note
+
+:🧠 Phase 2: LLM Entity Analysis;
+note right
+  🤖 LLM Entity Classification:
+  ''python
+  System: You are a business process expert analyzing a web application...
+  ''
+
+  📊 Parse LLM Response:
+  ''json
+  {
+    "entity_classifications": [...]
+  }
+  ''
+
+  **Performance Targets Phase 2:**
+  • Entity Classification Accuracy: >85%
+  • Coverage of GUI entities: >90%
+  • Confidence calibration: well-calibrated
+end note
+
+:🔗 Phase 3: Relationship Inference;
+note right
+  🎯 Template-Guided LLM Analysis:
+  ''python
+  System: Analyze potential relationships based on patterns...
+  ''
+
+  📈 Confidence Scoring:
+  ''python
+  def calculate_relationship_confidence(...):
+      return weighted_average([...])
+  ''
+
+  **Performance Targets Phase 3:**
+  • Precision: >80% for high-confidence relationships
+  • Recall: >70% for template-based relationships
+  • False positive rate: <15%
+end note
+
+:⚙️ Phase 4: Process Pattern Suggestion;
+note right
+  🔍 Multi-level Pattern Recognition:
+  ''python
+  System: Identify business process patterns from entities and relationships...
+  ''
+
+  📊 Pattern Validation:
+  ''python
+  for suggested_pattern in llm_suggested_patterns:
+      pattern_confidence = combine_evidence(...)
+  ''
+
+  **Performance Targets Phase 4:**
+  • Pattern match accuracy: >75%
+  • Novel pattern identification: >60%
+  • Business rule compliance: >95%
+end note
+
+:✅ Phase 5: Validation & Refinement;
+note right
+  🔍 Cross-validation Analysis:
+  • Compare LLM suggestions with template predictions
+  • Check for inconsistencies
+  • Validate business rule compliance
+  • Assess pattern completeness
+
+  📊 Uncertainty Quantification:
+  ''python
+  uncertainty_analysis = {...}
+  ''
+
+  👥 Expert Review Preparation:
+  • Generate summaries
+  • Highlight uncertainties
+  • Prepare alternatives
+  • Format for expert validation
+
+  **Phase 5 Notes:**
+  • Include human-in-the-loop for critical validation
+  • Ensure traceability of uncertainty scores
+end note
+
+:📚 Phase 6: Knowledge Base Integration;
+note right
+  💾 Template Enhancement:
+  ''python
+  template_kb.update_relationship_confidence(...)
+  template_kb.add_pattern_template(...)
+  ''
+
+  🔄 LLM Prompt Refinement:
+  ''python
+  prompt_optimizer.enhance_entity_classification_prompt(...)
+  prompt_optimizer.enhance_relationship_prompt(...)
+  ''
+
+  **Implementation Considerations:**
+  • LLM Integration: GPT-4, Claude, local fine-tuned models
+  • Prompt Engineering: Domain-specific templates, few-shot, chain-of-thought
+  • Quality Assurance: Multi-model consensus, expert validation, automated checks
+  • Scalability: Batch processing, caching, incremental learning, distributed execution
+end note
+
+stop
+@enduml

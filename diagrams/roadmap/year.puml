@@ -1,0 +1,230 @@
+@startuml
+!theme plain
+skinparam linetype ortho
+left to right direction
+skinparam rectangle {
+  Shadowing false
+  BorderColor black
+  FontSize 8
+  FontName Arial
+}
+skinparam package {
+  BorderColor darkblue
+  FontColor darkblue
+  FontSize 11
+  FontStyle bold
+}
+
+title Детальная дорожная карта SiteGPT (10 месяцев)\nМесяцы 1-8: Основная магистерская | Месяцы 9-10: Финализация
+
+
+' =======================
+' СЛОЙ 1: ИССЛЕДОВАНИЯ
+' =======================
+package "ИССЛЕДОВАНИЯ" #F0E68C {
+  rectangle "R1: Литературный обзор\n(М1)\n• Web automation 2020-2025\n• Agentic AI fundamentals\n• Self-healing systems\n• Transfer learning for web" as R1 #FFFFCC
+  
+  rectangle "R2: Анализ трендов\n(М1-2)\n• Microsoft Agentic Web\n• Micro-agent architectures\n• LLM-based automation\n• Conversational workflows" as R2 #FFFFCC
+  
+  rectangle "R3: Gap анализ\n(М2)\n• Текущие ограничения\n• Исследовательские пробелы\n• Формулировка гипотез\n• Метрики успеха" as R3 #FFFFCC
+  
+  rectangle "R4: Методология\n(М3)\n• Experimental design\n• Baseline методы\n• Evaluation frameworks\n• Data collection strategy" as R4 #FFFF99
+  
+  rectangle "R5: Pilot эксперименты\n(М4-5)\n• Simple crawling tests\n• Pattern recognition PoC\n• Self-healing simulation\n• Initial benchmarks" as R5 #FFFF99
+  
+  rectangle "R6: Core исследования\n(М5-6)\n• Adaptive pattern learning\n• Context propagation\n• Multi-agent coordination\n• Semantic understanding" as R6 #FFFF99
+  
+  rectangle "R7: Advanced эксперименты\n(М7)\n• Cross-domain transfer\n• Real website testing\n• Performance analysis\n• Robustness evaluation" as R7 #FFFF66
+  
+  rectangle "R8: Результаты анализ\n(М8)\n• Statistical analysis\n• Comparison с baselines\n• Error analysis\n• Insights documentation" as R8 #FFFF66
+  
+  rectangle "R9: Publication prep\n(М9)\n• Conference paper draft\n• Results visualization\n• Methodology refinement" as R9 #CCCC99
+  
+  rectangle "R10: Future work\n(М10+)\n• Enterprise scaling\n• Federated learning\n• Production deployment" as R10 #999999
+}
+
+' =======================
+' СЛОЙ 2: РАЗРАБОТКА
+' =======================
+package "РАЗРАБОТКА" #ADD8E6 {
+  rectangle "D1: Architecture design\n(М1)\n• System components\n• Data flow diagrams\n• API specifications\n• Technology stack" as D1 #E6F3FF
+  
+  rectangle "D2: Core infrastructure\n(М2-3)\n• FastAPI backend\n• Database schema\n• Logging & monitoring\n• Basic crawler" as D2 #E6F3FF
+  
+  rectangle "D3: Pattern recognition\n(М3-4)\n• DOM analysis module\n• Feature extraction\n• ML model training\n• Pattern database" as D3 #CCE5FF
+  
+  rectangle "D4: Semantic embedding\n(М4-5)\n• Transformer integration\n• Embedding generation\n• Similarity computation\n• Vector storage" as D4 #CCE5FF
+  
+  rectangle "D5: Action execution\n(М5-6)\n• Playwright integration\n• Action planning\n• Error handling\n• Recovery mechanisms" as D5 #CCE5FF
+  
+  rectangle "D6: Self-healing system\n(М6-7)\n• Failure detection\n• Alternative strategies\n• Auto-repair logic\n• Learning from failures" as D6 #B3D9FF
+  
+  rectangle "D7: Agent coordination\n(М7)\n• Multi-agent framework\n• Task distribution\n• Communication protocols\n• Result aggregation" as D7 #B3D9FF
+  
+  rectangle "D8: Testing & validation\n(М8)\n• Unit tests\n• Integration tests\n• Performance benchmarks\n• Real-world validation" as D8 #9999FF
+  
+  rectangle "D9: Documentation\n(М9)\n• API documentation\n• User guides\n• Deployment instructions\n• Code comments" as D9 #6666CC
+  
+  rectangle "D10: Enterprise features\n(М10+)\n• Role-based access\n• Corporate deployment\n• Compliance features\n• Cloud scalability" as D10 #333399
+}
+
+' =======================
+' СЛОЙ 3: ДИССЕРТАЦИЯ
+' =======================
+package "МАГИСТЕРСКАЯ ДИССЕРТАЦИЯ" #90EE90 {
+  rectangle "T1: Постановка задачи\n(М1)\n• Цели и задачи\n• Актуальность\n• Научная новизна\n• Практическая значимость" as T1 #F0FFF0
+  
+  rectangle "T2: Обзор литературы\n(М2)\n• Теоретические основы\n• Существующие решения\n• Анализ ограничений\n• Позиционирование работы" as T2 #F0FFF0
+  
+  rectangle "T3: Методология\n(М3)\n• Предлагаемый подход\n• Архитектура системы\n• Алгоритмы и модели\n• Экспериментальный план" as T3 #E0FFE0
+  
+  rectangle "T4: Техническая реализация\n(М4-5)\n• Описание компонентов\n• Детали реализации\n• Технические решения\n• Архитектурные выборы" as T4 #E0FFE0
+  
+  rectangle "T5: Экспериментальная часть\n(М6-7)\n• Описание экспериментов\n• Настройка окружения\n• Сбор данных\n• Предварительные результаты" as T5 #D0FFD0
+  
+  rectangle "T6: Анализ результатов\n(М8)\n• Статистический анализ\n• Визуализация данных\n• Сравнение с базовыми методами\n• Обсуждение findings" as T6 #D0FFD0
+  
+  rectangle "T7: Выводы\n(М9)\n• Основные результаты\n• Теоретическая значимость\n• Практические рекомендации\n• Направления развития" as T7 #C0FFC0
+  
+  rectangle "T8: Оформление работы\n(М9)\n• Финальное редактирование\n• Библиография\n• Приложения\n• Проверка на антиплагиат" as T8 #C0FFC0
+  
+  rectangle "T9: Подготовка к защите\n(М10)\n• Презентация\n• Доклад\n• Ответы на вопросы\n• Демо система" as T9 #B0FFB0
+  
+  rectangle "T10: Защита\n(М10)\n• Финальная презентация\n• Демонстрация\n• Ответы комиссии\n• Получение оценки" as T10 #A0FFA0
+}
+
+' =======================
+' ОСНОВНЫЕ ПОТОКИ (месяц за месяцем)
+' =======================
+
+' Месяц 1-2: Исследовательская база
+R1 --> R2
+R2 --> R3
+T1 --> T2
+D1 --> D2
+
+' Месяц 3-4: Core разработка
+R3 --> R4
+R4 --> R5
+T2 --> T3
+T3 --> T4
+D2 --> D3
+D3 --> D4
+
+' Месяц 5-6: AI интеграция и эксперименты  
+R5 --> R6
+T4 --> T5
+D4 --> D5
+D5 --> D6
+
+' Месяц 7-8: Продвинутые эксперименты
+R6 --> R7
+R7 --> R8
+T5 --> T6
+D6 --> D7
+D7 --> D8
+
+' Месяц 9-10: Финализация
+R8 --> R9
+T6 --> T7
+T7 --> T8
+T8 --> T9
+T9 --> T10
+D8 --> D9
+
+' Будущая работа
+R9 --> R10
+D9 --> D10
+
+' =======================
+' МЕЖСЛОЙНЫЕ ЗАВИСИМОСТИ
+' =======================
+
+' Исследования -> Диссертация
+R1 --> T2 : literature -> review
+R3 --> T3 : gaps -> methodology  
+R4 --> T4 : methods -> implementation
+R6 --> T5 : core research -> experiments
+R7 --> T6 : advanced exp -> analysis
+R8 --> T7 : results -> conclusions
+
+' Исследования -> Разработка
+R2 --> D1 : trends -> architecture
+R4 --> D3 : methodology -> pattern recognition
+R5 --> D4 : pilot -> semantic embedding
+R6 --> D5 : core -> action execution
+R7 --> D6 : advanced -> self-healing
+
+' Разработка -> Диссертация  
+D1 --> T3 : architecture -> methodology
+D3 --> T4 : pattern module -> implementation
+D5 --> T5 : action system -> experiments
+D6 --> T6 : self-healing -> results
+D8 --> T6 : testing -> analysis
+
+' =======================
+' ОБЯЗАТЕЛЬНАЯ ЧАСТЬ ДЛЯ МАГИСТЕРСКОЙ
+' =======================
+package "ОБЯЗАТЕЛЬНО ДЛЯ МАГИСТЕРСКОЙ" #FFE4E1 {
+  note as REQUIRED
+  **CORE REQUIREMENTS (М1-8):**
+  • R1-R8: Полное исследование
+  • D1-D8: Рабочая система
+  • T1-T6: Основная диссертация
+  
+  **МИНИМАЛЬНЫЙ MVP:**
+  • Adaptive web crawler
+  • Pattern recognition system  
+  • Basic self-healing
+  • Experimental validation
+  • Comparative analysis
+  end note
+}
+
+' =======================
+' ДАЛЬНЕЙШАЯ РАЗРАБОТКА
+' =======================
+package "ДАЛЬНЕЙШАЯ РАЗРАБОТКА" #E6E6FA {
+  note as FUTURE
+  **FUTURE WORK (М10+):**
+  • R10: Advanced research
+  • D10: Enterprise features
+  
+  **РАСШИРЕНИЯ:**
+  • Federated learning
+  • Cloud deployment  
+  • Corporate integration
+  • Production scaling
+  • Commercial features
+  end note
+}
+
+
+note bottom
+**КРИТИЧЕСКИЕ ПУТИ:**
+• М1-3: Research foundation CRITICAL
+• М4-6: Core system development CRITICAL  
+• М7-8: Experimental validation CRITICAL
+• М9-10: Thesis finalization CRITICAL
+
+**RISK MITIGATION:**
+• Месячные checkpoints
+• Параллельная разработка где возможно
+• MVP-подход для core features
+• Early testing и validation
+end note
+
+
+' =======================
+' ВРЕМЕННЫЕ МАРКЕРЫ
+' =======================
+note top
+**ВРЕМЕННЫЕ РАМКИ:**
+• Месяцы 1-2: Исследовательская база
+• Месяцы 3-4: Core разработка
+• Месяцы 5-6: AI интеграция
+• Месяцы 7-8: Эксперименты и оценка
+• Месяцы 9-10: Финализация диссертации
+end note
+
+@enduml

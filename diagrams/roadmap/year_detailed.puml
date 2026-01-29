@@ -1,0 +1,221 @@
+@startuml
+!theme plain
+skinparam linetype ortho
+skinparam rectangle {
+  Shadowing false
+  BorderColor black
+  FontSize 8
+  FontName Arial
+}
+skinparam package {
+  BorderColor darkgreen
+  FontColor darkgreen
+  FontSize 10
+  FontStyle bold
+}
+
+title Детализация задач SiteGPT по месяцам\nПриоритеты: 🔴 Критически важно | 🟡 Важно | 🟢 Желательно
+
+' =======================
+' МЕСЯЦ 1: FOUNDATION
+' =======================
+package "МЕСЯЦ 1: ИССЛЕДОВАТЕЛЬСКАЯ БАЗА" #FFF0F0 {
+  rectangle "🔴 R1.1: Литературный обзор\n• 50+ статей по web automation\n• 20+ статей по agentic AI\n• 15+ статей по self-healing\n• Systematic literature review" as R1_1
+
+  rectangle "🔴 T1.1: Постановка задачи\n• Формулировка цели\n• 3-4 конкретные задачи\n• Гипотезы исследования\n• Критерии успеха" as T1_1
+
+  rectangle "🔴 D1.1: Архитектура системы\n• UML диаграммы\n• Component diagram\n• Sequence diagrams\n• API specification" as D1_1
+
+  rectangle "🟡 R1.2: Анализ конкурентов\n• Selenium alternatives\n• Playwright ecosystem\n• AI-powered tools\n• Commercial solutions" as R1_2
+}
+
+' =======================
+' МЕСЯЦ 2: DEEP DIVE
+' =======================
+package "МЕСЯЦ 2: ГЛУБОКИЙ АНАЛИЗ" #F0F8FF {
+  rectangle "🔴 R2.1: Тренды и технологии\n• Microsoft Agentic Web\n• LangChain agents\n• AutoGen framework\n• CrewAI multi-agents" as R2_1
+
+  rectangle "🔴 T2.1: Обзор литературы\n• Введение 3-4 страницы\n• Обзор 15-20 страниц\n• Таблицы сравнения\n• Позиционирование работы" as T2_1
+
+  rectangle "🔴 D2.1: Техстек и инфраструктура\n• Python 3.11+ setup\n• FastAPI backend\n• PostgreSQL database\n• Docker containerization" as D2_1
+
+  rectangle "🟡 R2.2: Gap анализ\n• Идентификация пробелов\n• Формулировка новизны\n• Метрики оценки\n• Success criteria" as R2_2
+}
+
+' =======================
+' МЕСЯЦ 3: METHODOLOGY
+' =======================
+package "МЕСЯЦ 3: МЕТОДОЛОГИЯ" #F0FFF0 {
+  rectangle "🔴 R3.1: Экспериментальный дизайн\n• Baseline методы\n• Evaluation metrics\n• Test datasets\n• Statistical methods" as R3_1
+
+  rectangle "🔴 T3.1: Методологическая глава\n• Предлагаемый подход\n• Архитектура решения\n• Алгоритмы и модели\n• 10-15 страниц" as T3_1
+
+  rectangle "🔴 D3.1: Core crawler\n• Basic web crawler\n• URL management\n• Content extraction\n• Error handling" as D3_1
+
+  rectangle "🟡 D3.2: Pattern recognition MVP\n• DOM analysis\n• Simple feature extraction\n• Rule-based patterns\n• Basic classification" as D3_2
+}
+
+' =======================
+' МЕСЯЦ 4: CORE DEVELOPMENT
+' =======================
+package "МЕСЯЦ 4: ОСНОВНАЯ РАЗРАБОТКА" #FFFAF0 {
+  rectangle "🔴 R4.1: Pilot эксперименты\n• 10 test websites\n• Basic crawling metrics\n• Pattern detection tests\n• Initial benchmarks" as R4_1
+
+  rectangle "🔴 D4.1: ML модели\n• Transformer для DOM\n• Feature embedding\n• Similarity computation\n• Model training pipeline" as D4_1
+
+  rectangle "🔴 T4.1: Техническая реализация\n• Описание компонентов\n• Псевдокод алгоритмов\n• Архитектурные решения\n• 8-12 страниц" as T4_1
+
+  rectangle "🟡 D4.2: Database design\n• Schema для patterns\n• Vector storage\n• Caching strategy\n• Performance optimization" as D4_2
+}
+
+' =======================
+' МЕСЯЦ 5: AI INTEGRATION
+' =======================
+package "МЕСЯЦ 5: ИИ ИНТЕГРАЦИЯ" #F5F0FF {
+  rectangle "🔴 R5.1: Core исследования\n• Adaptive learning tests\n• Context propagation\n• Self-healing simulation\n• 20 websites testing" as R5_1
+
+  rectangle "🔴 D5.1: Action execution\n• Playwright integration\n• Action planning\n• Element location\n• Interaction handling" as D5_1
+
+  rectangle "🔴 T5.1: Экспериментальная часть\n• Описание setup\n• Test environment\n• Data collection plan\n• Preliminary results" as T5_1
+
+  rectangle "🟡 D5.2: Semantic understanding\n• Context extraction\n• Element classification\n• Interaction prediction\n• Semantic embeddings" as D5_2
+}
+
+' =======================
+' МЕСЯЦ 6: SELF-HEALING
+' =======================
+package "МЕСЯЦ 6: САМОВОССТАНОВЛЕНИЕ" #FFF5F0 {
+  rectangle "🔴 R6.1: Advanced experiments\n• Failure simulation\n• Recovery strategies\n• Robustness testing\n• 50+ websites" as R6_1
+
+  rectangle "🔴 D6.1: Self-healing system\n• Failure detection\n• Alternative strategies\n• Auto-repair logic\n• Learning mechanisms" as D6_1
+
+  rectangle "🟡 D6.2: Multi-agent coordination\n• Agent communication\n• Task distribution\n• Result aggregation\n• Conflict resolution" as D6_2
+
+  rectangle "🟡 R6.2: Transfer learning\n• Cross-domain testing\n• Knowledge transfer\n• Adaptation metrics\n• Domain analysis" as R6_2
+}
+
+' =======================
+' МЕСЯЦ 7: ADVANCED TESTING
+' =======================
+package "МЕСЯЦ 7: ПРОДВИНУТОЕ ТЕСТИРОВАНИЕ" #F0F5FF {
+  rectangle "🔴 R7.1: Comprehensive evaluation\n• 100+ real websites\n• Performance benchmarks\n• Comparison с baselines\n• Statistical analysis" as R7_1
+
+  rectangle "🔴 D7.1: Production readiness\n• Error handling\n• Logging & monitoring\n• Performance optimization\n• Scalability testing" as D7_1
+
+  rectangle "🟡 D7.2: User interface\n• Web dashboard\n• API documentation\n• Usage examples\n• Demo scenarios" as D7_2
+
+  rectangle "🟢 R7.2: Edge cases\n• Complex websites\n• Dynamic content\n• Authentication\n• CAPTCHA handling" as R7_2
+}
+
+' =======================
+' МЕСЯЦ 8: ANALYSIS & VALIDATION
+' =======================
+package "МЕСЯЦ 8: АНАЛИЗ И ВАЛИДАЦИЯ" #F8F0FF {
+  rectangle "🔴 R8.1: Results analysis\n• Statistical significance\n• Error analysis\n• Performance metrics\n• Comparative study" as R8_1
+
+  rectangle "🔴 T8.1: Результаты и анализ\n• Графики и таблицы\n• Статистический анализ\n• Обсуждение findings\n• 15-20 страниц" as T8_1
+
+  rectangle "🔴 D8.1: Final testing\n• Integration tests\n• Performance tests\n• User acceptance tests\n• Bug fixes" as D8_1
+
+  rectangle "🟡 R8.2: Validation study\n• Independent validation\n• User studies\n• Feedback collection\n• Improvement suggestions" as R8_2
+}
+
+' =======================
+' МЕСЯЦ 9: FINALIZATION
+' =======================
+package "МЕСЯЦ 9: ФИНАЛИЗАЦИЯ" #FFF8F0 {
+  rectangle "🔴 T9.1: Завершение диссертации\n• Выводы и заключение\n• Список литературы\n• Приложения\n• Финальное редактирование" as T9_1
+
+  rectangle "🔴 D9.1: Documentation\n• API docs\n• User guides\n• Installation instructions\n• Code documentation" as D9_1
+
+  rectangle "🟡 R9.1: Publication prep\n• Conference paper\n• Abstract submission\n• Results visualization\n• Demo preparation" as R9_1
+
+  rectangle "🟡 T9.2: Presentation prep\n• Slides creation\n• Demo scenario\n• Q&A preparation\n• Practice sessions" as T9_2
+}
+
+' =======================
+' МЕСЯЦ 10: DEFENSE
+' =======================
+package "МЕСЯЦ 10: ЗАЩИТА" #F0FFF8 {
+  rectangle "🔴 T10.1: Final preparation\n• Presentation polish\n• Demo testing\n• Committee questions\n• Final review" as T10_1
+
+  rectangle "🔴 T10.2: Defense\n• Presentation delivery\n• System demonstration\n• Q&A session\n• Final assessment" as T10_2
+
+  rectangle "🟢 D10.1: Future work setup\n• Code repository\n• Enterprise features plan\n• Commercialization strategy\n• Next research directions" as D10_1
+
+  rectangle "🟢 R10.1: Next phase planning\n• Federated learning research\n• Production deployment\n• Advanced AI integration\n• Industry partnerships" as R10_1
+}
+
+' =======================
+' ВРЕМЕННЫЕ СВЯЗИ
+' =======================
+
+' Месяц 1 -> 2
+R1_1 --> R2_1
+T1_1 --> T2_1
+D1_1 --> D2_1
+
+' Месяц 2 -> 3
+R2_1 --> R3_1
+T2_1 --> T3_1
+D2_1 --> D3_1
+
+' Месяц 3 -> 4
+R3_1 --> R4_1
+T3_1 --> T4_1
+D3_1 --> D4_1
+
+' Месяц 4 -> 5
+R4_1 --> R5_1
+T4_1 --> T5_1
+D4_1 --> D5_1
+
+' Месяц 5 -> 6
+R5_1 --> R6_1
+T5_1 --> T5_1
+D5_1 --> D6_1
+
+' Месяц 6 -> 7
+R6_1 --> R7_1
+D6_1 --> D7_1
+
+' Месяц 7 -> 8
+R7_1 --> R8_1
+D7_1 --> D8_1
+
+' Месяц 8 -> 9
+R8_1 --> T9_1
+T8_1 --> T9_1
+D8_1 --> D9_1
+
+' Месяц 9 -> 10
+T9_1 --> T10_1
+D9_1 --> T10_1
+
+' =======================
+' КРИТИЧЕСКИЕ ЗАВИСИМОСТИ
+' =======================
+
+' Межслойные критические связи
+R1_1 --> T2_1 : literature -> review
+R3_1 --> D4_1 : methodology -> implementation
+R5_1 --> T5_1 : experiments -> results
+R7_1 --> T8_1 : evaluation -> analysis
+D6_1 --> R7_1 : system -> testing
+
+note bottom
+**РИСКИ И МИТИГАЦИЯ:**
+🔴 **КРИТИЧЕСКИЕ РИСКИ:**
+• М3-4: Задержка в core разработке
+• М6-7: Сложности self-healing
+• М8: Недостаточные результаты
+
+**МИТИГАЦИЯ:**
+• Weekly progress reviews
+• MVP подход для каждого модуля
+• Parallel development где возможно
+• Early testing и validation
+• Backup планы для каждой фазы
+end note
+
+@enduml

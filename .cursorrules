@@ -1,0 +1,169 @@
+# Cursor Project Rules & Initial Prompt
+
+Ты работаешь над исследовательским Python-проектом (магистерская работа).
+
+Цель проекта:
+Построить Business Process Graph (BPG), который делает LLM-агентов
+domain-aware, используя ИСКЛЮЧИТЕЛЬНО GUI-данные:
+- скриншоты интерфейсов,
+- OCR,
+- clickstreams.
+
+Нет доступа к backend, API, DOM, БД или бизнес-документации.
+
+---
+
+## Архитектурный якорь (обязательно)
+
+Ты ОБЯЗАН опираться на схемы в директории:
+
+diagrams/bpg_rkb/
+
+Ключевая схема уровня системы:
+- diagrams/bpg_rkb/bpg_llm_rag_mcp_level_1.puml
+
+Схемы являются источником истины.
+Если код или архитектурное решение противоречат схемам — это ошибка.
+
+---
+
+## Текущая практическая задача
+
+Спроектировать и заложить структуру FastAPI-сервиса
+для исследовательского PoC:
+
+YOLO (GUI element detection)
+→ multimodal embeddings (CLIP)
+→ Chroma (vector storage / retrieval)
+→ BPG construction
+→ runtime context for LLM (в будущем)
+
+⚠️ FastAPI здесь — инфраструктурный слой,
+а не цель проекта.
+
+---
+
+## Pipeline (доменная логика)
+
+Архитектура ОБЯЗАНА отражать следующий pipeline:
+
+1. preprocessing
+   - загрузка скриншотов
+   - OCR
+   - нормализация
+
+2. GUI element detection & grouping
+   - YOLO-based detection
+   - группировка в GUI-блоки
+
+3. Multimodal representation
+   - visual embeddings
+   - text embeddings
+   - layout features
+
+4. Cross-view entity linking
+   - linking одной бизнес-сущности между экранами
+   - multimodal similarity + temporal evidence
+
+5. Functional / temporal edge induction
+   - action → result
+   - последовательности из clickstreams
+
+6. BPG construction
+   - nodes + edges
+   - confidence + provenance
+
+---
+
+## Ограничения на реализацию
+
+### Общие требования
+- Python 3.13+
+- FastAPI
+- Pydantic v2
+- Только open-source
+- 100% типизация
+- Явные dataclasses / pydantic-модели
+- Логирование (структурированное)
+- Confidence scores и provenance — first-class citizens
+
+### Стиль проекта
+- Это ИССЛЕДОВАТЕЛЬСКИЙ код
+- Читаемость > оптимизация
+- Явные интерфейсы важнее реализации
+- Никакого “магического” end-to-end пайплайна
+
+---
+
+## Что делать СЕЙЧАС (порядок обязателен)
+
+1. Предложить структуру репозитория FastAPI
+   с разделением:
+   - domain
+   - application
+   - infrastructure
+
+2. Определить ключевые data-модели:
+   - GUIBlock
+   - EntityType
+   - EntityInstance
+   - GUIManifestation
+   - Action
+   - Edge
+   - BPG
+
+3. Реализовать skeleton pipeline:
+   - без YOLO-весов
+   - без реальных embedding моделей
+   - с заглушками, интерфейсами и контрактами
+
+4. Показать, как Chroma используется:
+   - для GUI-блоков
+   - для entity linking
+   (без оптимизации)
+
+---
+
+## Жёсткие ограничения по директориям
+
+Тебе РАЗРЕШЕНО писать код ТОЛЬКО в:
+
+- src/domain/
+- src/application/
+- src/infrastructure/
+- src/api/
+- tests/
+
+Тебе ЗАПРЕЩЕНО:
+- писать код в корне проекта
+- смешивать domain-логику с FastAPI
+- добавлять “utility” без явной роли
+- реализовывать сложный ML раньше архитектуры
+
+---
+
+## Формат ответов
+
+Каждый ответ ОБЯЗАН содержать:
+
+1. Архитектурное решение
+   (почему так, с точки зрения BPG и LLM runtime)
+
+2. Код по файлам
+   (структура + skeleton)
+
+3. Ограничения и допущения
+
+4. Следующие шаги
+
+---
+
+## Ключевой критерий качества
+
+Любое архитектурное решение должно быть объяснимо так:
+
+«Почему это помогает LLM-агенту
+понимать бизнес-логику через GUI
+и использовать BPG в runtime»
+
+Если ответ на этот вопрос отсутствует — решение неверно.

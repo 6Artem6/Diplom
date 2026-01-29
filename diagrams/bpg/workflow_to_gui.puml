@@ -1,0 +1,148 @@
+@startuml Runtime_Element_Linking_Flow
+!theme aws-orange
+title Runtime Element Linking: от WorkflowNode до RPA координат
+skinparam linetype ortho
+skinparam activity {
+  BackgroundColor #F0F8FF
+  BorderColor #4169E1
+}
+skinparam defaultFontColor black
+skinparam legend {
+  BackgroundColor white
+  BorderColor black
+  FontColor black
+}
+scale 0.8
+
+start
+
+' === Workflow Step Initiation ===
+partition "**🎯 Workflow Step Initiation**" #LightBlue {
+  :⚙️ **Receive WorkflowNode**\nОт Orchestrator для выполнения;
+  :📋 **WorkflowNode Details:**\n• step_type: "click_add_to_cart"\n• target_element_type: AddToCartButtonElement\n• page_context: ProductDetailPage\n• interaction_params: {product_variant: "default"}\n• expected_outcome: "cart_count_increment";
+  :📍 **Current Execution Context:**\n• current_page: ProductDetailPage\n• user_state: authenticated\n• cart_state: {items: 2, total: $15.50}\n• screen_resolution: 1920x1080;
+  note right
+    **Workflow Input:**
+    • Abstract element reference
+    • No specific coordinates yet
+    • Page context for disambiguation
+    • Expected interaction outcome
+  end note
+}
+
+' === Current Screen Capture ===
+partition "**📸 Current Screen Analysis**" #LightGreen {
+  :📱 **Capture Current Screenshot**\ncurrent_screen.png (1920x1080);
+  :🔍 **LayoutML Processing**\nИзвлечение структуры страницы;
+  :📊 **Detected UI Elements:**\n• Button elements: 5 detected\n• Link elements: 12 detected\n• Form elements: 2 detected\n• Image elements: 8 detected\n• Text elements: 25 detected;
+  :🎯 **Element Classification:**\nДля каждого элемента определить тип и роль;
+  note right
+    **LayoutML Output:**
+    • Bounding boxes for all elements
+    • Element type classification
+    • Visual feature extraction
+    • Hierarchical DOM structure
+  end note
+}
+
+' === Cache Lookup ===
+partition "**💾 Element Linking Cache Lookup**" #LightYellow {
+  :🔍 **Query Element Cache**\nПоиск cached элементов для текущей страницы;
+  :📊 **Cache Lookup Query:**\npage_type: ProductDetailPage\nelement_type: AddToCartButtonElement\ncache_validity: < 1 hour;
+
+  if (**Cache hit found?**) then (✅ yes)
+    :💾 **Load Cached Linking**\n• element_id: btn_add_cart_001\n• last_coordinates: (850, 650)\n• confidence: 0.87\n• last_seen: 15 minutes ago;
+    :🔍 **Validate Cache Freshness**\nПроверка актуальности cached данных;
+    if (**Cache still valid?**) then (yes)
+      :⚡ **Use Cached Coordinates**\nБыстрый путь выполнения;
+    else (outdated)
+      :🔄 **Cache invalidated**\nПереходим к real-time linking;
+    endif
+  else (❌ miss)
+    :🔍 **Proceed to real-time linking**\nCache miss, нужен full linking process;
+  endif
+}
+
+' === Cross-view Matching ===
+partition "**🔗 Cross-view Element Matching**" #Lavender {
+  :🧠 **Load Cross-view Templates**\nИз BPG Entity Layer;
+  :📋 **AddToCartButton Templates:**\n• **Template A**: Orange button, "Add to Cart" text\n• **Template B**: Icon + text, bottom-right position\n• **Template C**: Large CTA button, center placement;
+  :🎨 **Multi-modal Similarity Matching:**\n\n**Visual Matching:**\n• CLIP embeddings similarity: 0.91\n• Color/shape analysis: 0.87\n• Size/position consistency: 0.83\n\n**Textual Matching:**\n• OCR text extraction: "Add to Cart"\n• Text similarity score: 0.95\n• Language/localization match: 1.0\n\n**Structural Matching:**\n• DOM path similarity: 0.79\n• CSS class consistency: 0.88\n• Relative positioning: 0.92;
+  :📊 **Combined Confidence Score:**\nweighted_average(\n  visual: 0.87 × 0.3,\n  textual: 0.95 × 0.4,\n  structural: 0.86 × 0.3\n) = **0.89**;
+  note right
+    **Cross-view Strategy:**
+    • Compare with known element templates
+    • Multi-modal similarity scoring
+    • Account for layout variations
+    • Handle A/B test differences
+  end note
+}
+
+' === Coordinate Extraction ===
+partition "**📍 Coordinate Extraction**" #LightCoral {
+  :🎯 **Best Match Element Identified**\nelement_bbox: (720, 620, 180, 45)\nconfidence: 0.89;
+  :📐 **Calculate Click Coordinates:**\n\n**Center Point Calculation:**\n• x_center = bbox.x + bbox.width/2 = 810\n• y_center = bbox.y + bbox.height/2 = 642\n\n**Click Strategy Optimization:**\n• center_click: (810, 642) - standard\n• offset_click: (815, 645) - avoid conflicts\n• safe_zone_click: (808, 640) - accessible area;
+  :✅ **Selected Coordinates: (810, 642)**\nОптимальная точка для клика;
+  :🔍 **Coordinate Validation:**\n• Within screen bounds: ✓\n• Not overlapped by other elements: ✓\n• In clickable area: ✓\n• Matches expected element size: ✓;
+  note right
+    **Coordinate Strategy:**
+    • Prefer element center points
+    • Avoid edge cases and overlaps
+    • Account for scroll position
+    • Validate clickability
+  end note
+}
+
+' === RPA Execution ===
+partition "**🤖 RPA Action Execution**" #PaleGreen {
+  :🖱️ **Execute Click Action**\nPlaywright.click(x=810, y=642);
+  :⏱️ **Action Timing:**\n• Pre-action wait: 200ms\n• Click duration: 50ms\n• Post-action wait: 500ms;
+  :📸 **Capture Post-action Screenshot**\nДля верификации результата;
+  :🔍 **Verify Expected Outcome**\nПроверка успешности действия;
+  if (**Expected outcome achieved?**) then (✅ success)
+    :📈 **Update Success Metrics**\n• element_confidence += 0.05\n• linking_success_rate += 1\n• coordinates marked as reliable;
+    :💾 **Update Cache**\nСохранить успешный linking;
+    :📊 **Cache Update:**\n• coordinates: (810, 642)\n• confidence: 0.94 (improved)\n• timestamp: now()\n• success_count: +1;
+  else (❌ failure)
+    :📉 **Handle Action Failure**\nАнализ причин неудачи;
+    :🔄 **Failure Analysis:**\n• Element not clickable at coordinates?\n• Page layout changed during execution?\n• Dynamic content loading conflict?\n• Element moved/hidden after detection?;
+    if (**Retry with alternative coordinates?**) then (yes)
+      :🎯 **Try Alternative Click Points**\n• offset_coordinates: (815, 645)\n• edge_coordinates: (750, 642)\n• fallback_coordinates: (850, 642);
+    else (no fallback)
+      :👥 **Escalate to HITL**\nТребуется человеческое вмешательство;
+      stop
+    endif
+  endif
+}
+
+' === Learning and Optimization ===
+partition "**🎓 Learning and Cache Optimization**" #Moccasin {
+  :📊 **Collect Execution Metrics**\n• linking_accuracy: 0.89\n• coordinate_precision: successful\n• execution_time: 1.2 seconds\n• user_satisfaction: (pending);
+  :🧠 **Update Cross-view Templates**\nНа основе успешного linking;
+  :🔄 **Template Learning:**\n• Visual template confidence += 0.03\n• Structural patterns reinforced\n• Coordinate optimization data stored\n• Error patterns (if any) recorded;
+  :💾 **Optimize Cache Strategy**\nУлучшение caching эффективности;
+  :📈 **Cache Optimization:**\n• Increase TTL for successful linkings\n• Prioritize high-confidence templates\n• Improve cache hit prediction\n• Reduce memory footprint;
+  note right
+    **Continuous Improvement:**
+    • Successful linkings → higher confidence
+    • Failed attempts → alternative strategies
+    • User corrections → ground truth data
+    • Performance metrics → optimization
+  end note
+}
+
+stop
+
+' === Легенда ===
+legend bottom
+**🔎 Легенда:**
+• Workflow Step Initiation — входные данные WorkflowNode
+• Current Screen Analysis — обработка скриншота и LayoutML
+• Cache Lookup — проверка кэша
+• Cross-view Matching — сопоставление с шаблонами
+• Coordinate Extraction — вычисление координат
+• RPA Action Execution — выполнение действия
+• Learning & Optimization — обучение и улучшение
+end legend
+
+@enduml

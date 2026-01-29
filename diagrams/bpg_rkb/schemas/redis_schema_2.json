@@ -1,0 +1,128 @@
+{
+  "rag:context:{session_id}": {
+    "retrieved_chunks": [
+      {
+        "chunk_id": "chunk_uuid_123",
+        "text": "Business rule: Products must be in stock before adding to cart",
+        "source": "business_rules",
+        "relevance_score": 0.92,
+        "metadata": {"domain": "e-commerce", "priority": "high"}
+      }
+    ],
+    "retrieval_timestamp": 1703980800,
+    "retrieval_latency_ms": 45,
+    "context_token_count": 1200,
+    "ttl": 1800
+  },
+
+  "mcp:server_health:{server_name}": {
+    "status": "healthy",
+    "last_check": 1703980800,
+    "response_time_ms": 120,
+    "available_resources": 145,
+    "available_tools": 12,
+    "error_count_last_hour": 0,
+    "ttl": 60
+  },
+
+  "mcp:resource_cache:{resource_uri_hash}": {
+    "resource_content": "...",
+    "content_type": "application/json",
+    "retrieved_at": 1703980800,
+    "content_hash": "abc123",
+    "size_bytes": 2048,
+    "access_count": 5,
+    "ttl": 3600
+  },
+
+  "screenshot:analysis_queue": {
+    "pending": [
+      {
+        "screenshot_id": "screenshot_uuid_456",
+        "priority": "high",
+        "analysis_types": ["element_detection", "layout_analysis"],
+        "requested_at": 1703980800
+      }
+    ],
+    "processing": [
+      {
+        "screenshot_id": "screenshot_uuid_789",
+        "model": "gpt-4-vision",
+        "started_at": 1703980750
+      }
+    ]
+  },
+
+  "ui_element:detected:{screenshot_id}": {
+    "elements": [
+      {
+        "element_id": "elem_123",
+        "type": "button",
+        "bbox": {"x": 100, "y": 200, "width": 150, "height": 40},
+        "text": "Add to Cart",
+        "confidence": 0.95,
+        "selectors": {
+          "css": "#add-to-cart-btn",
+          "xpath": "//button[@id='add-to-cart-btn']"
+        }
+      }
+    ],
+    "analyzed_at": 1703980800,
+    "ttl": 7200
+  },
+
+  "adapter:state:{adapter_name}": {
+    "current_page_url": "https://example.com/product/123",
+    "browser_context": {
+      "cookies": [...],
+      "local_storage": {...}
+    },
+    "last_action": {
+      "type": "click",
+      "target": "#product-details",
+      "timestamp": 1703980800
+    },
+    "active_elements": ["elem_123", "elem_456"],
+    "ttl": 3600
+  },
+
+  "pattern:visual_signature:{pattern_hash}": {
+    "pattern_id": "visual_pattern_uuid_789",
+    "layout_structure": {
+      "grid": "3x3",
+      "dominant_colors": ["#FFFFFF", "#007BFF"],
+      "recurring_elements": ["button", "image", "text"]
+    },
+    "matched_screenshots": ["screenshot_123", "screenshot_456"],
+    "confidence": 0.88,
+    "ttl": 86400
+  },
+
+  "prompt:assembled:{execution_id}": {
+    "prompt_parts": {
+      "system": "You are an AI assistant...",
+      "rag_context": "Retrieved business rules: ...",
+      "mcp_context": "External system data: ...",
+      "user_intent": "Add product to cart",
+      "screenshot_analysis": "Detected elements: ..."
+    },
+    "total_tokens": 2500,
+    "compression_applied": true,
+    "original_tokens": 3800,
+    "timestamp": 1703980800,
+    "ttl": 600
+  },
+
+  "context:compressed:{session_id}": {
+    "original_conversation": [...],
+    "compressed_summary": "User is browsing e-commerce site, viewing product details...",
+    "key_entities": ["product_123", "customer_456"],
+    "critical_context": {
+      "current_page": "product_detail",
+      "user_intent": "purchase",
+      "session_duration_s": 245
+    },
+    "compression_ratio": 0.42,
+    "ttl": 3600
+  }
+}

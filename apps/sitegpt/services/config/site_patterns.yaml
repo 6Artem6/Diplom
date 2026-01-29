@@ -1,0 +1,125 @@
+patterns:
+  wordpress_admin:
+    indicators: [".wp-admin", "#adminmenu", "wp-includes", "wp-content"]
+    common_elements:
+      login_form: "#loginform"
+      username: "#user_login"
+      password: "#user_pass"
+    validation_patterns:
+      username: "required"
+      password: "minLength:8"
+
+  yii2_framework:
+    indicators: ["data-confirm", ".field-", "yii\\", "yiiActiveForm"]
+    form_wrapper: ".form-group"
+    error_container: ".field-error"
+    submit_selector: "button[type=submit]"
+
+  laravel_framework:
+    indicators: ["XSRF-TOKEN", "laravel_session", "csrf-token"]
+    form_wrapper: ".form-group"
+    error_container: ".invalid-feedback"
+    submit_selector: "button[type=submit],input[type=submit]"
+
+  drupal:
+    indicators: ["drupal-settings-json", "drupal.js", ".block-system"]
+    login_form: "form#user-login-form"
+    username: "input[name=name]"
+    password: "input[name=pass]"
+
+  joomla:
+    indicators: ["Joomla!", "com_content", "mod_login"]
+    login_form: "form#form-login"
+    username: "input#modlgn-username"
+    password: "input#modlgn-passwd"
+
+  magento:
+    indicators: ["mage-cache-storage", "Magento_Customer/js/customer-data"]
+    login_form: "form#login-form"
+    username: "input#email"
+    password: "input#pass"
+
+  shopify:
+    indicators: ["cdn.shopify.com", "window.Shopify"]
+    login_form: "form#customer_login"
+    username: "input#CustomerEmail"
+    password: "input#CustomerPassword"
+
+  react_app:
+    indicators: ["data-reactroot", "__REACT_DEVTOOLS_GLOBAL_HOOK__"]
+    root_selector: "#root, #app"
+    routing: "react-router, hashrouter"
+
+  vue_app:
+    indicators: ["__VUE_DEVTOOLS_GLOBAL_HOOK__", "v-"]
+    root_selector: "#app, [id^=vue-]"
+    directives: ["v-bind", "v-model"]
+
+  angular_app:
+    indicators: ["ng-version", "platform-browser", "ng-reflect-"]
+    root_selector: "app-root, [ng-version]"
+    modules: ["@angular/core"]
+
+  svelte_app:
+    indicators: ["data-svelte-h", "svelte-"]
+    root_selector: "#app, [id^=svelte-]"
+
+  nextjs:
+    indicators: ["__NEXT_DATA__", "next.config.js"]
+    root_selector: "#__next"
+
+  nuxtjs:
+    indicators: ["__NUXT__", ".nuxt"]
+    root_selector: "#__nuxt"
+
+  django:
+    indicators: ["csrftoken", "django.jQuery"]
+    login_form: "form#login-form"
+    username: "input#id_username"
+    password: "input#id_password"
+
+  flask:
+    indicators: ["flask_wtf", "csrf_token"]
+    login_form: "form[action*='/login']"
+
+  rails:
+    indicators: ["csrf-param", "csrf-token", "data-remote"]
+    login_form: "form[action*='/sessions']"
+    username: "input#session_email"
+    password: "input#session_password"
+
+  spring_boot:
+    indicators: ["JSESSIONID", "SpringApplication"]
+    login_form: "form[action*='login']"
+    username: "input[name=username]"
+    password: "input[name=password]"
+
+  aspnet:
+    indicators: ["__VIEWSTATE", "ASP.NET_SessionId"]
+    login_form: "form#aspnetForm"
+    username: "input#UserName"
+    password: "input#Password"
+
+  oracle_apex:
+    indicators: ["apex.oracle.com", "f?p="]
+    login_form: "form#apex_login"
+    username: "input#P101_USERNAME"
+    password: "input#P101_PASSWORD"
+
+  salesforce:
+    indicators: ["sfdcSession", "aura:application"]
+    login_form: "form#login_form"
+    username: "input#username"
+    password: "input#password"
+
+  sharepoint:
+    indicators: ["SharePoint", "_layouts/15/"]
+    login_form: "form#credentials"
+    username: "input#usernameInput"
+    password: "input#passwordInput"
+
+  confluence:
+    indicators: ["atlassian-confluence", "ajs-"]
+    login_form: "form#login-form"
+    username: "input#os_username"
+    password: "input#os_password"

@@ -1,0 +1,337 @@
+@startuml Modern_Microservices_Architecture
+!theme aws-orange
+title Современная микросервисная архитектура: RAG + MCP + Function Calling + Structured Outputs
+skinparam linetype ortho
+skinparam package {
+  BackgroundColor #F8F8FF
+  BorderColor #4169E1
+}
+left to right direction
+
+' === Service 1: RAG Knowledge Service ===
+package "🧠 RAG KNOWLEDGE SERVICE" #E8F5E8 {
+  package "Controllers" {
+    class RAGKnowledgeController {
+      +query_business_patterns(query: str, domain: str): List[BusinessPattern]
+      +semantic_search_entities(query_embedding: Vector): List[RelatedEntity]
+      +get_cross_view_mappings(entity_id: str): CrossViewMapping
+      +validate_business_constraints(action: Action, context: BusinessContext): ValidationResult
+    }
+
+    class VectorSearchController {
+      +search_similar_patterns(pattern_embedding: Vector, k: int): List[SimilarPattern]
+      +hybrid_search(text_query: str, vector_query: Vector): HybridSearchResult
+      +update_vector_index(new_patterns: List[BusinessPattern]): IndexUpdateResult
+    }
+  }
+
+  package "Core Services" {
+    class CrossViewEntityLinkingService {
+      -yolo11_detector: YOLO11UIDetector
+      -layoutlm_analyzer: LayoutLMv3Analyzer
+      -embedding_generator: CompositeEmbeddingGenerator
+      +link_entities_across_views(screenshots: List[Screenshot]): List[CrossViewEntity]
+      +calculate_multimodal_similarity(entity1: UIEntity, entity2: UIEntity): float
+      +cluster_with_adaptive_threshold(entities: List[UIEntity]): List[EntityCluster]
+    }
+
+    class RAGRetrievalService {
+      -vector_store: PineconeClient
+      -graph_store: Neo4jClient
+      -reranker: BusinessContextReranker
+      +retrieve_relevant_context(query: str, k: int): RetrievalResult
+      +semantic_search_with_filters(query: Vector, filters: Dict): List[SearchResult]
+      +graph_traversal_search(start_entity: str, depth: int): GraphSearchResult
+    }
+
+    class BPGConstructionService {
+      -pattern_miner: BusinessPatternMiner
+      -relationship_extractor: EntityRelationshipExtractor
+      +construct_bpg_from_screenshots(screenshots: List[Screenshot]): BusinessProcessGraph
+      +extract_workflow_patterns(entity_interactions: List[Interaction]): List[WorkflowPattern]
+      +validate_process_consistency(bpg: BusinessProcessGraph): ValidationResult
+    }
+  }
+
+  package "Data Layer" {
+    class VectorKnowledgeRepository {
+      -pinecone_client: PineconeClient
+      -faiss_index: FAISSIndex
+      +store_pattern_embeddings(patterns: List[BusinessPattern]): StorageResult
+      +query_similar_vectors(query_vector: Vector, k: int): List[VectorResult]
+      +update_embeddings_batch(updates: List[EmbeddingUpdate]): BatchUpdateResult
+    }
+
+    class GraphKnowledgeRepository {
+      -neo4j_client: Neo4jClient
+      +store_entity_relationships(relationships: List[EntityRelationship]): StorageResult
+      +query_related_entities(entity_id: str, relation_type: str): List[RelatedEntity]
+      +traverse_business_processes(start_node: str, traversal_rules: TraversalRules): TraversalResult
+    }
+  }
+}
+
+' === Service 2: MCP Integration Service ===
+package "🔌 MCP INTEGRATION SERVICE" #FFE4B5 {
+  package "Controllers" {
+    class MCPServerController {
+      +register_knowledge_source(source_config: MCPSourceConfig): RegistrationResult
+      +query_external_knowledge(query: MCPQuery): MCPQueryResult
+      +sync_knowledge_sources(source_ids: List[str]): SyncResult
+      +validate_mcp_connection(connection: MCPConnection): ValidationResult
+    }
+
+    class ResourceCoordinationController {
+      +coordinate_multi_source_query(sources: List[MCPSource], query: Query): CoordinatedResult
+      +resolve_knowledge_conflicts(conflicting_data: List[ConflictingKnowledge]): ConflictResolution
+      +cache_external_resources(resources: List[ExternalResource>): CacheResult
+    }
+  }
+
+  package "MCP Services" {
+    class BPGMCPServer {
+      -bpg_repository: GraphKnowledgeRepository
+      -vector_repository: VectorKnowledgeRepository
+      +get_business_entities(domain: str): List[BusinessEntity]
+      +get_process_patterns(context: BusinessContext): List[ProcessPattern]
+      +validate_business_rule(rule: BusinessRule, context: ExecutionContext): ValidationResult
+    }
+
+    class ExternalSystemMCPServer {
+      -system_connectors: Map[String, SystemConnector]
+      +connect_to_external_system(system_config: SystemConfig): ConnectionResult
+      +query_external_data(system_id: str, query: ExternalQuery): ExternalDataResult
+      +sync_external_knowledge(system_id: str): SyncResult
+    }
+
+    class PluginRegistryMCPServer {
+      -plugin_manager: PluginManager
+      +register_plugin(plugin: MCPPlugin): RegistrationResult
+      +discover_available_tools(context: DiscoveryContext): List[AvailableTool]
+      +execute_plugin_function(plugin_id: str, function: str, params: Dict): ExecutionResult
+    }
+  }
+}
+
+' === Service 3: LLM Orchestration Service ===
+package "🤖 LLM ORCHESTRATION SERVICE" #F0F0FF {
+  package "Controllers" {
+    class SmartRoutingController {
+      +route_request_by_complexity(request: LLMRequest): RoutingResult
+      +optimize_model_selection(task_type: TaskType, budget: Budget): ModelSelection
+      +manage_fallback_strategies(primary_failure: ModelFailure): FallbackResult
+    }
+
+    class StructuredOutputController {
+      +generate_structured_response(prompt: Prompt, schema: PydanticSchema): StructuredResponse
+      +validate_output_schema(response: LLMResponse, expected_schema: Schema): ValidationResult
+      +handle_schema_violations(violation: SchemaViolation): CorrectionResult
+    }
+
+    class PromptCacheController {
+      +check_cached_response(prompt_hash: str, context_hash: str): CacheResult
+      +store_response_with_ttl(prompt: Prompt, response: LLMResponse, ttl: int): StorageResult
+      +invalidate_cache_by_pattern(invalidation_pattern: Pattern): InvalidationResult
+    }
+  }
+
+  package "LLM Agents" {
+    class MultimodalReasoningAgent {
+      -gpt4v_client: GPT4VisionClient
+      -clip_encoder: CLIPEncoder
+      +analyze_gui_screenshot(screenshot: bytes, context: BusinessContext): VisualAnalysis
+      +perform_cross_modal_synthesis(visual: VisualFeatures, textual: TextFeatures): SynthesisResult
+      +detect_cross_view_entities(screenshots: List[Screenshot]): List[DetectedEntity]
+    }
+
+    class StructuredPlanningAgent {
+      -gpt4_client: GPT4Client
+      -claude_client: Claude35Client
+      +generate_action_plan(intent: Intent, context: ExecutionContext): ActionPlan
+      +validate_plan_structure(plan: ActionPlan, schema: PlanSchema): ValidationResult
+      +optimize_execution_sequence(plan: ActionPlan, constraints: List[Constraint>): OptimizedPlan
+    }
+
+    class FunctionCallingAgent {
+      -tool_registry: ToolRegistry
+      -function_executor: FunctionExecutor
+      +select_appropriate_tools(task: Task, available_tools: List[Tool>): ToolSelection
+      +execute_function_calls(function_calls: List[FunctionCall>): List[FunctionResult>
+      +validate_function_parameters(function: Function, params: Dict): ValidationResult
+    }
+  }
+
+  package "Prompt Engineering" {
+    class RAGPromptAssemblyService {
+      -context_compressor: ContextCompressor
+      -template_manager: PromptTemplateManager
+      +assemble_rag_prompt(query: str, retrieved_context: RetrievalResult): RAGPrompt
+      +compress_context_to_token_limit(context: RetrievalResult, limit: int): CompressedContext
+      +optimize_prompt_for_model(prompt: Prompt, target_model: LLMModel): OptimizedPrompt
+    }
+
+    class CacheOptimizationService {
+      -openai_cache_client: OpenAICacheClient
+      -redis_cache_client: RedisCacheClient
+      +manage_prompt_caching_strategy(prompt: Prompt): CachingStrategy
+      +optimize_cache_hit_rate(usage_patterns: UsagePatterns): OptimizationResult
+      +handle_cache_invalidation(invalidation_triggers: List[Trigger>): InvalidationResult
+    }
+  }
+}
+
+' === Service 4: Function Execution Service ===
+package "⚡ FUNCTION EXECUTION SERVICE" #F5F0FF {
+  package "Controllers" {
+    class ToolRegistryController {
+      +register_business_function(function: BusinessFunction): RegistrationResult
+      +discover_available_tools(context: ExecutionContext): List[AvailableTool]
+      +validate_tool_parameters(tool: Tool, parameters: Dict): ValidationResult
+    }
+
+    class ExecutionCoordinationController {
+      +coordinate_multi_tool_execution(tools: List[Tool], execution_plan: ExecutionPlan): CoordinationResult
+      +handle_execution_dependencies(dependencies: List[Dependency>): DependencyResult
+      +provide_real_time_guidance(execution_state: ExecutionState): GuidanceResult
+    }
+  }
+
+  package "Core Services" {
+    class BusinessLogicValidationService {
+      -bpg_client: BPGKnowledgeClient
+      -rule_engine: BusinessRuleEngine
+      +validate_business_constraints(action: Action, context: BusinessContext): ValidationResult
+      +check_preconditions(action: Action, current_state: SystemState): PreconditionResult
+      +evaluate_postconditions(action_result: ActionResult, expected_outcome: ExpectedOutcome): PostconditionResult
+    }
+
+    class TemplateExecutionService {
+      -pattern_library: BusinessPatternLibrary
+      -parameter_resolver: ParameterResolver
+      +execute_pattern_template(template_id: str, parameters: Dict): ExecutionResult
+      +resolve_template_parameters(template: ProcessTemplate, context: ExecutionContext): ResolvedParameters
+      +validate_template_execution(template: ProcessTemplate, execution_result: ExecutionResult): ValidationResult
+    }
+
+    class PlatformAdapterService {
+      -web_adapter: PlaywrightAdapter
+      -desktop_adapter: DesktopAutomationAdapter
+      -mobile_adapter: AppiumAdapter
+      +execute_platform_action(action: Action, platform: Platform): ExecutionResult
+      +adapt_action_to_platform(generic_action: Action, target_platform: Platform): PlatformSpecificAction
+      +handle_platform_errors(error: PlatformError, recovery_strategy: RecoveryStrategy): RecoveryResult
+    }
+  }
+}
+
+' === Inter-Service Communication ===
+' RAG to MCP Integration
+RAGKnowledgeController --> MCPServerController : external_knowledge_request
+VectorSearchController --> BPGMCPServer : bpg_pattern_query
+
+' MCP to LLM Orchestration
+ResourceCoordinationController --> RAGPromptAssemblyService : enriched_context
+MCPServerController --> MultimodalReasoningAgent : external_context
+
+' LLM Orchestration to Function Execution
+StructuredPlanningAgent --> ToolRegistryController : tool_discovery_request
+FunctionCallingAgent --> ExecutionCoordinationController : function_execution_request
+
+' Cross-Service Data Flow
+CrossViewEntityLinkingService --> VectorKnowledgeRepository : entity_embeddings_storage
+RAGRetrievalService --> GraphKnowledgeRepository : graph_traversal_query
+BusinessLogicValidationService --> BPGMCPServer : business_rule_validation
+
+' === External Dependencies ===
+' LLM APIs
+MultimodalReasoningAgent --> "OpenAI GPT-4V API"
+StructuredPlanningAgent --> "OpenAI GPT-4 API"
+StructuredPlanningAgent --> "Anthropic Claude-3 API"
+FunctionCallingAgent --> "Local Llama 3"
+
+' Storage Systems
+VectorKnowledgeRepository --> "Pinecone Vector DB"
+VectorKnowledgeRepository --> "FAISS Local Index"
+GraphKnowledgeRepository --> "Neo4j Graph DB"
+PromptCacheController --> "Redis Cache Cluster"
+ToolRegistryController --> "PostgreSQL DB"
+
+' === Modern Architecture Notes ===
+note right of CrossViewEntityLinkingService
+**Modern Cross-View Linking:**
+• YOLO11 specialized для GUI detection
+• LayoutLMv3 для complex spatial relationships
+• Composite embeddings (visual + text + layout)
+• Adaptive clustering с auto-threshold
+• Batch LLM validation для uncertain cases
+
+**Performance Targets:**
+• F1-Score: >85% для entity linking
+• Latency: <3 seconds per screenshot batch
+• Cost: <$0.02 per linking operation
+end note
+
+note right of RAGPromptAssemblyService
+**RAG-Enhanced Prompting:**
+• Context compression: 3K → 1.5K tokens
+• Business pattern integration
+• Multi-modal context fusion
+• Template-based optimization
+
+**Caching Strategy:**
+• OpenAI native caching (when available)
+• Redis fallback для complex contexts
+• 60-80% cost reduction target
+• Smart cache invalidation
+end note
+
+note right of FunctionCallingAgent
+**Function Calling Architecture:**
+```python
+@tool
+def validate_business_rule(entity_id: str, action: str):
+    """Validate action against BPG business rules"""
+    return bpg_client.check_constraints(entity_id, action)
+
+@tool
+def execute_pattern_template(template_id: str, params: Dict):
+    """Execute parameterized business process"""
+    return pattern_library.execute(template_id, params)
+```
+
+**Tool Categories:**
+• Business Logic Validation
+• Pattern Template Execution
+• Cross-View Entity Operations
+• Platform-Specific Actions
+end note
+
+note bottom
+**🔧 Modern Architecture Benefits:**
+
+**1. RAG-First Knowledge Management:**
+• Semantic search через vector embeddings
+• Graph traversal для relationship queries
+• Cross-view entity linking как core capability
+• Business context enrichment
+
+**2. MCP Integration Layer:**
+• Standardized external knowledge access
+• Plugin architecture для extensibility
+• Multi-source knowledge coordination
+• Conflict resolution mechanisms
+
+**3. Advanced LLM Orchestration:**
+• Smart routing based на complexity + cost
+• Structured outputs с Pydantic validation
+• Function calling для deterministic operations
+• Aggressive prompt caching
+
+**4. Enterprise-Ready Execution:**
+• Business logic validation layer
+• Template-based execution patterns
+• Multi-platform automation support
+• Real-time adaptation capabilities
+end note
+
+@enduml

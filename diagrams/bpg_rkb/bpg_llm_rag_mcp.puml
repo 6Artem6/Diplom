@@ -1,0 +1,183 @@
+@startuml Updated_BPG_LLM_Architecture
+!theme aws-orange
+title BPG+LLM GUI Automation с RAG, MCP, Structured Outputs
+skinparam linetype ortho
+skinparam rectangle {
+  RoundCorner 8
+  BorderColor #444
+}
+
+actor "Пользователь" as User
+
+' === Input Processing Layer ===
+package "INPUT PROCESSING LAYER" #F0F8FF {
+  rectangle "Intent Capture\n• Natural language commands\n• Voice input processing\n• Context-aware parsing" as UserIntentCapture
+  rectangle "Visual Context Capture\n• Screenshot acquisition\n• Multimodal analysis (GPT-4V)\n• Element identification" as VisualCapture
+  rectangle "Current State Analysis\n• Page identification\n• User session context\n• Navigation history" as StateAnalysis
+}
+
+' === RAG-Enhanced Knowledge Base ===
+package "RAG-ENHANCED KNOWLEDGE BASE" #E8F5E8 {
+  rectangle "Vector Knowledge Store" #LightGreen {
+    rectangle "BPG Pattern Embeddings\n• Business process vectors\n• Entity relationship vectors\n• Navigation pattern vectors" as BPGVectors
+    rectangle "Semantic Search Engine\n• FAISS/Pinecone integration\n• Similarity-based retrieval\n• Relevance ranking" as SemanticSearch
+    rectangle "Context Retrieval Engine\n• Multi-hop knowledge retrieval\n• Cross-entity linking\n• Pattern matching" as ContextRetrieval
+  }
+
+  rectangle "Structured Knowledge Store" #LightYellow {
+    rectangle "Neo4j Graph Database\n• Business entity relationships\n• Process dependencies\n• Cross-view entity mappings" as Neo4jStore
+    rectangle "Pattern Templates\n• Parameterized workflows\n• Structured execution plans\n• Success criteria" as PatternTemplates
+    rectangle "Business Rules\n• Validation constraints\n• Conditional logic\n• Exception handling" as BusinessRules
+  }
+}
+
+' === MCP Integration Layer ===
+package "MCP INTEGRATION LAYER" #FFE4B5 {
+  rectangle "MCP Server Registry\n• Knowledge source connectors\n• External system adapters\n• Plugin management" as MCPRegistry
+  rectangle "Knowledge Access Layer\n• Standardized data retrieval\n• Multi-source aggregation\n• Real-time updates" as KnowledgeAccess
+  rectangle "Context Enrichment\n• Dynamic knowledge injection\n• Multi-source fusion\n• Conflict resolution" as ContextEnrichment
+}
+
+' === LLM Orchestration with Modern Features ===
+package "LLM ORCHESTRATION LAYER" #FFF8E1 {
+  rectangle "Prompt Engineering Engine" #LightCoral {
+    rectangle "RAG Context Assembly\n• Knowledge retrieval integration\n• Context compression\n• Token optimization" as RAGAssembly
+    rectangle "Prompt Cache Manager\n• OpenAI/Anthropic caching\n• Response memoization\n• Cache invalidation" as PromptCache
+    rectangle "Dynamic Prompt Builder\n• Template-based construction\n• Multi-modal prompt fusion\n• Context injection" as PromptBuilder
+  }
+
+  rectangle "Multi-LLM Coordination" #Lavender {
+    rectangle "Smart Model Router\n• Complexity-based routing\n• Cost optimization\n• Fallback strategies" as ModelRouter
+    rectangle "Multimodal Reasoning\n• GPT-4V visual analysis\n• Cross-modal synthesis\n• Evidence integration" as MultimodalReasoning
+    rectangle "Structured Output Generator\n• Pydantic schema validation\n• JSON schema enforcement\n• Type safety guarantees" as StructuredOutput
+  }
+
+  rectangle "Function Calling Interface" #LightCyan {
+    rectangle "Tool Registry\n• BPG query functions\n• Validation functions\n• Execution functions" as ToolRegistry
+    rectangle "Function Orchestrator\n• Tool selection logic\n• Parameter validation\n• Result integration" as FunctionOrchestrator
+    rectangle "Business Logic Validator\n• Rule checking functions\n• Constraint validation\n• State verification" as BusinessValidator
+  }
+}
+
+' === Execution Layer ===
+package "EXECUTION LAYER" #F5F0FF {
+  rectangle "Platform Abstraction\n• Web (Playwright)\n• Desktop (OS APIs)\n• Mobile (Appium)" as PlatformAbstraction
+  rectangle "Template Executor\n• Pattern instantiation\n• Parameter substitution\n• Action sequencing" as TemplateExecutor
+  rectangle "Real-time Adaptation\n• UI change detection\n• Dynamic re-planning\n• Error recovery" as RealtimeAdaptation
+}
+
+' === Data Flow with Modern Technologies ===
+User --> UserIntentCapture : "Add product to cart"
+UserIntentCapture --> VisualCapture : intent + context
+VisualCapture --> MultimodalReasoning : screenshot + text
+
+' RAG Flow
+MultimodalReasoning --> SemanticSearch : multimodal query
+SemanticSearch --> BPGVectors : vector similarity
+BPGVectors --> ContextRetrieval : relevant patterns
+ContextRetrieval --> Neo4jStore : graph traversal
+
+' MCP Integration
+ContextRetrieval --> MCPRegistry : external knowledge request
+MCPRegistry --> KnowledgeAccess : standardized query
+KnowledgeAccess --> ContextEnrichment : multi-source data
+
+' Prompt Engineering with Caching
+ContextEnrichment --> PromptCache : cache check
+PromptCache --> RAGAssembly : cache miss/assembly
+RAGAssembly --> PromptBuilder : enriched context
+
+' LLM Processing
+PromptBuilder --> ModelRouter : optimized prompt
+ModelRouter --> StructuredOutput : model selection
+StructuredOutput --> FunctionOrchestrator : structured plan
+
+' Function Calling
+FunctionOrchestrator --> ToolRegistry : function selection
+ToolRegistry --> BusinessValidator : validation calls
+BusinessValidator --> TemplateExecutor : validated actions
+
+' Execution
+TemplateExecutor --> PlatformAbstraction : execution commands
+PlatformAbstraction --> RealtimeAdaptation : platform actions
+RealtimeAdaptation --> User : automated results
+
+' === Technology Integration Notes ===
+note right of MultimodalReasoning
+**Multimodal Reasoning Implementation:**
+• GPT-4V for visual understanding
+• Cross-modal evidence synthesis
+• Visual + textual + spatial analysis
+• Confidence scoring across modalities
+
+**Used specifically for:**
+• Cross-view entity linking
+• Complex UI understanding
+• Ambiguous visual contexts
+end note
+
+note right of StructuredOutput
+**Structured Outputs with Pydantic:**
+```python
+class GUIAction(BaseModel):
+    action_type: str
+    target_element: str
+    parameters: Dict[str, Any]
+    confidence: float
+    business_reasoning: str
+
+class ExecutionPlan(BaseModel):
+    steps: List[GUIAction]
+    fallback_strategy: Optional[str]
+    validation_rules: List[str]
+```
+**Benefits:** 100% parseability, type safety
+end note
+
+note right of PromptCache
+**Prompt Caching Strategy:**
+• OpenAI/Anthropic native caching
+• Redis fallback for complex contexts
+• 60-80% cost reduction on repeated patterns
+• Smart cache invalidation based on context changes
+
+**Cache Keys:**
+• BPG pattern signatures
+• Context fingerprints
+• User session identifiers
+end note
+
+note right of ToolRegistry
+**Function Calling Tools:**
+```python
+@tool
+def validate_business_rule(entity_id: str, action: str):
+    """Validate action against business rules"""
+    return bpg.check_constraints(entity_id, action)
+
+@tool
+def get_similar_patterns(current_context: Dict):
+    """Retrieve similar execution patterns"""
+    return vector_search.find_similar(current_context)
+
+@tool
+def execute_template(template_id: str, params: Dict):
+    """Execute parameterized template"""
+    return template_engine.execute(template_id, params)
+```
+end note
+
+note bottom
+**Key Technology Integration:**
+
+**RAG for BPG:** Semantic retrieval of business patterns, 40-60% accuracy improvement
+**MCP Protocol:** Standardized knowledge access, plugin architecture for external systems
+**Multimodal Reasoning:** Visual+text synthesis for cross-view entity linking
+**Structured Outputs:** Pydantic schemas for 100% parseability and type safety
+**Function Calling:** Tool-based architecture for deterministic business logic
+**Prompt Caching:** 60-80% cost reduction through intelligent response caching
+
+**NO Fine-tuning:** Relies on in-context learning and retrieval augmentation
+end note
+
+@enduml

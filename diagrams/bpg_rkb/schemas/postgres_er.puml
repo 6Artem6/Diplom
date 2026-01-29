@@ -1,0 +1,330 @@
+@startuml
+!theme plain
+title ER Diagram - Domain + RAG + MCP + Multimodal
+
+' ========== Business Entities ==========
+package "Business Entities & Templates" {
+  entity business_entities {
+    *id : UUID [PK]
+    --
+    entity_type : varchar
+    domain : varchar
+    attributes : jsonb
+    constraints : jsonb
+    created_at : timestamp
+    updated_at : timestamp
+  }
+
+  entity process_templates {
+    *id : UUID [PK]
+    --
+    template_name : varchar
+    domain : varchar
+    template_definition : jsonb
+    parameters_schema : jsonb
+    success_criteria : jsonb
+    performance_metrics : jsonb
+    version : int
+    is_active : bool
+    created_at : timestamp
+  }
+
+  entity business_rules {
+    *id : UUID [PK]
+    --
+    rule_name : varchar
+    rule_definition : jsonb
+    applicable_entities : text[]
+    priority : int
+    is_active : bool
+    created_at : timestamp
+  }
+}
+
+' ========== Cross-View ==========
+package "Cross-View Linking" {
+  entity cross_view_entities {
+    *id : UUID [PK]
+    --
+    entity_id : varchar [UQ]
+    entity_type : varchar
+    confidence : float
+    representations : jsonb
+    business_attributes : jsonb
+    analysis_metadata : jsonb
+    created_at : timestamp
+  }
+
+  entity ui_element_representations {
+    *id : UUID [PK]
+    --
+    cross_view_entity_id : UUID [FK]
+    screenshot_id : varchar
+    bbox : jsonb
+    ui_type : varchar
+    text_content : text
+    visual_features : jsonb
+    layout_context : jsonb
+    created_at : timestamp
+  }
+}
+
+cross_view_entities ||--o{ ui_element_representations : has
+
+' ========== Functions ==========
+package "Function Registry & Logs" {
+  entity function_registry {
+    *id : UUID [PK]
+    --
+    function_name : varchar [UQ]
+    function_type : varchar
+    description : text
+    parameters_schema : jsonb
+    return_schema : jsonb
+    implementation_details : jsonb
+    is_active : bool
+    created_at : timestamp
+  }
+
+  entity execution_logs {
+    *id : UUID [PK]
+    --
+    execution_id : varchar
+    function_name : varchar
+    input_parameters : jsonb
+    execution_result : jsonb
+    execution_time_ms : int
+    status : varchar
+    error_details : jsonb
+    created_at : timestamp
+  }
+
+  entity llm_request_logs {
+    *id : UUID [PK]
+    --
+    request_id : varchar
+    model_used : varchar
+    prompt_hash : varchar
+    token_count_input : int
+    token_count_output : int
+    response_time_ms : int
+    cost_usd : decimal
+    cache_hit : bool
+    created_at : timestamp
+  }
+}
+
+' ========== RAG ==========
+package "RAG Tables" {
+  entity entity_embeddings {
+    *id : UUID [PK]
+    --
+    entity_id : UUID
+    entity_type : varchar
+    embedding_model : varchar
+    embedding_vector : vector
+    embedding_metadata : jsonb
+    created_at : timestamp
+    updated_at : timestamp
+  }
+
+  entity knowledge_chunks {
+    *id : UUID [PK]
+    --
+    source_type : varchar
+    source_id : UUID
+    chunk_text : text
+    chunk_metadata : jsonb
+    embedding_id : UUID [FK]
+    relevance_score : float
+    token_count : int
+    created_at : timestamp
+  }
+
+  entity rag_retrieval_logs {
+    *id : UUID [PK]
+    --
+    query_text : text
+    query_embedding_id : UUID [FK]
+    retrieval_strategy : varchar
+    retrieved_chunk_ids : UUID[]
+    relevance_scores : float[]
+    rerank_model : varchar
+    final_context_token_count : int
+    retrieval_time_ms : int
+    user_feedback : varchar
+    created_at : timestamp
+  }
+}
+
+entity_embeddings ||--o{ knowledge_chunks : embeds
+entity_embeddings ||--o{ rag_retrieval_logs : used_in
+
+' ========== MCP ==========
+package "MCP Tables" {
+  entity mcp_servers {
+    *id : UUID [PK]
+    --
+    server_name : varchar [UQ]
+    server_type : varchar
+    connection_config : jsonb
+    capabilities : jsonb
+    health_check_endpoint : varchar
+    is_active : bool
+    last_health_check : timestamp
+    created_at : timestamp
+  }
+
+  entity mcp_resources {
+    *id : UUID [PK]
+    --
+    mcp_server_id : UUID [FK]
+    resource_uri : varchar [UQ]
+    resource_type : varchar
+    resource_metadata : jsonb
+    content_hash : varchar
+    access_count : int
+    last_accessed : timestamp
+    created_at : timestamp
+  }
+
+  entity mcp_tools {
+    *id : UUID [PK]
+    --
+    mcp_server_id : UUID [FK]
+    tool_name : varchar
+    tool_description : text
+    input_schema : jsonb
+    output_schema : jsonb
+    execution_context : jsonb
+    usage_count : int
+    avg_execution_time_ms : int
+    is_active : bool
+    created_at : timestamp
+  }
+
+  entity mcp_tool_executions {
+    *id : UUID [PK]
+    --
+    mcp_tool_id : UUID [FK]
+    execution_id : varchar
+    input_parameters : jsonb
+    execution_result : jsonb
+    status : varchar
+    execution_time_ms : int
+    error_details : jsonb
+    triggered_by : varchar
+    created_at : timestamp
+  }
+}
+
+mcp_servers ||--o{ mcp_resources : provides
+mcp_servers ||--o{ mcp_tools : offers
+mcp_tools ||--o{ mcp_tool_executions : runs
+
+' ========== Screenshots ==========
+package "Screenshots & UI" {
+  entity screenshots {
+    *id : UUID [PK]
+    --
+    screenshot_hash : varchar [UQ]
+    storage_url : varchar
+    capture_timestamp : timestamp
+    page_url : text
+    page_title : text
+    viewport_size : jsonb
+    device_type : varchar
+    browser_context : jsonb
+    raw_metadata : jsonb
+    created_at : timestamp
+  }
+
+  entity screenshot_analysis {
+    *id : UUID [PK]
+    --
+    screenshot_id : UUID [FK]
+    analysis_model : varchar
+    analysis_type : varchar
+    analysis_result : jsonb
+    confidence_score : float
+    processing_time_ms : int
+    cost_usd : decimal
+    created_at : timestamp
+  }
+
+  entity detected_ui_elements {
+    *id : UUID [PK]
+    --
+    screenshot_analysis_id : UUID [FK]
+    element_type : varchar
+    bounding_box : jsonb
+    text_content : text
+    visual_features : jsonb
+    accessibility_attributes : jsonb
+    confidence : float
+    element_hierarchy : jsonb
+    created_at : timestamp
+  }
+
+  entity ui_to_entity_mappings {
+    *id : UUID [PK]
+    --
+    detected_ui_element_id : UUID [FK]
+    cross_view_entity_id : UUID [FK]
+    linking_method : varchar
+    confidence_score : float
+    evidence : jsonb
+    validation_status : varchar
+    validated_by : varchar
+    validated_at : timestamp
+    created_at : timestamp
+  }
+}
+
+screenshots ||--o{ screenshot_analysis : analyzed_by
+screenshot_analysis ||--o{ detected_ui_elements : detects
+detected_ui_elements ||--o{ ui_to_entity_mappings : mapped_to
+cross_view_entities ||--o{ ui_to_entity_mappings : links
+
+' ========== Adapters ==========
+package "Platform Adapters" {
+  entity platform_adapters {
+    *id : UUID [PK]
+    --
+    adapter_name : varchar [UQ]
+    platform_type : varchar
+    automation_framework : varchar
+    capabilities : jsonb
+    configuration : jsonb
+    is_active : bool
+    created_at : timestamp
+  }
+
+  entity selector_strategies {
+    *id : UUID [PK]
+    --
+    platform_adapter_id : UUID [FK]
+    strategy_name : varchar
+    strategy_type : varchar
+    priority : int
+    fallback_chain : jsonb
+    success_rate : float
+    avg_execution_time_ms : int
+    is_active : bool
+    created_at : timestamp
+  }
+
+  entity adapter_action_executions {
+    *id : UUID [PK]
+    --
+    platform_adapter_id : UUID [FK]
+    execution_id : varchar
+    action_type : varchar
+    created_at : timestamp
+  }
+}
+
+platform_adapters ||--o{ selector_strategies : has
+platform_adapters ||--o{ adapter_action_executions : executes
+
+@enduml

@@ -1,0 +1,681 @@
+@startuml LLM Context Enrichment Flowchart
+
+title LLM Context Enrichment Algorithm - Detailed Flowchart
+
+start
+
+:Получить пользовательский запрос;
+note right
+  **Пример запроса:**
+  "Enroll student Sarah Johnson in Machine Learning course"
+
+  **Входные данные:**
+  • user_intent = текст запроса пользователя
+  • current_context = текущее состояние системы
+  • bpg_database = построенная база знаний BPG
+  • available_patterns = библиотека паттернов
+end note
+
+partition "Анализ пользовательского интента" {
+
+  :Извлечь сущности из запроса;
+  note left
+    **Entity Extraction:**
+
+    ```python
+    def extract_entities_from_intent(user_intent):
+        # Использовать NER (Named Entity Recognition)
+        import spacy
+        nlp = spacy.load("en_core_web_sm")
+        doc = nlp(user_intent)
+
+        extracted_entities = []
+        for ent in doc.ents:
+            entity_info = {
+                "text": ent.text,
+                "label": ent.label_,  # PERSON, ORG, etc.
+                "start": ent.start_char,
+                "end": ent.end_char
+            }
+            extracted_entities.append(entity_info)
+
+        # Дополнительно искать domain-specific entities
+        domain_entities = find_domain_entities(user_intent, bpg_entities)
+        extracted_entities.extend(domain_entities)
+
+        return extracted_entities
+    ```
+
+    **Результат:** ["Sarah Johnson" (Person), "Machine Learning" (Course)]
+  end note
+
+  :Определить намерения действий;
+  note right
+    **Action Intent Detection:**
+
+    ```python
+    def extract_action_intents(user_intent):
+        # Поиск глаголов действий
+        action_patterns = {
+            "enroll": ["enroll", "register", "sign up", "add to course"],
+            "create": ["create", "add", "new", "make"],
+            "update": ["update", "modify", "change", "edit"],
+            "delete": ["delete", "remove", "cancel", "drop"],
+            "view": ["show", "display", "view", "see", "find"]
+        }
+
+        detected_actions = []
+        intent_lower = user_intent.lower()
+
+        for action_type, patterns in action_patterns.items():
+            for pattern in patterns:
+                if pattern in intent_lower:
+                    detected_actions.append({
+                        "action": action_type,
+                        "confidence": calculate_pattern_confidence(pattern, intent_lower),
+                        "matched_text": pattern
+                    })
+
+        return detected_actions
+    ```
+
+    **Результат:** [{"action": "enroll", "confidence": 0.95}]
+  end note
+
+  :Определить контекст домена;
+  note left
+    **Domain Context Detection:**
+
+    ```python
+    def detect_domain_context(entities, actions, current_system_state):
+        domain_indicators = {
+            "academic": ["student", "course", "enroll", "grade", "semester"],
+            "ecommerce": ["product", "order", "purchase", "cart", "payment"],
+            "crm": ["customer", "lead", "contact", "deal", "opportunity"],
+            "hr": ["employee", "department", "salary", "position", "hire"]
+        }
+
+        domain_scores = {}
+
+        # Анализ сущностей и действий
+        text_to_analyze = " ".join([e["text"] for e in entities] +
+                                  [a["action"] for a in actions])
+
+        for domain, keywords in domain_indicators.items():
+            score = sum(1 for keyword in keywords
+                       if keyword.lower() in text_to_analyze.lower())
+            domain_scores[domain] = score / len(keywords)
+
+        # Учесть контекст текущей страницы
+        if current_system_state.current_page:
+            page_domain = infer_domain_from_page(current_system_state.current_page)
+            if page_domain in domain_scores:
+                domain_scores[page_domain] += 0.3
+
+        # Выбрать домен с наивысшим скором
+        detected_domain = max(domain_scores, key=domain_scores.get)
+
+        return {
+            "domain": detected_domain,
+            "confidence": domain_scores[detected_domain],
+            "all_scores": domain_scores
+        }
+    ```
+
+    **Результат:** {"domain": "academic", "confidence": 0.8}
+  end note
+}
+
+partition "Поиск релевантных паттернов" {
+
+  :Семантический поиск паттернов;
+  note right
+    **Semantic Pattern Search:**
+
+    ```python
+    def semantic_pattern_search(user_intent, pattern_vector_db):
+        # Создать эмбеддинг запроса пользователя
+        query_embedding = sentence_transformer.encode(user_intent)
+
+        # Поиск похожих паттернов в vector DB
+        search_results = pattern_vector_db.query(
+            query_embeddings=[query_embedding.tolist()],
+            n_results=10,  # Топ-10 похожих паттернов
+            include=["metadatas", "documents", "distances"]
+        )
+
+        relevant_patterns = []
+        for i, distance in enumerate(search_results["distances"][0]):
+            if distance < 0.4:  # Порог семантической близости
+                pattern_info = {
+                    "pattern_id": search_results["ids"][0][i],
+                    "similarity_score": 1 - distance,  # Конвертировать в similarity
+                    "metadata": search_results["metadatas"][0][i],
+                    "description": search_results["documents"][0][i]
+                }
+                relevant_patterns.append(pattern_info)
+
+        return sorted(relevant_patterns,
+                     key=lambda x: x["similarity_score"], reverse=True)
+    ```
+  end note
+
+  :Поиск по сущностям;
+  note left
+    **Entity-based Pattern Search:**
+
+    ```python
+    def search_patterns_by_entities(extracted_entities, bpg_graph):
+        entity_patterns = []
+
+        for entity_info in extracted_entities:
+            # Найти соответствующие сущности в BPG
+            matching_entities = find_matching_bpg_entities(entity_info, bpg_graph)
+
+            for bpg_entity in matching_entities:
+                # Найти паттерны, использующие эту сущность
+                pattern_query = """
+                MATCH (e:Entity {id: $entity_id})<-[:OPERATES_ON]-(p:Pattern)
+                RETURN p.id, p.name, p.type, p.confidence, p.frequency
+                """
+
+                results = bpg_graph.run(pattern_query, entity_id=bpg_entity.id)
+
+                for record in results:
+                    pattern_info = {
+                        "pattern_id": record["p.id"],
+                        "name": record["p.name"],
+                        "type": record["p.type"],
+                        "confidence": record["p.confidence"],
+                        "frequency": record["p.frequency"],
+                        "matched_entity": bpg_entity,
+                        "source": "entity_match"
+                    }
+                    entity_patterns.append(pattern_info)
+
+        return entity_patterns
+    ```
+  end note
+
+  :Поиск по действиям;
+  note right
+    **Action-based Pattern Search:**
+
+    ```python
+    def search_patterns_by_actions(detected_actions, pattern_database):
+        action_patterns = []
+
+        for action_info in detected_actions:
+            action_type = action_info["action"]
+
+            # Поиск паттернов с соответствующим типом действий
+            if action_type == "enroll":
+                # Поиск enrollment/registration паттернов
+                matching_patterns = pattern_database.query("""
+                    SELECT pattern_id, name, type, description, confidence
+                    FROM patterns
+                    WHERE LOWER(name) LIKE "%enroll%"
+                       OR LOWER(name) LIKE "%register%"
+                       OR LOWER(description) LIKE "%enrollment%"
+                """)
+
+            elif action_type == "create":
+                matching_patterns = pattern_database.query("""
+                    SELECT pattern_id, name, type, description, confidence
+                    FROM patterns
+                    WHERE type = "CRUD" AND name LIKE "%Create%"
+                """)
+
+            for pattern in matching_patterns:
+                pattern_info = {
+                    "pattern_id": pattern.pattern_id,
+                    "name": pattern.name,
+                    "type": pattern.type,
+                    "confidence": pattern.confidence,
+                    "matched_action": action_type,
+                    "action_confidence": action_info["confidence"],
+                    "source": "action_match"
+                }
+                action_patterns.append(pattern_info)
+
+        return action_patterns
+    ```
+  end note
+
+  :Объединить и ранжировать результаты;
+  note left
+    **Pattern Ranking and Combination:**
+
+    ```python
+    def rank_and_combine_patterns(semantic_patterns, entity_patterns, action_patterns):
+        all_patterns = {}
+
+        # Объединить все найденные паттерны
+        for pattern in semantic_patterns + entity_patterns + action_patterns:
+            pattern_id = pattern["pattern_id"]
+
+            if pattern_id not in all_patterns:
+                all_patterns[pattern_id] = {
+                    "pattern_info": pattern,
+                    "scores": [],
+                    "sources": []
+                }
+
+            # Добавить оценку и источник
+            if pattern in semantic_patterns:
+                all_patterns[pattern_id]["scores"].append(("semantic", pattern["similarity_score"]))
+            elif pattern in entity_patterns:
+                all_patterns[pattern_id]["scores"].append(("entity", 0.8))
+            elif pattern in action_patterns:
+                all_patterns[pattern_id]["scores"].append(("action", pattern["action_confidence"]))
+
+            all_patterns[pattern_id]["sources"].append(pattern["source"])
+
+        # Вычислить комбинированный рейтинг
+        ranked_patterns = []
+        for pattern_id, info in all_patterns.items():
+            # Взвешенная комбинация оценок
+            combined_score = calculate_combined_score(info["scores"])
+
+            # Бонус за множественные источники
+            source_bonus = len(set(info["sources"])) * 0.1
+
+            final_score = min(combined_score + source_bonus, 1.0)
+
+            ranked_patterns.append({
+                "pattern_id": pattern_id,
+                "pattern_info": info["pattern_info"],
+                "final_score": final_score,
+                "sources": info["sources"]
+            })
+
+        # Сортировать по финальному рейтингу
+        return sorted(ranked_patterns, key=lambda x: x["final_score"], reverse=True)
+    ```
+  end note
+}
+
+partition "Контекстная фильтрация" {
+
+  :Проверить доступность паттернов;
+  note right
+    **Pattern Availability Check:**
+
+    ```python
+    def check_pattern_availability(ranked_patterns, current_context):
+        available_patterns = []
+
+        for pattern_info in ranked_patterns:
+            pattern_id = pattern_info["pattern_id"]
+
+            # Загрузить полную информацию о паттерне
+            full_pattern = load_pattern_details(pattern_id)
+
+            # Проверить предусловия
+            preconditions_met = True
+            unmet_preconditions = []
+
+            for precondition in full_pattern.preconditions:
+                if not evaluate_precondition(precondition, current_context):
+                    preconditions_met = False
+                    unmet_preconditions.append(precondition)
+
+            # Проверить доступность UI элементов
+            ui_elements_available = True
+            unavailable_ui = []
+
+            for step in full_pattern.steps:
+                if step.ui_element_selector:
+                    if not is_ui_element_available(step.ui_element_selector, current_context):
+                        ui_elements_available = False
+                        unavailable_ui.append(step.ui_element_selector)
+
+            # Проверить права пользователя
+            user_permissions_ok = check_user_permissions(full_pattern, current_context.user)
+
+            # Добавить в доступные если все проверки пройдены
+            if preconditions_met and ui_elements_available and user_permissions_ok:
+                available_patterns.append({
+                    "pattern": full_pattern,
+                    "score": pattern_info["final_score"],
+                    "sources": pattern_info["sources"]
+                })
+            else:
+                # Логировать причины недоступности
+                log_pattern_unavailability(pattern_id, {
+                    "preconditions_met": preconditions_met,
+                    "unmet_preconditions": unmet_preconditions,
+                    "ui_elements_available": ui_elements_available,
+                    "unavailable_ui": unavailable_ui,
+                    "permissions_ok": user_permissions_ok
+                })
+
+        return available_patterns
+    ```
+  end note
+
+  :Выбрать топ-N паттернов для контекста;
+  note left
+    **Top Pattern Selection:**
+
+    ```python
+    def select_top_patterns_for_context(available_patterns, max_patterns=3):
+        # Сортировать по релевантности и уверенности
+        sorted_patterns = sorted(available_patterns,
+                               key=lambda x: (x["score"], x["pattern"].confidence),
+                               reverse=True)
+
+        selected_patterns = []
+        total_tokens = 0
+        max_tokens = 2500  # Бюджет токенов для контекста
+
+        for pattern_info in sorted_patterns:
+            pattern = pattern_info["pattern"]
+
+            # Оценить количество токенов для этого паттерна
+            pattern_tokens = estimate_pattern_tokens(pattern)
+
+            if total_tokens + pattern_tokens <= max_tokens and len(selected_patterns) < max_patterns:
+                selected_patterns.append(pattern_info)
+                total_tokens += pattern_tokens
+            else:
+                break
+
+        return selected_patterns, total_tokens
+    ```
+  end note
+}
+
+partition "Сборка обогащенного контекста" {
+
+  :Подготовить информацию о сущностях;
+  note right
+    **Entity Context Preparation:**
+
+    ```python
+    def prepare_entity_context(extracted_entities, bpg_graph):
+        entity_context = []
+
+        for entity_info in extracted_entities:
+            # Найти соответствующие сущности в BPG
+            bpg_entities = find_matching_bpg_entities(entity_info, bpg_graph)
+
+            for bpg_entity in bpg_entities:
+                # Загрузить атрибуты сущности
+                attributes = load_entity_attributes(bpg_entity.id, bpg_graph)
+
+                # Загрузить связанные сущности
+                relationships = load_entity_relationships(bpg_entity.id, bpg_graph)
+
+                entity_context_info = {
+                    "name": bpg_entity.business_meaning,
+                    "type": bpg_entity.entity_type,
+                    "attributes": [{"name": attr.name, "type": attr.type}
+                                  for attr in attributes],
+                    "relationships": [{"type": rel.type, "target": rel.target_name}
+                                    for rel in relationships],
+                    "current_status": get_entity_current_status(bpg_entity, current_context)
+                }
+                entity_context.append(entity_context_info)
+
+        return entity_context
+    ```
+  end note
+
+  :Подготовить информацию о паттернах;
+  note left
+    **Pattern Context Preparation:**
+
+    ```python
+    def prepare_pattern_context(selected_patterns):
+        pattern_context = []
+
+        for pattern_info in selected_patterns:
+            pattern = pattern_info["pattern"]
+
+            # Сформировать краткое описание шагов
+            formatted_steps = []
+            for i, step in enumerate(pattern.steps):
+                step_description = {
+                    "step_number": i + 1,
+                    "action": step.action,
+                    "description": step.description,
+                    "target": step.ui_element_selector,
+                    "expected_result": step.expected_outcome
+                }
+                formatted_steps.append(step_description)
+
+            # Подготовить бизнес-правила
+            business_rules = []
+            for rule in pattern.business_rules:
+                business_rules.append({
+                    "type": rule.type,
+                    "description": rule.description,
+                    "required": rule.is_required
+                })
+
+            pattern_context_info = {
+                "name": pattern.name,
+                "type": pattern.type,
+                "description": pattern.description,
+                "confidence": pattern.confidence,
+                "success_rate": pattern.success_rate,
+                "steps": formatted_steps,
+                "preconditions": [pc.description for pc in pattern.preconditions],
+                "postconditions": [pc.description for pc in pattern.postconditions],
+                "business_rules": business_rules,
+                "estimated_duration": pattern.estimated_duration
+            }
+            pattern_context.append(pattern_context_info)
+
+        return pattern_context
+    ```
+  end note
+
+  :Собрать системный контекст;
+  note right
+    **System Context Assembly:**
+
+    ```python
+    def assemble_system_context(current_context):
+        system_context = {
+            "current_page": current_context.current_page,
+            "user_info": {
+                "role": current_context.user.role,
+                "permissions": current_context.user.permissions,
+                "department": current_context.user.department
+            },
+            "session_info": {
+                "session_duration": current_context.session_duration,
+                "recent_actions": current_context.recent_actions[-3:],  # Последние 3 действия
+                "current_timestamp": datetime.now().isoformat()
+            },
+            "system_state": {
+                "database_status": "operational",
+                "active_processes": current_context.active_processes,
+                "system_load": current_context.system_load
+            }
+        }
+
+        return system_context
+    ```
+  end note
+}
+
+:Построить финальный промпт для LLM;
+note left
+  **Final LLM Prompt Construction:**
+
+  ```python
+  def build_enriched_llm_prompt(user_intent, entity_context, pattern_context, system_context):
+      prompt_template = """
+You are an expert business process automation agent with deep knowledge of the {domain} domain.
+Use the provided business process knowledge to understand the user"s intent and plan appropriate actions.
+
+## User Request
+"{user_intent}"
+
+## Current System Context
+Current Page: {current_page}
+User Role: {user_role}
+User Permissions: {user_permissions}
+Current Time: {current_time}
+
+## Available Entities
+{formatted_entities}
+
+## Applicable Business Patterns
+{formatted_patterns}
+
+## Business Rules & Constraints
+{formatted_business_rules}
+
+## Instructions
+1. Analyze the user request in the context of available business patterns
+2. Select the most appropriate pattern to achieve the user"s goal
+3. Verify all preconditions are met for the selected pattern
+4. Plan specific UI actions using the pattern steps
+5. Explain your reasoning and highlight any constraints or risks
+6. If multiple patterns could work, recommend the most efficient path
+
+## Response Format
+Please respond in JSON format:
+{
+  "selected_pattern": "pattern_name",
+  "confidence": 0.0-1.0,
+  "reasoning": "explanation of pattern selection",
+  "planned_steps": [
+    {
+      "step": 1,
+      "action": "specific UI action",
+      "target": "UI element selector",
+      "parameters": {},
+      "expected_result": "what should happen"
+    }
+  ],
+  "preconditions_check": {
+    "all_met": true/false,
+    "missing": ["unmet preconditions"]
+  },
+  "risks_and_constraints": ["potential issues"],
+  "alternative_patterns": ["other viable options"]
+}
+"""
+
+      # Форматировать компоненты промпта
+      formatted_prompt = prompt_template.format(
+          domain=system_context["domain"],
+          user_intent=user_intent,
+          current_page=system_context["current_page"],
+          user_role=system_context["user_info"]["role"],
+          user_permissions=", ".join(system_context["user_info"]["permissions"]),
+          current_time=system_context["session_info"]["current_timestamp"],
+          formatted_entities=format_entities_for_prompt(entity_context),
+          formatted_patterns=format_patterns_for_prompt(pattern_context),
+          formatted_business_rules=format_business_rules_for_prompt(pattern_context)
+      )
+
+      return formatted_prompt
+  ```
+end note
+
+:Отправить обогащенный промпт LLM;
+note right
+  **LLM API Call with Enriched Context:**
+
+  ```python
+  def send_enriched_prompt_to_llm(enriched_prompt):
+      try:
+          response = llm_client.chat_completion(
+              model="gpt-4",
+              messages=[
+                  {
+                      "role": "system",
+                      "content": "You are an expert business automation agent. Use the provided business process knowledge to plan actions accurately and safely."
+                  },
+                  {
+                      "role": "user",
+                      "content": enriched_prompt
+                  }
+              ],
+              max_tokens=800,
+              temperature=0.2,  # Низкая температура для точности
+              response_format={"type": "json_object"}  # Требуем JSON ответ
+          )
+
+          return response.choices[0].message.content
+
+      except Exception as e:
+          # Обработка ошибок API
+          fallback_response = create_fallback_response(user_intent, pattern_context)
+          return fallback_response
+  ```
+end note
+
+:Обработать ответ LLM;
+note left
+  **LLM Response Processing:**
+
+  ```python
+  def process_llm_response(llm_response, user_intent):
+      try:
+          response_data = json.loads(llm_response)
+
+          # Валидация структуры ответа
+          required_fields = ["selected_pattern", "confidence", "reasoning", "planned_steps"]
+          for field in required_fields:
+              if field not in response_data:
+                  raise ValueError(f"Missing required field: {field}")
+
+          # Валидация уверенности
+          if not (0.0 <= response_data["confidence"] <= 1.0):
+              response_data["confidence"] = 0.5  # Значение по умолчанию
+
+          # Валидация запланированных шагов
+          if not response_data["planned_steps"]:
+              raise ValueError("No planned steps provided")
+
+          processed_response = LLMActionPlan(
+              selected_pattern=response_data["selected_pattern"],
+              confidence=response_data["confidence"],
+              reasoning=response_data["reasoning"],
+              planned_steps=response_data["planned_steps"],
+              preconditions_check=response_data.get("preconditions_check", {}),
+              risks=response_data.get("risks_and_constraints", []),
+              alternatives=response_data.get("alternative_patterns", [])
+          )
+
+          return processed_response
+
+      except (json.JSONDecodeError, ValueError, KeyError) as e:
+          # Обработка ошибок парсинга
+          error_response = create_error_response(str(e), user_intent)
+          return error_response
+  ```
+end note
+
+stop
+
+legend bottom
+  **Результат Context Enrichment:**
+
+  **Статистика обогащения:**
+  • Найдено релевантных паттернов: 5
+  • Выбрано для контекста: 2 (в рамках token budget)
+  • Использовано токенов: 2,347 / 2,500
+  • Время обработки: 1.2 секунды
+
+  **Качество контекста:**
+  • Релевантность сущностей: 0.94
+  • Применимость паттернов: 0.89
+  • Полнота бизнес-правил: 0.87
+  • LLM response accuracy: 0.92
+
+  **Готовность к выполнению:**
+  • Все предусловия проверены ✓
+  • UI элементы доступны ✓
+  • Пользовательские права подтверждены ✓
+  • План действий сформирован ✓
+end legend
+
+@enduml

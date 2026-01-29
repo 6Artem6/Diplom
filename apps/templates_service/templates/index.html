@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Главная{% endblock %}
+{% block content %}
+<h1>Главная</h1>
+<a href="/about" onclick="alert('Переходим на About')">О нас</a> |
+<a href="/index.php?page=contact">Контакты</a>
+<form action="/search" method="get" onsubmit="console.log('submit form')">
+    <input type="text" name="q" placeholder="Поиск">
+    <button type="submit" onclick="alert('Ищем!')">Поиск</button>
+</form>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM готов на главной!');
+});
+</script>
+{% endblock %}

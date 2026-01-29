@@ -1,0 +1,280 @@
+@startuml Revised_Entities_Relationships
+!theme aws-orange
+title Сущности и связи: BPG как Runtime Knowledge для LLM
+skinparam linetype ortho
+skinparam class {
+  BackgroundColor #F0F8FF
+  BorderColor #4169E1
+}
+' --- Глобальные параметры шрифта ---
+skinparam defaultFontColor Black
+
+' === Knowledge Representation Layer ===
+package "🧠 KNOWLEDGE REPRESENTATION LAYER" #E8F5E8 {
+
+  package "Business Entity Knowledge" #LightGreen {
+    class BusinessEntityDefinition {
+      +entity_id: UUID
+      +entity_name: String
+      +business_role: BusinessRole
+      +attributes: List[AttributeDefinition]
+      +constraints: List[BusinessConstraint]
+      +gui_manifestations: List[GUIManifestationPattern]
+      +interaction_capabilities: List[InteractionType]
+      --
+      +to_llm_context(): ContextDescription
+      +validate_constraints(): ValidationResult
+      +get_available_actions(): List[ActionType]
+    }
+
+    class GUIElementDefinition {
+      +element_id: UUID
+      +element_type: GUIElementType
+      +business_purpose: BusinessPurpose
+      +interaction_patterns: List[InteractionPattern]
+      +visual_characteristics: VisualFingerprint
+      +contextual_rules: List[ContextualRule]
+      --
+      +generate_identification_prompt(): LLMPrompt
+      +get_interaction_instructions(): InteractionGuide
+    }
+
+    class PageContextDefinition {
+      +page_id: UUID
+      +page_type: PageType
+      +business_purpose: String
+      +available_entities: List[BusinessEntityReference]
+      +possible_workflows: List[WorkflowReference]
+      +navigation_options: List[NavigationOption]
+      +access_constraints: List[AccessConstraint]
+      --
+      +generate_context_prompt(): PageContextPrompt
+      +validate_user_permissions(): PermissionResult
+    }
+  }
+
+  package "Process Knowledge Templates" #LightYellow {
+    class BusinessProcessTemplate {
+      +template_id: UUID
+      +process_name: String
+      +business_domain: BusinessDomain
+      +required_entities: List[EntityRequirement]
+      +workflow_steps: List[WorkflowStepTemplate]
+      +success_criteria: List[SuccessCriterion]
+      +exception_handling: List[ExceptionRule]
+      --
+      +generate_workflow_prompt(): WorkflowPrompt
+      +validate_preconditions(): ValidationResult
+      +adapt_to_context(): AdaptedWorkflow
+    }
+
+    class WorkflowStepTemplate {
+      +step_id: UUID
+      +step_description: String
+      +required_context: ContextRequirements
+      +expected_gui_state: GUIStateExpectation
+      +interaction_instructions: InteractionInstructions
+      +validation_criteria: List[ValidationCriterion]
+      +recovery_strategies: List[RecoveryStrategy]
+      --
+      +to_llm_instruction(): StepInstruction
+      +validate_execution(): ExecutionValidation
+    }
+
+    class BusinessRuleDefinition {
+      +rule_id: UUID
+      +rule_description: String
+      +rule_type: BusinessRuleType
+      +applicable_contexts: List[ContextPattern]
+      +validation_logic: ValidationLogic
+      +violation_consequences: List[Consequence]
+      --
+      +generate_constraint_prompt(): ConstraintPrompt
+      +evaluate_in_context(): RuleEvaluation
+    }
+  }
+
+  package "Context Enrichment Knowledge" #LightCyan {
+    class DomainVocabularyMap {
+      +vocabulary_id: UUID
+      +domain: BusinessDomain
+      +term_mappings: Map[String, TermDefinition]
+      +synonym_groups: List[SynonymGroup]
+      +context_dependent_meanings: List[ContextualMeaning]
+      --
+      +translate_user_terms(): TermTranslation
+      +generate_vocabulary_prompt(): VocabularyPrompt
+    }
+
+    class UserBehaviorPattern {
+      +pattern_id: UUID
+      +user_intent_category: IntentCategory
+      +successful_action_sequences: List[ActionSequence]
+      +common_error_patterns: List[ErrorPattern]
+      +context_factors: List[ContextFactor]
+      +success_probability: Float
+      --
+      +suggest_optimal_approach(): ApproachSuggestion
+      +generate_guidance_prompt(): GuidancePrompt
+    }
+
+    class ContextStateManager {
+      +context_id: UUID
+      +current_page_state: PageState
+      +user_session_data: SessionData
+      +available_capabilities: List[Capability]
+      +temporal_constraints: List[TemporalConstraint]
+      +permission_context: PermissionContext
+      --
+      +generate_state_prompt(): StatePrompt
+      +validate_action_feasibility(): FeasibilityResult
+    }
+  }
+}
+
+' === LLM Prompt Construction Layer ===
+package "🔧 LLM PROMPT CONSTRUCTION LAYER" #FFF8E1 {
+
+  class PromptAssemblyEngine {
+    +assembly_id: UUID
+    +base_system_prompt: SystemPrompt
+    +context_integration_rules: List[IntegrationRule]
+    +prompt_templates: Map[PromptType, Template]
+    +optimization_strategies: List[OptimizationStrategy]
+    --
+    +assemble_enriched_prompt(): EnrichedPrompt
+    +optimize_for_task(): OptimizedPrompt
+    +validate_prompt_coherence(): CoherenceResult
+  }
+
+  class ContextualPromptBuilder {
+    +builder_id: UUID
+    +intent_analysis_results: IntentAnalysis
+    +visual_context_description: VisualContext
+    +business_knowledge_snippets: List[KnowledgeSnippet]
+    +historical_context: HistoricalContext
+    --
+    +build_intent_understanding_prompt(): IntentPrompt
+    +build_action_planning_prompt(): ActionPrompt
+    +build_execution_guidance_prompt(): ExecutionPrompt
+  }
+
+  class KnowledgeContextExtractor {
+    +extractor_id: UUID
+    +current_business_context: BusinessContext
+    +relevant_entities: List[BusinessEntityDefinition]
+    +applicable_processes: List[BusinessProcessTemplate]
+    +active_business_rules: List[BusinessRuleDefinition]
+    --
+    +extract_relevant_knowledge(): RelevantKnowledge
+    +prioritize_context_elements(): PrioritizedContext
+    +generate_knowledge_summary(): KnowledgeSummary
+  }
+}
+
+' === LLM Agent Interface Layer ===
+package "🤖 LLM AGENT INTERFACE LAYER" #Lavender {
+
+  class IntentUnderstandingAgent {
+    +agent_id: UUID
+    +llm_model: LLMModel
+    +business_context_integration: ContextIntegration
+    +intent_classification_capability: ClassificationCapability
+    +ambiguity_resolution_strategy: ResolutionStrategy
+    --
+    +understand_user_intent(): IntentUnderstanding
+    +resolve_ambiguities(): AmbiguityResolution
+    +validate_intent_feasibility(): FeasibilityAssessment
+  }
+
+  class ActionPlanningAgent {
+    +agent_id: UUID
+    +multimodal_llm: MultimodalLLM
+    +visual_understanding_capability: VisualCapability
+    +business_workflow_integration: WorkflowIntegration
+    +step_optimization_logic: OptimizationLogic
+    --
+    +analyze_visual_context(): VisualAnalysis
+    +generate_action_sequence(): ActionSequence
+    +validate_business_constraints(): ConstraintValidation
+    +optimize_execution_plan(): OptimizedPlan
+  }
+
+  class ExecutionGuidanceAgent {
+    +agent_id: UUID
+    +execution_llm: ExecutionLLM
+    +real_time_adaptation_capability: AdaptationCapability
+    +error_handling_intelligence: ErrorHandling
+    +feedback_processing_logic: FeedbackLogic
+    --
+    +provide_execution_guidance(): ExecutionGuidance
+    +adapt_to_runtime_changes(): RuntimeAdaptation
+    +handle_execution_failures(): FailureHandling
+    +learn_from_feedback(): LearningUpdate
+  }
+}
+
+' === Knowledge Relationships ===
+' Business Knowledge Relationships
+BusinessEntityDefinition ||--o{ GUIElementDefinition : manifests_as
+BusinessProcessTemplate ||--o{ BusinessEntityDefinition : involves_entities
+BusinessProcessTemplate ||--|| WorkflowStepTemplate : composed_of_steps
+BusinessRuleDefinition ||--o{ BusinessEntityDefinition : constrains_entities
+BusinessRuleDefinition ||--o{ BusinessProcessTemplate : applies_to_processes
+
+' Context Knowledge Relationships
+PageContextDefinition ||--o{ BusinessEntityDefinition : contains_entities
+PageContextDefinition ||--o{ BusinessProcessTemplate : enables_processes
+DomainVocabularyMap ||--o{ BusinessEntityDefinition : defines_terminology
+UserBehaviorPattern ||--o{ BusinessProcessTemplate : optimizes_workflows
+ContextStateManager ||--|| PageContextDefinition : maintains_page_state
+
+' Prompt Construction Relationships
+KnowledgeContextExtractor --> BusinessEntityDefinition : extracts_entity_knowledge
+KnowledgeContextExtractor --> BusinessProcessTemplate : extracts_process_knowledge
+KnowledgeContextExtractor --> BusinessRuleDefinition : extracts_rule_knowledge
+ContextualPromptBuilder --> KnowledgeContextExtractor : uses_extracted_knowledge
+PromptAssemblyEngine --> ContextualPromptBuilder : assembles_contextual_prompts
+
+' LLM Agent Relationships
+IntentUnderstandingAgent --> PromptAssemblyEngine : uses_intent_prompts
+ActionPlanningAgent --> PromptAssemblyEngine : uses_planning_prompts
+ExecutionGuidanceAgent --> PromptAssemblyEngine : uses_guidance_prompts
+
+' Feedback Relationships (Learning Loop)
+ExecutionGuidanceAgent ..> UserBehaviorPattern : updates_behavior_patterns
+ExecutionGuidanceAgent ..> BusinessProcessTemplate : refines_process_templates
+ExecutionGuidanceAgent ..> BusinessRuleDefinition : validates_business_rules
+
+' === Key Innovation Notes ===
+note right of KnowledgeContextExtractor
+**Core Innovation:**
+Transforms static BPG knowledge
+into dynamic LLM context:
+
+• Entity definitions → Entity prompts
+• Process templates → Workflow instructions
+• Business rules → Constraint guidance
+• Context state → Situational awareness
+end note
+
+note right of PromptAssemblyEngine
+**Prompt Engineering:**
+Systematic approach to enriching
+LLM prompts with business context:
+
+• Base capability (GPT-4V) +
+• Business knowledge (BPG) =
+• Domain-aware AI agent
+end note
+
+note bottom
+**Architectural Benefits:**
+1. **Explicit business knowledge** captured in BPG remains interpretable and editable
+2. **LLM flexibility** preserved for visual understanding and adaptive reasoning
+3. **Runtime knowledge integration** provides context that LLM cannot infer alone
+4. **Iterative enrichment** bridges gap between user intent and system execution capabilities
+5. **Maintainable separation** between business logic (BPG) and AI capabilities (LLM)
+end note
+
+@enduml

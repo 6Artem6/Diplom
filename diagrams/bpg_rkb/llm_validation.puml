@@ -1,0 +1,405 @@
+@startuml LLM Integration and Validation Pipeline
+
+title LLM Expert-Driven Validation and Reasoning Pipeline
+
+skinparam linetype ortho
+
+' LLM Integration Architecture
+package "Multi-LLM Orchestration" {
+
+  class LLMRouter {
+    +routing_rules: Dict[Task, ModelConfig]
+    +cost_optimizer: CostCalculator
+    +latency_tracker: PerformanceMonitor
+    +route_request(): ModelSelection
+    --
+    Routing Strategy:
+    - GPT-4V: Complex visual reasoning
+    - Claude-3: Logical relationship validation
+    - Local Llama: Simple classification tasks
+    - Fallback chain for reliability
+  }
+
+  class PromptTemplateManager {
+    +templates: Dict[TaskType, PromptTemplate]
+    +context_builder: ContextAssembler
+    +token_optimizer: TokenBudgetManager
+    +build_prompt(): EnrichedPrompt
+    --
+    Template Categories:
+    - Entity classification prompts
+    - Relationship validation prompts
+    - Conflict resolution prompts
+    - Attribute extraction prompts
+  }
+
+  class ResponseProcessor {
+    +response_parser: StructuredParser
+    +confidence_extractor: ConfidenceParser
+    +consistency_checker: ResponseValidator
+    +process_llm_response(): StructuredResult
+    --
+    Processing Steps:
+    - Parse structured responses (JSON)
+    - Extract confidence scores
+    - Validate logical consistency
+    - Handle partial/malformed responses
+  }
+}
+
+' LLM Validation Tasks
+package "LLM Validation Tasks" {
+
+  note right
+    Task: Entity Type Classification
+    Model: GPT-4V
+    Input: Screenshot + OCR text + context
+    Output: EntityType + Confidence + Attributes
+    --
+    Prompt Example:
+    "Given this UI element:
+    Visual: [base64_image]
+    Text Content: '{ocr_text}'
+    Surrounding Context: '{context_elements}'
+    Please analyze and provide:
+    1. Entity Type
+    2. Business Meaning
+    3. Attributes
+    4. Confidence
+    Respond in JSON format."
+  end note
+
+  note right
+    **Task**: Relationship Logical Validation
+    **Model**: Claude-3
+    **Input**: Entity pair + proposed relationship + evidence
+    **Output**: IsValid + Confidence + Reasoning
+    --
+    **Prompt Example:**
+    ```
+    "Evaluate this proposed business relationship:
+
+    Entity 1: {entity1_description}
+    Entity 2: {entity2_description}
+    Proposed Relationship: {relation_type}
+    Supporting Evidence:
+    - Spatial: {spatial_evidence}
+    - Textual: {textual_evidence}
+    - Pattern: {pattern_evidence}
+
+    Questions:
+    1. Is this relationship logically valid? (Yes/No/Uncertain)
+    2. Confidence level (0-100)
+    3. Explanation of reasoning
+    4. Alternative relationship if invalid
+
+    Consider business logic, common sense, and domain knowledge."
+    ```
+  end note
+
+  note right
+    **Task**: Semantic Attribute Extraction
+    **Model**: GPT-4V + Claude-3 ensemble
+    **Input**: Entity visual + text representations
+    **Output**: Attributes + Types + Semantics
+    --
+    **Prompt Example:**
+    ```
+    "Extract semantic attributes from this entity:
+
+    Visual Representations: [multiple_screenshots]
+    Text Variations: {text_variants}
+    Context Information: {business_context}
+
+    For each attribute, provide:
+    1. Attribute Name (semantic, not technical)
+    2. Data Type (String, Number, Date, Boolean, Reference)
+    3. Semantic Role (Identifier, Descriptor, Status, ForeignKey)
+    4. Constraints (Required, Unique, Format)
+    5. Business Meaning
+
+    Example Output:
+    {
+      "student_name": {
+        "type": "String",
+        "role": "Descriptor",
+        "constraints": ["Required"],
+        "meaning": "Full name of the student"
+      }
+    }
+    ```
+  end note
+
+  note right
+    **Task**: Resolve Conflicting Classifications
+    **Model**: GPT-4 + Claude-3 ensemble
+    **Input**: Conflicting results + evidence + context
+    **Output**: ResolvedClassification + Reasoning
+    --
+    **Prompt Example:**
+    ```
+    "Resolve this classification conflict:
+
+    Entity Visual: [screenshot]
+    Text Content: '{text}'
+
+    Conflicting Classifications:
+    Model A: {classification_A} (confidence: {conf_A})
+    Model B: {classification_B} (confidence: {conf_B})
+
+    Supporting Evidence:
+    - Visual features: {visual_evidence}
+    - Text patterns: {text_evidence}
+    - Context clues: {context_evidence}
+
+    Please:
+    1. Choose the most logical classification
+    2. Explain your reasoning step-by-step
+    3. Rate your confidence (0-100)
+    4. Suggest additional evidence that would clarify
+
+    Use chain-of-thought reasoning."
+    ```
+  end note
+}
+
+
+' Validation Pipeline – Class Representation
+package "Validation Pipeline" {
+
+  class CandidateReceiver {
+    +receive_candidate(entity): void
+  }
+
+  class ConfidenceEvaluator {
+    +evaluate_confidence(candidate): ConfidenceScore
+    --
+    Thresholds:
+    - High → auto-accept
+    - Medium → LLM validation
+    - Low → reject
+  }
+
+  class AutoAcceptor {
+    +store_in_BPG(candidate): void
+  }
+
+  class LLMRouter {
+    +route_validation_task(task, complexity): Model
+    --
+    Routing Strategy:
+    - gpt-4v → complex visual reasoning
+    - local-llm → simple visual classification
+    - claude-3 → logical reasoning
+    - ensemble-gpt4-claude3 → conflict resolution
+  }
+
+  class PromptBuilder {
+    +build_prompt(entity, task_type): Prompt
+    --
+    Context:
+    - visual (screenshots)
+    - textual (OCR, text reps)
+    - spatial (layout)
+    - domain knowledge
+    - few-shot examples
+  }
+
+  class LLMRequestExecutor {
+    +execute_request(prompt): Response
+    --
+    Management:
+    - Token budget optimization
+    - Rate limiting
+    - Retry logic (exponential backoff)
+    - Response caching
+  }
+
+  class ResponseProcessor {
+    +process_response(response, schema): ValidatedResult
+    --
+    Steps:
+    - Parse JSON
+    - Validate schema
+    - Extract confidence & reasoning
+    - Retry with clarification if error
+  }
+
+  class HumanReview {
+    +flag_for_review(entity): void
+    +store_uncertain(entity): void
+  }
+
+  class MetricsUpdater {
+    +update_metrics(result): void
+  }
+
+  ' Relations
+  CandidateReceiver --> ConfidenceEvaluator
+  ConfidenceEvaluator --> AutoAcceptor : High confidence
+  ConfidenceEvaluator --> LLMRouter : Medium confidence
+  ConfidenceEvaluator --> HumanReview : Low confidence
+
+  LLMRouter --> PromptBuilder
+  PromptBuilder --> LLMRequestExecutor
+  LLMRequestExecutor --> ResponseProcessor
+
+  ResponseProcessor --> MetricsUpdater
+  ResponseProcessor --> HumanReview : if below accept threshold
+  ResponseProcessor --> AutoAcceptor : if above accept threshold
+}
+
+
+' Human-in-the-Loop Integration
+package "Human-in-the-Loop (HITL)" {
+
+  class UncertaintyQueue {
+    +uncertain_entities: List[UncertainEntity]
+    +uncertainty_reasons: List[Reason]
+    +priority_scorer: PriorityCalculator
+    +queue_for_review(): void
+    --
+    Priority Factors:
+    - Business impact (high for core entities)
+    - Confidence gap (large uncertainty ranges)
+    - Frequency (common patterns need resolution)
+    - Domain criticality (regulated fields priority)
+  }
+
+  class HumanReviewInterface {
+    +review_dashboard: WebInterface
+    +annotation_tools: AnnotationToolkit
+    +context_provider: ContextualHelp
+    +submit_feedback(): Feedback
+    --
+    Interface Features:
+    - Side-by-side entity comparison
+    - Visual highlighting of key features
+    - Suggested classifications from LLM
+    - Historical similar cases
+    - Domain expert annotations
+  }
+
+  class FeedbackProcessor {
+    +feedback_analyzer: FeedbackAnalyzer
+    +pattern_learner: PatternLearner
+    +model_updater: ModelUpdater
+    +process_feedback(): ModelUpdates
+    --
+    Learning from Feedback:
+    - Update confidence thresholds
+    - Improve prompt templates
+    - Train local classifiers
+    - Build domain-specific rules
+  }
+}
+
+
+
+' Cost and Performance Optimization
+package "Optimization Layer" {
+
+  class CostOptimizer {
+    +model_costs: Dict[Model, CostPerToken]
+    +performance_cache: ResponseCache
+    +batch_processor: BatchOptimizer
+    +optimize_llm_usage(): CostSavings
+    --
+    Optimization Strategies:
+    - Cache similar entity classifications
+    - Batch process similar entities
+    - Use cheaper models for simple tasks
+    - Progressive complexity (simple → complex)
+  }
+
+  class PerformanceMonitor {
+    +latency_tracker: LatencyMonitor
+    +accuracy_tracker: AccuracyTracker
+    +cost_tracker: CostTracker
+    +generate_metrics(): PerformanceReport
+    --
+    Key Metrics:
+    - Average response time per task type
+    - Accuracy vs human ground truth
+    - Cost per entity processed
+    - Cache hit rates
+  }
+}
+
+
+' Integration Flow Diagram
+LLMRouter --> PromptTemplateManager : route decision
+PromptTemplateManager --> EntityClassificationLLM : entity tasks
+PromptTemplateManager --> RelationshipValidationLLM : relation tasks
+PromptTemplateManager --> AttributeExtractionLLM : attribute tasks
+PromptTemplateManager --> ConflictResolutionLLM : conflict tasks
+
+EntityClassificationLLM --> ResponseProcessor : classification results
+RelationshipValidationLLM --> ResponseProcessor : validation results
+AttributeExtractionLLM --> ResponseProcessor : attribute results
+ConflictResolutionLLM --> ResponseProcessor : resolution results
+
+ResponseProcessor --> UncertaintyQueue : low confidence results
+UncertaintyQueue --> HumanReviewInterface : prioritized queue
+HumanReviewInterface --> FeedbackProcessor : human annotations
+FeedbackProcessor --> LLMRouter : model improvements
+
+CostOptimizer --> LLMRouter : cost optimization rules
+PerformanceMonitor --> CostOptimizer : performance metrics
+
+' Detailed Prompt Examples
+legend bottom
+  **Advanced Prompt Engineering Examples:**
+
+  **Multi-Shot Entity Classification:**
+  ```
+  "I'll show you several UI entities and their classifications.
+  Learn from these examples, then classify the target entity.
+
+  Example 1:
+  Visual: [student_card_image]
+  Text: 'John Smith, ID: STU001, Grade: A'
+  Classification: DataEntity (Student)
+  Attributes: name=John Smith, id=STU001, grade=A
+
+  Example 2:
+  Visual: [student_list_image]
+  Text: 'Student Roster (25 students)'
+  Classification: CollectionEntity (StudentList)
+  Attributes: count=25, type=roster
+
+  Now classify:
+  Visual: [target_entity_image]
+  Text: '{target_text}'
+  "
+  ```
+
+  **Chain-of-Thought Relationship Validation:**
+  ```
+  "Let me think through this step by step:
+
+  Step 1: What are the entities?
+  Entity A: {entity_a_description}
+  Entity B: {entity_b_description}
+
+  Step 2: What is the proposed relationship?
+  Relationship: {proposed_relationship}
+
+  Step 3: Does this make business sense?
+  - In the domain of {business_domain}
+  - Given common business practices
+  - Considering data modeling principles
+
+  Step 4: What evidence supports/contradicts this?
+  Supporting evidence: {positive_evidence}
+  Contradicting evidence: {negative_evidence}
+
+  Step 5: Final decision with confidence
+  Decision: [Accept/Reject/Uncertain]
+  Confidence: [0-100]
+  Reasoning: [detailed_explanation]
+  "
+  ```
+end legend
+
+@enduml

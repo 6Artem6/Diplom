@@ -1,0 +1,328 @@
+@startuml Detailed Algorithms and Data Flows
+
+title Cross-View Entity Linking & BPG Construction: Detailed Algorithms
+
+start
+:Input: Screenshots + Metadata;
+
+' --- Preprocessing Phase ---
+:Layout Detection;
+note right
+**LayoutLM-v3 + YOLO**
+- Detect UI elements
+- Segment visual blocks
+- Extract bounding boxes
+end note
+:OCR Text Extraction;
+note right
+**PaddleOCR + SpaCy**
+- Extract text regions
+- Normalize text content
+- Detect text patterns
+end note
+
+:Visual Feature Extraction;
+note right
+**CLIP-ViT + ResNet50**
+- Generate embeddings
+- Extract layout signatures
+- Compute histograms
+end note
+
+' --- Similarity Calculation ---
+:Multi-Modal Similarity;
+note right
+**Formula**
+
+similarity =
+w_visual * cosine_sim +
+w_text * fuzzy_match +
+w_layout * layout_dist +
+w_temporal * bonus
+
+Weights: 0.4 / 0.3 / 0.2 / 0.1
+end note
+
+' --- Clustering Phase ---
+:HDBSCAN Clustering;
+note right
+Parameters:
+- min_cluster_size = 3
+- min_samples = 2
+- metric = 'precomputed'
+- selection = 'eom'
+end note
+
+:Confidence Scoring;
+note right
+```
+confidence =
+0.3*cohesion +
+0.2*agreement +
+0.2*temporal +
+0.2*pattern +
+0.1*domain
+```
+Thresholds: High=0.85, Med=0.6, Low=0.45
+end note
+
+' --- Validation ---
+if (confidence < 0.6?) then (yes)
+  :LLM Validation;
+  note right
+  **GPT-4V Prompt:**
+  "Given two UI elements...
+   Q1. Same entity?
+   Q2. Entity type?
+   Q3. Attributes?
+   Q4. Confidence?"
+  end note
+else (no)
+  :Auto-accept high confidence clusters;
+endif
+
+:Output: Cross-View Entity Clusters;
+
+' BPG Construction Algorithm Details
+  :Input: Cross-View Entity Clusters;
+  note right
+   "Entity Classification"
+    :Entity Type Detection|
+    LLM-Based Classification:
+    ```
+    Prompt: "Classify this entity based on its
+    visual appearance and text content:
+
+    Visual: [entity_screenshot]
+    Text: '{extracted_text}'
+    Context: '{surrounding_elements}'
+
+    Choose from:
+    - DataEntity (Student, Product, Customer)
+    - CollectionEntity (StudentList, ProductGrid)
+    - ActionEntity (Button, Link, Form)
+    - ContainerEntity (Table, Panel, Card)
+
+    Also extract key attributes and their types."
+    ```
+  end note
+
+:Relationship Detection;
+
+fork
+  :Spatial Relationship Detection;
+  note right
+    **Geometric Analysis (Python):**
+    ```
+    def detect_spatial_relations(entity1, entity2):
+        bbox1, bbox2 = entity1.bbox, entity2.bbox
+
+        # Containment
+        if is_contained(bbox1, bbox2):
+            return "Contains"
+
+        # Proximity
+        distance = euclidean_distance(
+            bbox1.center, bbox2.center)
+        if distance < proximity_threshold:
+            return "Adjacent"
+
+        # Alignment
+        if horizontal_aligned(bbox1, bbox2):
+            return "HorizontalGroup"
+    ```
+  end note
+fork again
+  :Semantic Relationship Detection;
+  note right
+    **Pattern-Based + LLM:**
+    ```
+    # Pattern matching
+    if "student_id" in entity1.text and \
+       "group" in entity2.text:
+        candidate_relation = "BelongsTo"
+
+    # LLM validation
+    prompt = f"Given entities:
+    Entity1: {entity1.description}
+    Entity2: {entity2.description}
+
+    Is the relationship '{candidate_relation}'
+    logically valid? Explain reasoning."
+    ```
+  end note
+fork again
+  :Collection Analysis;
+  note right
+    **Structure Detection (Python):**
+    ```
+    def analyze_collection_structure(entities):
+        # Detect table patterns
+        if detect_table_pattern(entities):
+            header_entities = extract_headers()
+            row_entities = extract_rows()
+            return TableRelation(header_entities, row_entities)
+
+        # Detect list patterns
+        if detect_list_pattern(entities):
+            container = find_container_entity()
+            items = find_item_entities()
+            return ListRelation(container, items)
+    ```
+  end note
+end fork
+
+  :Foreign Key Inference;
+  note right
+    :FK Pattern Detection|
+    **Multi-Strategy Approach:**
+    ```python
+    def infer_foreign_keys(entities):
+        fk_candidates = []
+
+        # Naming convention analysis
+        for entity in entities:
+            for attr in entity.attributes:
+                if attr.name.endswith('_id'):
+                    referenced_entity = find_entity_by_name(
+                        attr.name.replace('_id', ''))
+                    if referenced_entity:
+                        fk_candidates.append(
+                            FKRelation(entity, attr, referenced_entity))
+
+        # Value-based matching
+        for candidate in fk_candidates:
+            if has_matching_values(candidate):
+                candidate.confidence += 0.3
+
+        # LLM semantic validation
+        for candidate in low_confidence_candidates:
+            llm_result = validate_fk_with_llm(candidate)
+            candidate.confidence = llm_result.confidence
+
+        return filter(fk_candidates, confidence > 0.6)
+    ```
+  end note
+
+  :Confidence Aggregation;
+  note right
+    :Multi-Evidence Scoring|
+    **Confidence Calculation:**
+    ```python
+    def calculate_relation_confidence(relation):
+        scores = {
+            "spatial": spatial_evidence_score(relation),
+            "semantic": semantic_pattern_score(relation),
+            "statistical": statistical_evidence_score(relation),
+            "llm": llm_validation_score(relation)
+        }
+
+        # Weighted combination
+        confidence = (
+            0.3 * scores['spatial'] +
+            0.3 * scores['semantic'] +
+            0.2 * scores['statistical'] +
+            0.2 * scores['llm']
+        )
+
+        # Consistency bonus
+        if cross_view_consistent(relation):
+            confidence += 0.1
+
+        return min(confidence, 1.0)
+    ```
+  end note
+
+:Graph Construction;
+fork
+  :BPG Node Creation;
+  note right
+    **Entity Nodes (Cypher):**
+    ```
+    CREATE (entity:Entity {
+        id: $entity_id,
+        type: $entity_type,
+        name: $entity_name,
+        attributes: $attributes,
+        confidence: $confidence,
+        provenance: $provenance_info
+    })
+    ```
+  end note
+fork again
+  :BPG Edge Creation;
+  note right
+    **Relationship Edges (Cypher):**
+    ```
+    MATCH (e1:Entity {id: $entity1_id})
+    MATCH (e2:Entity {id: $entity2_id})
+    CREATE (e1)-[r:RELATION {
+        type: $relation_type,
+        confidence: $confidence,
+        evidence: $supporting_evidence,
+        validation_method: $validation_method
+    }]->(e2)
+    ```
+  end note
+end fork
+
+  :Database Schema Inference;
+  note right
+    :SQL Schema Generation|
+    **Reverse Engineering:**
+    ```python
+    def generate_database_schema(bpg):
+        schema = DatabaseSchema()
+
+        # Generate tables from entities
+        for entity in bpg.entities:
+            if entity.type == 'DataEntity':
+                table = Table(
+                    name=entity.name.lower(),
+                    columns=[Column(attr.name, infer_sql_type(attr))
+                            for attr in entity.attributes]
+                )
+                schema.add_table(table)
+
+        # Generate foreign keys from relationships
+        for relation in bpg.relations:
+            if relation.type == 'References':
+                fk = ForeignKey(
+                    from_table=relation.source.name,
+                    to_table=relation.target.name,
+                    confidence=relation.confidence
+                )
+                schema.add_foreign_key(fk)
+
+        return schema
+    ```
+  end note
+
+  :Output: Business Process Graph + DB Schema;
+
+' Evaluation Metrics Details
+legend bottom
+  **Detailed Evaluation Metrics:**
+
+  **Cross-View Linking Metrics:**
+  • Entity Linking Precision = Correctly linked pairs / All linked pairs
+  • Entity Linking Recall = Correctly linked pairs / All true pairs
+  • Cross-View Consistency = Same entity same attributes across views
+  • Cluster Purity = Homogeneity within clusters
+  • Adjusted Rand Index = Similarity to ground truth clustering
+
+  **BPG Construction Metrics:**
+  • Relationship Precision = Correct relations / Inferred relations
+  • Relationship Recall = Correct relations / True relations
+  • Schema Accuracy = Correct table/column mappings
+  • Attribute Type Accuracy = Correct data type inference
+  • FK Precision = Correct foreign keys / Inferred foreign keys
+
+  **System-Level Metrics:**
+  • Processing Speed (entities/second)
+  • LLM Token Usage (tokens/entity)
+  • Memory Usage (RAM/screenshot)
+  • Scalability (performance vs dataset size)
+end legend
+
+@enduml

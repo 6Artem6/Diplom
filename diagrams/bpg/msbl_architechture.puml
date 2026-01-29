@@ -1,0 +1,210 @@
+@startuml MSBL_Architecture_Colored
+title Архитектура MSBL — цветная версия с расширенными комментариями
+
+skinparam linetype ortho
+skinparam rectangle {
+  BorderColor black
+  BackgroundColor White
+  RoundCorner 10
+}
+
+' === Цветовые палитры ===
+' Inputs — серо-голубой
+' Perception — светло-жёлтый
+' Embeddings — светло-фиолетовый
+' Graph — мятный
+' Semantic — светло-розовый
+' Planner — светло-оранжевый
+' Execution — голубой
+' Monitoring — светло-зелёный
+' Fallback — серый
+' Human — светло-золотистый
+
+' Человек
+rectangle "👤 Человек\n(пользователь / аналитик / оператор)" as Human #Khaki
+
+note right of Human
+  Уровни автоматизации:
+  1. Разовое задание (одно действие)
+  2. Ручное построение workflow
+  3. Workflow по промпту
+  (описание → ноды → планировщик)
+end note
+
+' Inputs
+package "Входные данные" #LightSteelBlue {
+  rectangle "Скриншоты\n(PNG/JPEG)" as Screenshots #LightSteelBlue
+  rectangle "Клики / Clickstreams" as Clickstreams #LightSteelBlue
+  rectangle "Схема БД\n(обратная инженерия)" as DBSchema #LightSteelBlue
+  rectangle "Логи процессов" as ProcessLogs #LightSteelBlue
+  rectangle "Бизнес-документы\n(SOP, регламенты)" as BusinessDocs #LightSteelBlue
+}
+
+note top of Screenshots
+  ⚠ API и HTML недоступны —
+  доступ только через GUI
+end note
+
+' Perception Layer
+package "Слой восприятия (Perception)" #LightYellow {
+  rectangle "Детектор элементов\n(YOLOv8 / Detectron2)" as Detector #LightYellow
+  rectangle "OCR\n(Tesseract / PaddleOCR)" as OCR #LightYellow
+  rectangle "Layout модель\n(LayoutLMv3)" as Layout #LightYellow
+  rectangle "Кросс-вью матчинг\n(связь строк и карточек)" as CrossView #LightYellow
+  rectangle "Фоллбэк восприятия\n(ансамбль, повтор, запрос скрина)" as PerceptionFB #Gray
+}
+
+note right of Detector
+  Перцептивный слой:
+  - выделение элементов интерфейса
+  - распознавание текста
+  - восстановление структуры layout
+  - кросс-вью связь (список ↔ карточка)
+end note
+
+' Embedding & Index
+package "Эмбеддинги и индекс" #Thistle {
+  rectangle "Мультимодальные эмбеддинги\n(CLIP / SentenceTransformers)" as Embeddings #Thistle
+  rectangle "VectorDB\n(Milvus / Pinecone)" as VectorDB #Thistle
+}
+
+' Graph Construction (BPG)
+package "Конструирование графа (BPG)" #PaleGreen {
+  rectangle "Entity Linking / дедупликация" as EntityLink #PaleGreen
+  rectangle "Восстановление схемы\n(FK/PK)" as SchemaInf #PaleGreen
+  rectangle "GNN\n(GraphSAGE / GAT)" as GNN #PaleGreen
+  rectangle "GraphDB\n(Neo4j)" as GraphDB #PaleGreen
+  rectangle "Фоллбэк графа\n(шаблоны, tentative edges, HITL)" as GraphFB #Gray
+}
+
+note left of GraphDB
+  BPG строится:
+  - cross-view (GUI ↔ карточка)
+  - через GNN для семантики
+  - enriched связями из схемы БД
+end note
+
+' Semantic Layer
+package "Семантический слой" #LightPink {
+  rectangle "Шаблоны процессов\nи спецификации" as TemplateStore #LightPink
+  rectangle "NLU / Intent Mapper" as IntentMapper #LightPink
+  rectangle "Агрегатор уверенности" as ConfAgg #LightPink
+}
+
+note right of TemplateStore
+  Семантический слой объединяет:
+  - бизнес-шаблоны
+  - текстовые описания процессов
+  - маппинг intent → действие
+end note
+
+' Planner & Orchestrator
+package "Планировщик и оркестратор" #Moccasin {
+  rectangle "LLM Planner\n(GPT-4V / LLaVA)" as LLM #Moccasin
+  rectangle "Декомпозитор промптов" as PromptDec #Moccasin
+  rectangle "Оркестратор\n(n8n / Temporal)" as Orchestrator #Moccasin
+  rectangle "Фоллбэк планировщика\n(шаблонный план, HITL)" as PlannerFB #Gray
+}
+
+note right of Orchestrator
+  Planner & Orchestrator:
+  - разовое действие (intent → шаг)
+  - workflow (ручной или промпт)
+  - fallback через HITL или шаблоны
+end note
+
+' Execution Layer
+package "Исполнение" #LightSkyBlue {
+  rectangle "RPA движок\n(Playwright / Puppeteer)" as RPA #LightSkyBlue
+  rectangle "API Caller / Transaction Manager" as APICaller #LightSkyBlue
+  rectangle "HITL Gateway\n(approve / modify / cancel)" as HITL #LightSkyBlue
+  rectangle "Фоллбэк исполнения\n(API-call, rollback)" as ExecFB #Gray
+}
+
+note bottom of RPA
+  Исполнение ограничено GUI.
+  API вызывается только как fallback.
+end note
+
+' Monitoring & Learning
+package "Мониторинг и обучение" #LightGreen {
+  rectangle "Аудит логгер\n(immutable traces)" as Audit #LightGreen
+  rectangle "Метрики\n(Prometheus / Grafana)" as Metrics #LightGreen
+  rectangle "Active Learner\n(переобучение)" as ActiveLearner #LightGreen
+}
+
+note right of Metrics
+  Мониторинг:
+  - метрики качества
+  - аудит (трассировка шагов)
+  - активное обучение для улучшений
+end note
+
+' === Human integration ===
+Human -down-> TemplateStore : "ручное задание / шаблон"
+Human -down-> Orchestrator : "workflow по промпту"
+Human -down-> Orchestrator : "ручное построение workflow"
+
+' === Data flows (цветные стрелки) ===
+Screenshots -[#SteelBlue]-> Detector
+Detector -[#SteelBlue]-> OCR
+OCR -[#SteelBlue]-> Layout
+Layout -[#SteelBlue]-> CrossView
+CrossView -[#Orchid]-> Embeddings
+
+Embeddings -[#Orchid]-> VectorDB
+VectorDB -[#Orchid]-> EntityLink
+Embeddings -[#Orchid]-> EntityLink
+
+Clickstreams -[#SeaGreen]-> EntityLink
+ProcessLogs -[#SeaGreen]-> EntityLink
+DBSchema -[#SeaGreen]-> SchemaInf
+SchemaInf -[#SeaGreen]-> EntityLink
+
+EntityLink -[#SeaGreen]-> GNN
+EntityLink -[#SeaGreen]-> GraphDB : "начальные связи"
+GNN -[#SeaGreen]-> GraphDB : "классы ролей / веса"
+GraphDB -[#Orange]-> TemplateStore
+GraphDB -[#Orange]-> IntentMapper : "контекст"
+BusinessDocs -[#Orange]-> TemplateStore
+
+TemplateStore -[#Orange]-> IntentMapper
+IntentMapper -[#Orange]-> ConfAgg
+ConfAgg -[#Orange]-> LLM : "запрос на план"
+LLM -[#Orange]-> PromptDec
+PromptDec -[#Orange]-> Orchestrator
+Orchestrator -[#Orange]-> RPA
+Orchestrator -[#Orange]-> APICaller
+Orchestrator -[#Orange]-> HITL : "при необходимости HITL"
+
+RPA -[#Brown]-> Audit
+APICaller -[#Brown]-> Audit
+RPA -[#Brown]-> Metrics
+APICaller -[#Brown]-> Metrics
+
+Audit -[#DarkGreen]-> ActiveLearner
+Metrics -[#DarkGreen]-> ActiveLearner
+
+ActiveLearner -[#DarkGreen]-> Detector : "обновление"
+ActiveLearner -[#DarkGreen]-> GNN : "обновление"
+ActiveLearner -[#DarkGreen]-> IntentMapper : "обновление"
+ActiveLearner -[#DarkGreen]-> Embeddings : "обновление"
+
+' === Fallback links (пунктир) ===
+Detector ..[#Gray]..> PerceptionFB : <<фоллбэк>>
+CrossView ..[#Gray]..> PerceptionFB : <<фоллбэк>>
+GNN ..[#Gray]..> GraphFB : <<фоллбэк>>
+GraphDB ..[#Gray]..> GraphFB : <<фоллбэк>>
+LLM ..[#Gray]..> PlannerFB : <<фоллбэк>>
+Orchestrator ..[#Gray]..> PlannerFB : <<фоллбэк>>
+RPA ..[#Gray]..> ExecFB : <<фоллбэк>>
+APICaller ..[#Gray]..> ExecFB : <<фоллбэк>>
+
+' HITL cycle
+PlannerFB --> HITL : "ручное подтверждение"
+GraphFB --> HITL : "подтверждение связей"
+PerceptionFB --> HITL : "флаг низкой уверенности"
+HITL --> Orchestrator : "подтверждённый план"
+HITL --> EntityLink : "подтверждённые сущности"
+
+@enduml

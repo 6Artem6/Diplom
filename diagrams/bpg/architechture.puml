@@ -1,0 +1,233 @@
+@startuml
+!theme aws-orange
+' === Глобальные настройки ===
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam dpi 150
+skinparam shadowing false
+
+skinparam packageStyle rectangle
+skinparam package {
+  BackgroundColor #FFFFFF
+  BorderColor black
+  FontColor black
+}
+
+skinparam component {
+  BackgroundColor lightblue
+  BorderColor black
+  FontColor black
+}
+
+' Стрелки — тонкие и ортогональные
+skinparam ArrowThickness 1
+skinparam ArrowColor black
+skinparam linetype ortho
+
+title Multimodal Semantic Business Layer (MSBL) - Complete Architecture
+
+' === LAYER 1: DATA SOURCES ===
+package "Data Sources Layer" as DataSources {
+  component "Screenshots\n(GUI State)" as Screenshots
+  component "Clickstreams\n(User Actions)" as Clickstreams
+  component "DB Schema\n(Reverse Eng.)" as DBSchema
+  component "Process Logs\n(Event Data)" as ProcessLogs
+  component "Business Docs\n(Text Descriptions)" as BusinessDocs
+  component "External APIs\n(Context Data)" as APIs
+}
+
+' === LAYER 2: PERCEPTION & EXTRACTION ===
+package "Perception & Extraction Layer" as Perception {
+  component "YOLOv8\nElement Detection" as ElementDetector
+  component "OCR Engine\n(Tesseract/PaddleOCR)" as OCR
+  component "LayoutLMv3\nLayout Understanding" as LayoutLM
+  component "PM4Py\nProcess Mining" as ProcessMining
+  component "SQL Parser\nSchema Analysis" as SQLParser
+  component "NLP Pipeline\nText Processing" as NLP
+}
+
+' === LAYER 3: EMBEDDING & REPRESENTATION ===
+package "Embedding & Representation Layer" as Embedding {
+  component "CLIP\nVisual-Text Embeddings" as CLIP
+  component "SentenceTransformers\nText Embeddings" as SentenceT
+  component "Graph Embeddings\n(Node2Vec/GraphSAGE)" as GraphEmb
+  component "Multimodal Fusion\n(Cross-Attention)" as Fusion
+}
+
+' === LAYER 4: STORAGE ===
+package "Storage Layer" as Storage {
+  database "Vector DB\n(Milvus/Pinecone)\nEmbeddings Storage" as VectorDB
+  database "Graph DB\n(Neo4j)\nBusiness Process Graph" as GraphDB
+  database "Document Store\n(MongoDB)\nRaw Data & Metadata" as DocumentDB
+  database "Time Series DB\n(InfluxDB)\nClickstream & Events" as TimeSeriesDB
+}
+
+' === LAYER 5: GRAPH CONSTRUCTION & LINKING ===
+package "Graph Construction Layer" as GraphConstruction {
+  component "Entity Linking\n(HDBSCAN + GNN)" as EntityLinking
+  component "Schema Inference\n(FK/PK Detection)" as SchemaInference
+  component "BPG Constructor\n(Process Graph Building)" as BPGConstructor
+  component "Semantic Role Classifier\n(MLP + Attention)" as RoleClassifier
+  component "Confidence Scorer\n(Bayesian Uncertainty)" as ConfidenceScorer
+}
+
+' === LAYER 6: SEMANTIC BUSINESS LAYER ===
+package "Semantic Business Layer" as SemanticLayer {
+  component "Business Graph\n(Unified Representation)" as BusinessGraph
+  component "Intent Mapper\n(NL → Business Actions)" as IntentMapper
+  component "Confidence Aggregator\n(Multi-level Scoring)" as ConfidenceAggregator
+  component "Domain Adapter\n(CRM/ERP/HR Transfer)" as DomainAdapter
+}
+
+' === LAYER 7: PLANNING & ORCHESTRATION ===
+package "Planning & Orchestration Layer" as Planning {
+  component "LLM Planner\n(GPT-4V/LLaVA)" as LLMPlanner
+  component "N8N Workflow\nComplex Scenarios" as N8N
+  component "Action Sequencer\n(Step-by-Step)" as ActionSequencer
+  component "Human-in-the-Loop\nValidation Gateway" as HITL
+}
+
+' === LAYER 8: EXECUTION ===
+package "Execution Layer" as Execution {
+  component "RPA Engine\n(UI Automation)" as RPAEngine
+  component "GPT-4V Agent\n(Vision-based Actions)" as GPT4VAgent
+  component "API Caller\n(System Integration)" as APICaller
+  component "Monitoring Agent\n(Execution Tracking)" as Monitor
+}
+
+' === LAYER 9: FEEDBACK & LEARNING ===
+package "Feedback & Learning Layer" as Feedback {
+  component "Audit Logger\n(Compliance Trail)" as AuditLogger
+  component "Performance Tracker\n(Success Metrics)" as Performance
+  component "Active Learner\n(Model Updates)" as ActiveLearner
+  component "Error Handler\n(Failure Recovery)" as ErrorHandler
+}
+
+' === EXTERNAL SYSTEMS ===
+package "External Systems" as External {
+  component "CRM/ERP\nSystems" as CRM
+  component "Process Mining\nTools" as PMTools
+  component "Compliance\nSystems" as Compliance
+}
+
+' === VERTICAL CONNECTIONS (Data Flow) ===
+Screenshots -[#6BAED6]-> ElementDetector
+Screenshots -[#6BAED6]-> OCR
+Screenshots -[#6BAED6]-> LayoutLM
+Clickstreams -[#6BAED6]-> ProcessMining
+DBSchema -[#6BAED6]-> SQLParser
+ProcessLogs -[#6BAED6]-> ProcessMining
+BusinessDocs -[#6BAED6]-> NLP
+APIs -[#6BAED6]-> NLP
+
+ElementDetector -[#74C476]-> CLIP
+OCR -[#74C476]-> SentenceT
+LayoutLM -[#74C476]-> Fusion
+ProcessMining -[#74C476]-> GraphEmb
+SQLParser -[#74C476]-> GraphEmb
+NLP -[#74C476]-> SentenceT
+
+CLIP -[#9E9AC8]-> VectorDB
+SentenceT -[#9E9AC8]-> VectorDB
+GraphEmb -[#9E9AC8]-> GraphDB
+Fusion -[#9E9AC8]-> DocumentDB
+ProcessMining -[#9E9AC8]-> TimeSeriesDB
+
+VectorDB -[#FDAE6B]-> EntityLinking
+GraphDB -[#FDAE6B]-> SchemaInference
+DocumentDB -[#FDAE6B]-> BPGConstructor
+TimeSeriesDB -[#FDAE6B]-> RoleClassifier
+
+EntityLinking -[#FB6A4A]-> BusinessGraph
+SchemaInference -[#FB6A4A]-> BusinessGraph
+BPGConstructor -[#FB6A4A]-> BusinessGraph
+RoleClassifier -[#FB6A4A]-> IntentMapper
+ConfidenceScorer -[#FB6A4A]-> ConfidenceAggregator
+
+BusinessGraph -[#A55194]-> LLMPlanner
+IntentMapper -[#A55194]-> LLMPlanner
+ConfidenceAggregator -[#A55194]-> HITL
+DomainAdapter -[#A55194]-> N8N
+
+LLMPlanner -[#636363]-> ActionSequencer
+N8N -[#636363]-> ActionSequencer
+ActionSequencer -[#636363]-> RPAEngine
+ActionSequencer -[#636363]-> GPT4VAgent
+ActionSequencer -[#636363]-> APICaller
+HITL -[#636363]-> ActionSequencer
+
+RPAEngine -[#FEC44F]-> Monitor
+GPT4VAgent -[#FEC44F]-> Monitor
+APICaller -[#FEC44F]-> Monitor
+Monitor -[#FEC44F]-> AuditLogger
+Monitor -[#FEC44F]-> Performance
+
+AuditLogger -[#969696]-> ActiveLearner
+Performance -[#969696]-> ActiveLearner
+ErrorHandler -[#969696]-> ActiveLearner
+ActiveLearner -[#969696]-> BusinessGraph
+
+' === HORIZONTAL / CROSS-LAYER CONNECTIONS ===
+EntityLinking <-[#1F78B4]-> VectorDB : "Similarity Queries"
+SchemaInference <-[#1F78B4]-> GraphDB : "Graph Traversal"
+BPGConstructor <-[#1F78B4]-> TimeSeriesDB : "Temporal Patterns"
+RoleClassifier <-[#1F78B4]-> DocumentDB : "Context Retrieval"
+
+IntentMapper <-[#1F78B4]-> VectorDB : "Semantic Search"
+BusinessGraph <-[#1F78B4]-> GraphDB : "Process Queries"
+ConfidenceAggregator <-[#1F78B4]-> VectorDB : "Uncertainty Propagation"
+
+LLMPlanner <-[#1F78B4]-> BusinessGraph : "Process Grounding"
+N8N <-[#1F78B4]-> GraphDB : "Workflow Templates"
+HITL <-[#1F78B4]-> ConfidenceAggregator : "Confidence Threshold"
+
+Monitor <-[#1F78B4]-> TimeSeriesDB : "Real-time Logging"
+ErrorHandler <-[#1F78B4]-> BusinessGraph : "Failure Context"
+ActiveLearner <-[#1F78B4]-> VectorDB : "Embedding Updates"
+
+APICaller <--> CRM : "Data Exchange"
+ProcessMining <--> PMTools : "Model Import"
+AuditLogger <--> Compliance : "Audit Trail"
+
+' === HIDDEN ALIGNMENT (Vertical Ordering) ===
+DataSources ..[hidden]..> Perception
+Perception ..[hidden]..> Embedding
+Embedding ..[hidden]..> Storage
+Storage ..[hidden]..> GraphConstruction
+GraphConstruction ..[hidden]..> SemanticLayer
+SemanticLayer ..[hidden]..> Planning
+Planning ..[hidden]..> Execution
+Execution ..[hidden]..> Feedback
+Feedback ..[hidden]..> External
+
+' === DATA FLOW ANNOTATIONS ===
+note right of Screenshots
+  **Input Data:**
+  - GUI screenshots
+  - Element positions
+  - Visual context
+end note
+
+note right of Clickstreams
+  **Behavioral Data:**
+  - User interactions
+  - Click sequences
+  - Navigation paths
+end note
+
+note right of BusinessGraph
+  **Core Knowledge:**
+  - GUI ↔ Business mapping
+  - Process relationships
+  - Semantic roles
+  - Confidence scores
+end note
+
+note right of ActionSequencer
+  **Execution Plan:**
+  - Step-by-step actions
+  - Fallback strategies
+  - Human checkpoints
+end note
+
+@enduml

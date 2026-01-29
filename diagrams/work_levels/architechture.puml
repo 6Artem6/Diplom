@@ -1,0 +1,210 @@
+@startuml
+!theme plain
+skinparam linetype ortho
+
+skinparam rectangle {
+  Shadowing false
+  BorderColor black
+  FontSize 10
+  FontName Arial
+}
+skinparam arrow {
+  Color darkblue
+  FontSize 9
+}
+skinparam package {
+  BorderColor darkred
+  FontColor darkred
+  FontSize 12
+  FontStyle bold
+}
+
+title SiteGPT: Интеграция с трендами 2025\nАгентная AI, самовосстанавливающиеся системы и аgentic web
+
+' =======================
+' НОВЫЕ ТРЕНДЫ 2025 (из исследования)
+' =======================
+
+' =======================
+' ТРЕНДЫ 2025
+' =======================
+package "ТРЕНДЫ 2025: AGENTIC AI REVOLUTION" #FFE0E0 {
+  rectangle "Agentic Web Automation\n\n• Goal-oriented autonomous agents\n• Multi-step reasoning capabilities\n• Self-adapting execution strategies\n• Context-aware decision making" as AGENTIC_WEB #FF9999
+
+  rectangle "Self-Healing Infrastructure\n\n• Predictive failure detection\n• Automatic remediation\n• Performance optimization\n• Zero-downtime recovery" as SELF_HEAL_INFRA #FF9999
+
+  rectangle "Micro-Agent Orchestration\n\n• Specialized task agents\n• Real-time collaboration\n• Policy-guided autonomy\n• Distributed intelligence" as MICRO_AGENTS #FF9999
+
+  rectangle "Natural Language Workflows\n\n• Conversational automation\n• Intent understanding\n• Dynamic workflow generation\n• Human-AI collaboration" as NL_WORKFLOWS #FF9999
+}
+
+' =======================
+' ИНТЕГРАЦИЯ В SITEGPT CORE
+' =======================
+package "ENHANCED SITEGPT WITH 2025 TRENDS" #E0FFE0 {
+  rectangle "Agentic Discovery System\n\n+ autonomous_site_exploration()\n+ goal_driven_crawling()\n+ adaptive_strategy_selection()\n+ multi_agent_coordination()\n- discovery_agents: List[DiscoveryAgent]\n- goal_reasoner: GoalReasoner\n- strategy_optimizer: StrategyOptimizer" as ADS #99FF99
+
+  rectangle "Self-Healing Graph Engine\n\n+ predict_graph_changes()\n+ auto_repair_broken_links()\n+ optimize_graph_structure()\n+ maintain_consistency()\n- change_predictor: ChangePredictor\n- repair_engine: RepairEngine\n- consistency_monitor: ConsistencyMonitor" as SHGE #99FF99
+
+  rectangle "Micro-Agent Execution Pool\n\n+ deploy_specialized_agents()\n+ coordinate_agent_tasks()\n+ manage_agent_lifecycle()\n+ aggregate_results()\n- agent_factory: AgentFactory\n- task_coordinator: TaskCoordinator\n- result_aggregator: ResultAggregator" as MAEP #99FF99
+
+  rectangle "Conversational Workflow Engine\n\n+ understand_natural_requests()\n+ generate_dynamic_workflows()\n+ explain_execution_steps()\n+ handle_user_feedback()\n- intent_parser: IntentParser\n- workflow_generator: WorkflowGenerator\n- explanation_engine: ExplanationEngine" as CWE #99FF99
+}
+
+' =======================
+' РАСШИРЕННЫЕ AI CAPABILITIES
+' =======================
+package "ADVANCED AI CAPABILITIES 2025" #E0E0FF {
+  rectangle "Reasoning Engine\n\n+ multi_step_reasoning()\n+ causal_inference()\n+ counterfactual_analysis()\n+ decision_justification()\n- reasoning_model: ReasoningModel\n- causal_graph: CausalGraph\n- decision_tree: DecisionTree" as RE #9999FF
+
+  rectangle "Memory Subsystem\n\n+ episodic_memory()\n+ semantic_memory()\n+ working_memory()\n+ memory_consolidation()\n- episode_store: EpisodeStore\n- knowledge_graph: KnowledgeGraph\n- memory_manager: MemoryManager" as MS #9999FF
+
+  rectangle "Adaptive Personalization\n\n+ learn_user_preferences()\n+ adapt_interaction_style()\n+ optimize_user_experience()\n+ maintain_user_models()\n- user_profiler: UserProfiler\n- preference_learner: PreferenceLearner\n- experience_optimizer: ExperienceOptimizer" as AP #9999FF
+
+  rectangle "Collaborative Intelligence\n\n+ human_ai_collaboration()\n+ knowledge_sharing()\n+ collective_learning()\n+ trust_management()\n- collaboration_manager: CollaborationManager\n- trust_engine: TrustEngine\n- knowledge_broker: KnowledgeBroker" as CI #9999FF
+}
+
+' =======================
+' ПРОИЗВОДСТВЕННАЯ ИНТЕГРАЦИЯ
+' =======================
+package "PRODUCTION INTEGRATION 2025" #FFF0E0 {
+  rectangle "Agentic API Gateway\n\n+ route_agentic_requests()\n+ manage_agent_auth()\n+ orchestrate_multi_agents()\n+ monitor_agent_health()\n- request_router: RequestRouter\n- agent_authenticator: AgentAuthenticator\n- health_monitor: HealthMonitor" as AAG #FFE0B3
+
+  rectangle "Zero-Downtime Deployment\n\n+ blue_green_deployment()\n+ canary_releases()\n+ automatic_rollback()\n+ performance_monitoring()\n- deployment_manager: DeploymentManager\n- rollback_engine: RollbackEngine\n- perf_monitor: PerformanceMonitor" as ZDD #FFE0B3
+
+  rectangle "Federated Learning Hub\n\n+ coordinate_federated_training()\n+ aggregate_model_updates()\n+ maintain_privacy()\n+ distribute_knowledge()\n- federation_coordinator: FederationCoordinator\n- privacy_engine: PrivacyEngine\n- knowledge_distributor: KnowledgeDistributor" as FLH #FFE0B3
+
+  rectangle "Enterprise Compliance Engine\n\n+ ensure_regulatory_compliance()\n+ audit_agent_decisions()\n+ manage_data_governance()\n+ enforce_ethical_ai()\n- compliance_checker: ComplianceChecker\n- audit_logger: AuditLogger\n- ethics_enforcer: EthicsEnforcer" as ECE #FFE0B3
+}
+
+' ========= Лэйаут (ключевое) =========
+' Жёстко расставляем пакеты
+left to right direction
+' ========= Лэйаут (ключевое) =========
+left to right direction
+
+' Тренды слева
+AGENTIC_WEB -[hidden]-> SELF_HEAL_INFRA
+SELF_HEAL_INFRA -[hidden]-> MICRO_AGENTS
+MICRO_AGENTS -[hidden]-> NL_WORKFLOWS
+
+' Core в центре
+ADS -[hidden]-> SHGE
+SHGE -[hidden]-> MAEP
+MAEP -[hidden]-> CWE
+
+' Capabilities справа
+RE -[hidden]-> MS
+MS -[hidden]-> AP
+AP -[hidden]-> CI
+
+' Production снизу
+AAG -[hidden]-> ZDD
+ZDD -[hidden]-> FLH
+FLH -[hidden]-> ECE
+
+' ========= СВЯЗИ =========
+AGENTIC_WEB --> ADS
+AGENTIC_WEB --> MAEP
+AGENTIC_WEB --> RE
+
+SELF_HEAL_INFRA --> SHGE
+SELF_HEAL_INFRA --> ZDD
+SELF_HEAL_INFRA --> MS
+
+MICRO_AGENTS --> MAEP
+MICRO_AGENTS --> AAG
+MICRO_AGENTS --> CI
+
+NL_WORKFLOWS --> CWE
+NL_WORKFLOWS --> AP
+NL_WORKFLOWS --> CI
+
+RE --> ADS
+RE --> CWE
+MS --> SHGE
+MS --> AP
+AP --> CWE
+CI --> AAG
+
+ADS --> AAG
+SHGE --> ZDD
+MAEP --> FLH
+CWE --> ECE
+
+AAG --> FLH
+ZDD --> ECE
+FLH --> ADS
+ECE --> SHGE
+
+ECE --> RE
+FLH --> MS
+ZDD --> SHGE
+AAG --> MAEP
+
+
+note top of AGENTIC_WEB
+**Agentic Web (Microsoft 2025)**
+"Systems that pursue goals, reason about context,
+and act autonomously within policy guardrails"
+• NLWeb for semantic content retrieval
+• RSS-like interfaces for agent communication
+• Goal-oriented web navigation
+end note
+
+note top of SELF_HEAL_INFRA
+**Self-Healing Infrastructure**
+Gartner predicts 80% of common issues
+will be autonomously resolved by 2029
+• Predictive failure detection
+• Automatic remediation
+• Performance optimization
+end note
+
+note top of MICRO_AGENTS
+**Micro-Agent Architecture**
+Dozens of specialized micro-agents watching
+every metric, collaborating in real time
+• Domain-specific expertise
+• Real-time collaboration
+• Policy-guided autonomy
+end note
+
+note right of ADS
+**Agentic Discovery System**
+Революционный подход к веб-обнаружению:
+• Автономные агенты исследования
+• Целеориентированное сканирование
+• Адаптивные стратегии поиска
+• Коллективный интеллект агентов
+end note
+
+note right of SHGE
+**Self-Healing Graph Engine**
+Самовосстанавливающиеся графы:
+• Предсказание изменений структуры
+• Автоматическое восстановление связей
+• Оптимизация производительности
+• Консистентность в реальном времени
+end note
+
+note right of CWE
+**Conversational Workflow Engine**
+Натуральная автоматизация:
+• Понимание намерений на естественном языке
+• Динамическая генерация рабочих процессов
+• Объяснение шагов выполнения
+• Адаптация к обратной связи пользователя
+end note
+
+note bottom of FLH
+**Federated Learning Hub**
+33% enterprise apps will have agentic AI
+capabilities by 2028 (Gartner)
+• Децентрализованное обучение моделей
+• Приватность данных организаций
+• Коллективное улучшение интеллекта
+• Масштабируемое распределение знаний
+end note
+
+@enduml

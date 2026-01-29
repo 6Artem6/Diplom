@@ -1,0 +1,559 @@
+@startuml Business Pattern Construction Flowchart
+
+title Business Process Pattern Construction Algorithm - Detailed Flowchart
+
+start
+
+:Получить BPG с сущностями и связями;
+note right
+  **Входные данные:**
+  • entities = сущности из BPG construction
+  • relationships = связи между сущностями
+  • ui_interaction_logs = логи взаимодействия с GUI
+  • screenshot_sequences = последовательности скриншотов
+
+  **Цель:** Выявить паттерны навигации и бизнес-операций
+  для создания автоматизированных workflows
+end note
+
+partition "Обнаружение навигационных паттернов" {
+
+  :Анализировать переходы между экранами;
+  note left
+    **Screen Transition Analysis:**
+
+    ```python
+    def analyze_screen_transitions(screenshot_sequences):
+        transitions = []
+
+        for sequence in screenshot_sequences:
+            for i in range(len(sequence) - 1):
+                current_screen = sequence[i]
+                next_screen = sequence[i + 1]
+
+                # Найти различия между экранами
+                diff_analysis = compare_screenshots(current_screen, next_screen)
+
+                # Определить триггер перехода
+                trigger = identify_transition_trigger(
+                    current_screen, next_screen, diff_analysis)
+
+                transition = {
+                    "from_screen": current_screen,
+                    "to_screen": next_screen,
+                    "trigger_element": trigger,
+                    "timestamp": current_screen.timestamp
+                }
+                transitions.append(transition)
+
+        return transitions
+    ```
+  end note
+
+  :Группировать переходы по сущностям;
+  note right
+    **Entity-based Transition Grouping:**
+
+    ```python
+    def group_transitions_by_entity(transitions, entities):
+        entity_transitions = {}
+
+        for transition in transitions:
+            # Найти сущности на исходном экране
+            from_entities = find_entities_on_screen(
+                transition.from_screen, entities)
+
+            # Найти сущности на целевом экране
+            to_entities = find_entities_on_screen(
+                transition.to_screen, entities)
+
+            # Найти общие сущности (та же сущность в разных видах)
+            common_entities = find_common_entities(from_entities, to_entities)
+
+            for entity in common_entities:
+                if entity.entity_id not in entity_transitions:
+                    entity_transitions[entity.entity_id] = []
+
+                entity_transitions[entity.entity_id].append({
+                    "transition": transition,
+                    "from_view": get_entity_view_type(entity, transition.from_screen),
+                    "to_view": get_entity_view_type(entity, transition.to_screen)
+                })
+
+        return entity_transitions
+    ```
+  end note
+
+  :Выявить паттерны навигации;
+  note left
+    **Navigation Pattern Detection:**
+
+    ```python
+    def detect_navigation_patterns(entity_transitions):
+        navigation_patterns = []
+
+        for entity_id, transitions in entity_transitions.items():
+            # Группировать по типам переходов
+            transition_types = {}
+            for trans in transitions:
+                key = f"{trans.from_view} -> {trans.to_view}"
+                if key not in transition_types:
+                    transition_types[key] = []
+                transition_types[key].append(trans)
+
+            # Создать паттерны для частых переходов
+            for transition_type, occurrences in transition_types.items():
+                if len(occurrences) >= 3:  # Минимум 3 раза
+                    pattern = NavigationPattern(
+                        entity_id=entity_id,
+                        from_view=occurrences[0].from_view,
+                        to_view=occurrences[0].to_view,
+                        trigger_elements=[occ.transition.trigger_element
+                                        for occ in occurrences],
+                        frequency=len(occurrences),
+                        confidence=calculate_pattern_confidence(occurrences)
+                    )
+                    navigation_patterns.append(pattern)
+
+        return navigation_patterns
+    ```
+  end note
+}
+
+partition "Обнаружение функциональных паттернов" {
+
+  :Анализировать CRUD операции;
+  note right
+    **CRUD Pattern Detection:**
+
+    ```python
+    def detect_crud_patterns(entities, ui_interactions):
+        crud_patterns = []
+
+        for entity in entities:
+            if entity.entity_type != "DataEntity":
+                continue
+
+            crud_operations = {
+                "create": [],
+                "read": [],
+                "update": [],
+                "delete": []
+            }
+
+            # Анализ UI взаимодействий для каждой операции
+            for interaction in ui_interactions:
+                if involves_entity(interaction, entity):
+                    operation_type = classify_crud_operation(interaction, entity)
+                    if operation_type:
+                        crud_operations[operation_type].append(interaction)
+
+            # Создать CRUD паттерн если есть операции
+            if any(len(ops) > 0 for ops in crud_operations.values()):
+                crud_pattern = CRUDPattern(
+                    entity=entity,
+                    create_steps=extract_steps(crud_operations["create"]),
+                    read_steps=extract_steps(crud_operations["read"]),
+                    update_steps=extract_steps(crud_operations["update"]),
+                    delete_steps=extract_steps(crud_operations["delete"])
+                )
+                crud_patterns.append(crud_pattern)
+
+        return crud_patterns
+    ```
+  end note
+
+  :Поиск workflow паттернов;
+  note left
+    **Workflow Pattern Mining:**
+
+    ```python
+    def mine_workflow_patterns(ui_interactions, entities):
+        # Группировать взаимодействия по сессиям
+        sessions = group_interactions_by_session(ui_interactions)
+
+        workflow_patterns = []
+
+        for session in sessions:
+            # Извлечь последовательность действий
+            action_sequence = extract_action_sequence(session, entities)
+
+            # Поиск повторяющихся последовательностей
+            if len(action_sequence) >= 3:
+                # Проверить, повторяется ли эта последовательность
+                similar_sequences = find_similar_sequences(
+                    action_sequence, all_sessions)
+
+                if len(similar_sequences) >= 2:  # Минимум 2 похожих
+                    workflow_pattern = WorkflowPattern(
+                        name=generate_workflow_name(action_sequence),
+                        steps=action_sequence,
+                        frequency=len(similar_sequences),
+                        involved_entities=get_involved_entities(action_sequence),
+                        success_rate=calculate_success_rate(similar_sequences)
+                    )
+                    workflow_patterns.append(workflow_pattern)
+
+        return workflow_patterns
+    ```
+  end note
+
+  :Извлечь бизнес-правила и ограничения;
+  note right
+    **Business Rules Extraction:**
+
+    ```python
+    def extract_business_rules(patterns, entities, relationships):
+        business_rules = []
+
+        for pattern in patterns:
+            # Анализ предусловий
+            preconditions = []
+
+            # Правила на основе отношений сущностей
+            for entity in pattern.involved_entities:
+                entity_relations = get_entity_relationships(entity, relationships)
+
+                for relation in entity_relations:
+                    if relation.type == "DEPENDS_ON":
+                        precondition = BusinessRule(
+                            type="precondition",
+                            description=f"{entity.business_meaning} requires {relation.target.business_meaning}",
+                            entities=[entity, relation.target],
+                            confidence=relation.confidence
+                        )
+                        preconditions.append(precondition)
+
+            # Правила на основе атрибутов
+            for entity in pattern.involved_entities:
+                for attribute in entity.attributes:
+                    if attribute.is_required:
+                        rule = BusinessRule(
+                            type="validation",
+                            description=f"{attribute.name} is required for {entity.business_meaning}",
+                            entities=[entity],
+                            confidence=0.9
+                        )
+                        business_rules.append(rule)
+
+            pattern.preconditions = preconditions
+
+        return business_rules
+    ```
+  end note
+}
+
+partition "LLM валидация паттернов" {
+
+  :Подготовить паттерн для валидации;
+  note left
+    **Pattern Validation Preparation:**
+
+    ```python
+    def prepare_pattern_for_validation(pattern):
+        validation_context = {
+            "pattern_name": pattern.name,
+            "pattern_type": pattern.type,
+            "involved_entities": [e.business_meaning for e in pattern.entities],
+            "steps": [format_step_for_human(step) for step in pattern.steps],
+            "frequency": pattern.frequency,
+            "success_rate": pattern.success_rate
+        }
+
+        return validation_context
+    ```
+  end note
+
+  :Сформировать промпт для LLM валидации;
+  note right
+    **Pattern Validation Prompt:**
+
+    ```
+    "Evaluate this business process pattern discovered from GUI interactions:
+
+    Pattern Name: {pattern_name}
+    Pattern Type: {pattern_type} (Navigation/Functional/Workflow)
+
+    Involved Business Entities:
+    {formatted_entities}
+
+    Process Steps:
+    {formatted_steps}
+
+    Usage Statistics:
+    - Observed frequency: {frequency} times
+    - Success rate: {success_rate}%
+    - Confidence score: {confidence}
+
+    Questions to evaluate:
+    1. Is this a logical business process? (Yes/No/Partially)
+    2. Are the steps in correct order?
+    3. Are there any missing critical steps?
+    4. What business rules should apply?
+    5. What could go wrong (error scenarios)?
+    6. Your overall confidence (0-100)?
+
+    Also suggest:
+    - Preconditions (what must be true before starting)
+    - Postconditions (what should be true after completion)
+    - Business constraints (rules that must be followed)
+
+    Consider industry best practices and common business logic."
+    ```
+  end note
+
+  :Отправить на LLM валидацию;
+  note left
+    **LLM Validation Processing:**
+
+    ```python
+    def validate_pattern_with_llm(pattern, validation_context):
+        prompt = build_validation_prompt(validation_context)
+
+        response = llm_client.chat_completion(
+            model="gpt-4",
+            messages=[{
+                "role": "system",
+                "content": "You are a business process expert with deep knowledge of workflows, business rules, and automation."
+            }, {
+                "role": "user",
+                "content": prompt
+            }],
+            max_tokens=600,
+            temperature=0.3
+        )
+
+        validation_result = parse_llm_validation_response(response.content)
+
+        return validation_result
+    ```
+  end note
+
+  if (LLM подтверждает паттерн?) then (yes)
+    :Обновить паттерн с LLM insights;
+    note right
+      **Pattern Enhancement with LLM:**
+
+      ```python
+      def enhance_pattern_with_llm_insights(pattern, validation_result):
+          # Добавить предусловия от LLM
+          for precondition in validation_result.suggested_preconditions:
+              pattern.preconditions.append(BusinessRule(
+                  type="precondition",
+                  description=precondition,
+                  source="llm_validation",
+                  confidence=validation_result.confidence / 100.0
+              ))
+
+          # Добавить постусловия
+          for postcondition in validation_result.suggested_postconditions:
+              pattern.postconditions.append(BusinessRule(
+                  type="postcondition",
+                  description=postcondition,
+                  source="llm_validation",
+                  confidence=validation_result.confidence / 100.0
+              ))
+
+          # Обновить уверенность паттерна
+          pattern.llm_validated = True
+          pattern.llm_confidence = validation_result.confidence / 100.0
+          pattern.overall_confidence = (
+              pattern.statistical_confidence * 0.6 +
+              pattern.llm_confidence * 0.4
+          )
+
+          return pattern
+      ```
+    end note
+  else (no)
+    if (Частично валиден?) then (yes)
+      :Пометить для human review;
+      note left
+        ```python
+        pattern.status = "needs_human_review"
+        pattern.llm_feedback = validation_result.issues
+        pattern.suggested_improvements = validation_result.suggestions
+
+        # Добавить в очередь для человеческой проверки
+        human_review_queue.add(pattern)
+        ```
+      end note
+    else (no)
+      :Отклонить паттерн;
+      note right
+        ```python
+        pattern.status = "rejected"
+        pattern.rejection_reason = validation_result.rejection_reason
+
+        # Логировать для анализа
+        log_rejected_pattern(pattern, validation_result)
+        ```
+      end note
+    endif
+  endif
+}
+
+partition "Композиция сложных паттернов" {
+
+  :Найти связанные паттерны;
+  note left
+    **Related Pattern Discovery:**
+
+    ```python
+    def find_related_patterns(patterns):
+        pattern_relationships = []
+
+        for pattern_a in patterns:
+            for pattern_b in patterns:
+                if pattern_a.id == pattern_b.id:
+                    continue
+
+                # Проверить пересечение сущностей
+                shared_entities = set(pattern_a.entities) & set(pattern_b.entities)
+
+                if shared_entities:
+                    # Проверить временную последовательность
+                    temporal_relation = analyze_temporal_relationship(
+                        pattern_a, pattern_b)
+
+                    if temporal_relation:
+                        relationship = PatternRelationship(
+                            source=pattern_a,
+                            target=pattern_b,
+                            type=temporal_relation.type,  # PRECEDES, FOLLOWS, PARALLEL
+                            shared_entities=list(shared_entities),
+                            confidence=temporal_relation.confidence
+                        )
+                        pattern_relationships.append(relationship)
+
+        return pattern_relationships
+    ```
+  end note
+
+  :Создать композитные паттерны;
+  note right
+    **Composite Pattern Creation:**
+
+    ```python
+    def create_composite_patterns(patterns, pattern_relationships):
+        composite_patterns = []
+
+        # Группировать связанные паттерны
+        pattern_chains = find_pattern_chains(pattern_relationships)
+
+        for chain in pattern_chains:
+            if len(chain.patterns) >= 2:
+                # Определить тип композиции
+                composition_type = infer_composition_type(chain)
+
+                composite = CompositePattern(
+                    name=f"Composite_{chain.patterns[0].name}",
+                    component_patterns=chain.patterns,
+                    composition_type=composition_type,  # SEQUENTIAL, CONDITIONAL, PARALLEL
+                    relationships=chain.relationships
+                )
+
+                # Вывести управляющие структуры
+                if composition_type == "CONDITIONAL":
+                    composite.conditions = extract_branching_conditions(chain)
+                elif composition_type == "LOOP":
+                    composite.loop_condition = extract_loop_condition(chain)
+
+                composite_patterns.append(composite)
+
+        return composite_patterns
+    ```
+  end note
+}
+
+:Сохранить паттерны в BPG;
+note left
+  **Pattern Storage in BPG:**
+
+  ```python
+  def store_patterns_in_bpg(patterns, graph_db):
+      for pattern in patterns:
+          # Создать узел паттерна
+          pattern_query = """
+          CREATE (p:Pattern {
+              id: $pattern_id,
+              name: $name,
+              type: $type,
+              confidence: $confidence,
+              frequency: $frequency,
+              llm_validated: $llm_validated,
+              created_at: datetime()
+          })
+          """
+
+          graph_db.run(pattern_query,
+              pattern_id=pattern.id,
+              name=pattern.name,
+              type=pattern.type,
+              confidence=pattern.overall_confidence,
+              frequency=pattern.frequency,
+              llm_validated=pattern.llm_validated
+          )
+
+          # Связать с сущностями
+          for entity in pattern.involved_entities:
+              entity_link_query = """
+              MATCH (p:Pattern {id: $pattern_id})
+              MATCH (e:Entity {id: $entity_id})
+              CREATE (p)-[:OPERATES_ON]->(e)
+              """
+              graph_db.run(entity_link_query,
+                  pattern_id=pattern.id,
+                  entity_id=entity.entity_id
+              )
+
+          # Сохранить шаги паттерна
+          for step_index, step in enumerate(pattern.steps):
+              step_query = """
+              MATCH (p:Pattern {id: $pattern_id})
+              CREATE (s:PatternStep {
+                  order: $step_order,
+                  action: $action,
+                  description: $description,
+                  ui_element: $ui_element
+              })
+              CREATE (p)-[:HAS_STEP]->(s)
+              """
+              graph_db.run(step_query,
+                  pattern_id=pattern.id,
+                  step_order=step_index,
+                  action=step.action,
+                  description=step.description,
+                  ui_element=step.ui_element_selector
+              )
+  ```
+end note
+
+stop
+
+legend bottom
+  **Результат Pattern Construction:**
+
+  **Обнаруженные паттерны:**
+  • Navigation Patterns: 12 паттернов навигации между видами сущностей
+  • Functional Patterns: 8 CRUD паттернов + 5 workflow паттернов
+  • Composite Patterns: 3 сложных бизнес-процесса
+
+  **LLM валидация:**
+  • Автоматически валидировано: 18 паттернов (78%)
+  • Отправлено на human review: 4 паттерна (17%)
+  • Отклонено: 1 паттерн (5%)
+
+  **BPG обогащение:**
+  • Pattern nodes в Neo4j с метаданными
+  • Связи Pattern → Entity (OPERATES_ON)
+  • PatternStep nodes с UI селекторами
+  • BusinessRule nodes с ограничениями
+
+  **Готовность к автоматизации:**
+  • Покрытие основных бизнес-процессов: 85%
+  • Средняя уверенность паттернов: 0.87
+  • Готовых к автоматическому выполнению: 16 паттернов
+end legend
+
+@enduml

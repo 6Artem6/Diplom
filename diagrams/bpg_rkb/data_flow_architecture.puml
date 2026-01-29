@@ -1,0 +1,360 @@
+@startuml Revised_Data_Flow_Architecture
+!theme aws-orange
+title Итоговые потоки данных: BPG Knowledge → LLM Agent Enrichment → Execution
+skinparam linetype ortho
+
+
+start
+
+' === Phase 1: User Input Processing ===
+partition "📥 **Phase 1: Multi-Modal Input Processing**" #LightBlue {
+  :👤 **User Input**
+"Add milk to shopping cart"
++ Current screenshot (1920x1080);
+  
+  split
+    :🗣️ **Natural Language Processing**
+• Intent extraction: "add", "milk", "cart"
+• Ambiguity detection: multiple milk types?
+• Context requirements: current page analysis;
+  split again
+    :📸 **Visual Context Capture**
+• Screenshot analysis
+• Page state detection
+• Element visibility mapping
+• Current navigation context;
+  end split
+  
+  :🔍 **Initial Context Assembly**;
+note right
+• User intent: add_product_to_cart
+• Target product: "milk"
+• Current page: product_listing_page
+• Available actions: [search, filter, select];
+end note
+}
+
+' === Phase 2: Business Knowledge Retrieval ===
+partition "🧠 **Phase 2: Business Knowledge Contextualization**" #LightGreen {
+  :📊 **Knowledge Query Execution**
+Query BPG for relevant business context;
+  
+  split
+    :🏢 **Entity Knowledge Retrieval**
+```cypher
+MATCH (e:Entity {name: "Product"})
+-[:MANIFESTS_AS]->(ui:UIElement)
+-[:IN_CONTEXT]->(p:Page {type: "listing"})
+RETURN e.attributes, ui.interaction_patterns
+```
+
+**Retrieved:**
+• Product entity definition
+• Shopping cart entity
+• Add-to-cart interaction pattern;
+  split again
+    :⚙️ **Process Template Lookup**
+```cypher
+MATCH (pt:ProcessTemplate {name: "add_to_cart"})
+-[:REQUIRES]->(entities)
+-[:HAS_STEPS]->(steps)
+RETURN pt.workflow_sequence, pt.constraints
+```
+
+**Retrieved:**
+• E-commerce purchase workflow
+• Product selection constraints
+• Cart interaction requirements;
+  split again
+    :📋 **Business Rules Query**
+```cypher
+MATCH (br:BusinessRule)
+WHERE br.applies_to CONTAINS "add_to_cart"
+RETURN br.constraint, br.validation_logic
+```
+
+**Retrieved:**
+• Inventory availability check
+• User authentication requirements
+• Product variant selection rules;
+  end split
+  
+  :🎯 **Knowledge Context Assembly**;
+note right
+```json
+{
+  "relevant_entities": ["Product", "ShoppingCart", "User"],
+  "applicable_processes": ["product_selection", "cart_addition"],
+  "business_constraints": ["check_inventory", "require_login"],
+  "gui_interaction_patterns": ["search_then_select", "direct_add"]
+}
+```
+end note
+}
+
+' === Phase 3: LLM Prompt Engineering ===
+partition "🔧 **Phase 3: Context-Enriched Prompt Construction**" #LightYellow {
+  :📝 **Dynamic Prompt Assembly**
+Combine user intent + visual context + business knowledge;
+  
+  :🤖 **Enriched LLM Prompt Construction**;
+note right
+```
+SYSTEM PROMPT:
+You are a business-aware automation agent for e-commerce systems.
+
+BUSINESS CONTEXT:
+- Current page: Product listing with search and filter capabilities
+- Available entities: Products (with inventory), Shopping Cart (empty)
+- Business process: To add product to cart: 1) Search/locate product, 2) Verify availability, 3) Add to cart
+- Constraints: Must check inventory before adding, User already authenticated
+
+VISUAL CONTEXT:
+[Screenshot shows product listing page with search bar, filter options, product grid]
+
+USER INTENT:
+"Add milk to shopping cart"
+
+TASK:
+Analyze the screenshot and generate step-by-step actions to fulfill user intent while following business process constraints.
+```
+end note
+  
+  :📊 **Prompt Optimization**;
+note right
+• Token count optimization (< 4K tokens)
+• Context prioritization (most relevant first)
+• Business constraint emphasis
+• Visual element focus guidance;
+end note
+}
+
+' === Phase 4: Multi-Agent LLM Processing ===
+partition "🤖 **Phase 4: Coordinated LLM Agent Processing**" #LightCoral {
+  :🧠 **Intent Understanding Agent (GPT-4)**;
+note right
+Process enriched prompt for deep intent comprehension;
+end note
+  
+  :💭 **Intent Analysis Result**;
+note right
+```json
+{
+  "primary_intent": "add_specific_product_to_cart",
+  "product_specification": "milk (dairy product)",
+  "search_strategy": "use_search_functionality",
+  "selection_criteria": "first_available_milk_product",
+  "business_constraints_acknowledged": ["inventory_check", "cart_functionality"],
+  "confidence_score": 0.94
+}```
+end note
+  
+  :👁️ **Visual Reasoning Agent (GPT-4V)**;
+note right
+Analyze screenshot with business context awareness;
+end note
+
+  :🖼️ **Visual Analysis Result**;
+note right
+```json
+{
+  "identified_elements": [
+    {"type": "search_box", "coordinates": [450, 120], "confidence": 0.91},
+    {"type": "product_grid", "coordinates": [200, 300, 1400, 800], "confidence": 0.89},
+    {"type": "cart_icon", "coordinates": [1600, 80], "confidence": 0.87}
+  ],
+  "current_state": "product_listing_page_loaded",
+  "available_interactions": ["search", "browse_products", "use_filters"],
+  "business_entities_visible": ["search_interface", "product_catalog"]
+}```
+end note
+  
+  :📋 **Action Planning Agent (Claude-3)**;
+note right
+Generate optimized action sequence using business process knowledge;
+end note
+
+  :⚡ **Action Plan Generation**;
+note right
+```json
+{
+  "action_sequence": [
+    {
+      "step": 1,
+      "action": "click_search_box",
+      "coordinates": [450, 120],
+      "business_purpose": "initiate_product_search",
+      "expected_outcome": "search_box_active_state"
+    },
+    {
+      "step": 2, 
+      "action": "type_search_query",
+      "text": "milk",
+      "business_purpose": "specify_product_category",
+      "expected_outcome": "search_suggestions_appear"
+    },
+    {
+      "step": 3,
+      "action": "press_enter_or_click_search",
+      "business_purpose": "execute_product_search", 
+      "expected_outcome": "filtered_product_results_displayed"
+    },
+    {
+      "step": 4,
+      "action": "locate_and_click_first_available_milk",
+      "business_constraint": "verify_inventory_status",
+      "business_purpose": "select_target_product",
+      "expected_outcome": "product_detail_or_cart_addition"
+    }
+  ],
+  "business_validation": "follows_ecommerce_purchase_workflow",
+  "constraint_compliance": "inventory_check_included",
+  "overall_confidence": 0.88
+}```
+end note
+}
+
+' === Phase 5: Guided Execution ===
+partition "⚡ **Phase 5: Business-Aware Execution**" #Lavender {
+  :🎯 **Execution Guidance Agent**;
+note right
+Provide real-time step guidance with business context;
+end note
+
+  repeat
+    :🤖 **Execute Action Step**
+Perform action with business constraint validation;
+    
+    :📸 **Capture Post-Action State**
+Screenshot analysis for verification;
+    
+    :✅ **Business Constraint Validation**
+• Verify expected outcome achieved
+• Check business rule compliance
+• Validate state transition correctness;
+    
+    if (**Action successful & constraints met?**) then (✅ yes)
+      :📈 Update Success Metrics
+• Action effectiveness: +1
+• Business process compliance: validated
+• Knowledge accuracy: confirmed;
+    else
+      :🔄 Adaptive Recovery;
+note right
+LLM analyzes failure + business context + suggests recovery;
+end note
+
+      :🧠 Recovery Strategy Generation;
+note right
+```
+FAILURE CONTEXT ...
+RECOMMENDED: Try alternative selector
+```
+end note
+    
+      if (**Recovery successful?**) then (yes)
+        :▶️ Continue execution;
+      else
+        :👥 Escalate to Human
+Business context + failure analysis + suggested manual steps;
+        stop
+      endif
+    endif
+    
+  repeat while (**More steps in sequence?**)
+  
+  :🎉 **Business Goal Achievement Validation**;
+note right
+• Product successfully added to cart
+• Business process completed correctly
+• User intent fulfilled;
+end note
+}
+
+' === Phase 6: Learning & Knowledge Evolution ===
+partition "🎓 **Phase 6: Knowledge Base Evolution**" #PaleGreen {
+  :📊 **Execution Analysis**;
+note right
+Analyze execution success against business expectations;
+end note
+
+  :🧠 **Learning Insights Extraction**;
+note right
+```python
+learning_insights = {
+    "successful_patterns": {
+        "search_interaction": {"confidence": 0.91, "effectiveness": "high"},
+        "product_selection": {"confidence": 0.87, "effectiveness": "medium"}
+    },
+    "business_rule_validation": {
+        "inventory_check": "successfully_applied",
+        "cart_functionality": "working_as_expected"
+    },
+    "process_optimization": {
+        "search_step": "could_be_more_specific",
+        "selection_criteria": "needs_refinement_for_product_variants"
+    }
+}```
+end note
+  
+  :🔄 **Knowledge Base Updates**;
+note right
+• Refine entity interaction patterns
+• Update process template effectiveness scores
+• Adjust business rule applicability conditions
+• Improve cross-view element mappings;
+end note
+
+  :📈 **Prompt Engineering Improvement**;
+note right
+• Update prompt templates based on success rates
+• Refine business context integration strategies
+• Optimize token usage for cost efficiency
+• Enhance multi-modal context fusion;
+end note
+
+  :💾 **Persistent Learning Storage**;
+note right
+```cypher
+MERGE (execution:ExecutionInstance {id: $execution_id})
+SET execution.success_rate = $success_rate,
+    execution.business_compliance = $compliance_score,
+    execution.user_satisfaction = $satisfaction
+MERGE (pattern:SuccessPattern {type: "add_to_cart"})
+SET pattern.effectiveness += $effectiveness_delta
+CREATE (execution)-[:VALIDATES]->(pattern)
+```
+end note
+}
+
+stop
+
+' === Data Flow Summary ===
+legend bottom
+**🔄 Complete Data Flow Summary:**
+
+**Input Layer:**
+• User natural language intent + Visual screenshot context
+• Multi-modal input processing and initial context assembly
+
+**Knowledge Layer:** 
+• BPG business entity definitions + Process templates + Business rules
+• Dynamic knowledge retrieval based on current context
+
+**Intelligence Layer:**
+• Context-enriched LLM prompts + Multi-agent coordination
+• Business-aware reasoning and action planning
+
+**Execution Layer:**
+• Business constraint validation + Real-time adaptive execution
+• Platform-specific action execution with business context awareness
+
+**Learning Layer:**
+• Execution outcome analysis + Knowledge base evolution
+• Prompt engineering optimization + Pattern success tracking
+
+**Key Innovation:** BPG provides business intelligence that LLM agents cannot infer from visual/textual information alone,
+enabling high-level user intent understanding with domain-specific business logic compliance.
+end legend
+
+@enduml

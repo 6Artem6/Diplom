@@ -1,0 +1,155 @@
+@startuml BPG_TechStack_Architecture
+!theme aws-orange
+title Многоуровневый BPG с технологическими стеками
+skinparam linetype ortho
+skinparam rectangle {
+  RoundCorner 8
+  BorderColor #444
+}
+
+actor "👤 Пользователь" as User
+
+' === Input Data Sources ===
+package "Входные данные" #LightSteelBlue {
+  rectangle "Screenshots" as Screenshots
+  rectangle "Clickstreams" as Clickstreams
+  rectangle "ProcessLogs" as ProcessLogs
+  rectangle "DB Schema" as DBSchema
+  rectangle "Business Docs" as BusinessDocs
+
+  note bottom of Screenshots : PNG/JPG, metadata
+  note bottom of Clickstreams : JSON events, sequences
+  note bottom of DBSchema : DDL, FK/PK relations
+}
+
+' === Perception Pipeline ===
+package "Perception & Multimodal Processing" #LightYellow {
+  rectangle "🔍 YOLO v8/v9\nObject Detection" as ObjectDetection
+  rectangle "📝 PaddleOCR/EasyOCR\nText Recognition" as OCR
+  rectangle "🖼️ CLIP/BLIP-2\nLayout Analysis" as LayoutAnalysis
+  rectangle "🔗 SIFT/ORB\nCross-view Matching" as CrossViewMatching
+
+  ObjectDetection -down-> OCR
+  OCR -down-> LayoutAnalysis
+  LayoutAnalysis -down-> CrossViewMatching
+}
+
+' === Embeddings & Vector Store ===
+package "Embeddings & Vector Index" #Thistle {
+  rectangle "🧠 SentenceTransformers\nText Embeddings" as TextEmbeddings
+  rectangle "🎨 CLIP\nMultimodal Embeddings" as MultimodalEmbeddings
+  rectangle "📊 ChromaDB/Pinecone\nVector Search" as VectorDB
+
+  TextEmbeddings -down-> VectorDB
+  MultimodalEmbeddings -down-> VectorDB
+}
+
+' === Core BPG Graph ===
+package "Многоуровневый BPG" #PaleGreen {
+  rectangle "Entity Layer\n• UIElementNode\n• EntityNode\n• Cross-view links" as EntityLayer
+  rectangle "Pattern Layer\n• PatternNode\n• MetaPatternNode\n• Business rules" as PatternLayer
+  rectangle "Workflow Layer\n• WorkflowNode\n• ActionNode\n• Control flow" as WorkflowLayer
+
+  rectangle "🗄️ Neo4j GraphDB\nGraph Storage" as GraphDB
+  rectangle "🧮 PyTorch Geometric\nGNN (GraphSAGE/GAT)" as GNN
+
+  EntityLayer -down-> PatternLayer : pattern_to_entity
+  PatternLayer -down-> WorkflowLayer : pattern_to_workflow
+  WorkflowLayer -down-> GraphDB
+  GNN -left-> GraphDB : role classification\nlink prediction
+}
+
+' === NLU & Semantic Processing ===
+package "Semantic Processing & NLU" #LightPink {
+  rectangle "🤖 GPT-4/Claude\nIntent Parser" as IntentParser
+  rectangle "🗺️ Custom Navigation\nPage Context Resolver" as PageContextResolver
+  rectangle "⚙️ Pattern Matching\nNavigation Pattern Resolver" as NavPatternResolver
+  rectangle "📋 LangChain/Custom\nNavigation Planner" as NavPlanner
+  rectangle "📊 Weighted Ensemble\nConfidence Aggregator" as ConfAgg
+
+  IntentParser -down-> PageContextResolver
+  PageContextResolver -down-> NavPatternResolver
+  NavPatternResolver -down-> NavPlanner
+  NavPlanner -down-> ConfAgg
+}
+
+' === Execution & Orchestration ===
+package "Execution & Orchestration" #Moccasin {
+  rectangle "🎭 Custom State Machine\nOrchestrator" as Orchestrator
+  rectangle "🤖 Playwright/Selenium\nRPA Executor" as Executor
+  rectangle "👥 Custom Web UI\nHITL Gateway" as HITL
+
+  Orchestrator -down-> Executor
+  Orchestrator -down-> HITL
+}
+
+' === Monitoring & Learning ===
+package "Monitoring & Active Learning" #LightGreen {
+  rectangle "📋 ELK Stack\nAudit Logger" as AuditLogger
+  rectangle "📈 Grafana/Prometheus\nMetrics & Dashboards" as Metrics
+  rectangle "🎓 MLflow + Custom\nActive Learner" as ActiveLearner
+
+  AuditLogger -down-> ActiveLearner
+  Metrics -down-> ActiveLearner
+}
+
+' === Main Data Flows ===
+User --> IntentParser
+Screenshots --> ObjectDetection
+Clickstreams --> CrossViewMatching
+ProcessLogs --> TextEmbeddings
+DBSchema --> GraphDB
+BusinessDocs --> TextEmbeddings
+
+CrossViewMatching --> MultimodalEmbeddings
+VectorDB --> PageContextResolver
+GraphDB --> PageContextResolver
+GraphDB --> NavPatternResolver
+GraphDB --> NavPlanner
+
+ConfAgg --> Orchestrator
+Executor --> ObjectDetection : runtime perception\n+ element linking
+Executor --> AuditLogger
+ActiveLearner --> GNN : model updates
+ActiveLearner --> GraphDB : graph updates
+ActiveLearner --> IntentParser : NLU updates
+
+' === Navigation Flow Integration ===
+PageContextResolver --> GraphDB : current_page_context
+NavPatternResolver --> GraphDB : navigation_patterns
+NavPlanner --> GraphDB : workflow_sequences
+Orchestrator --> GraphDB : context_state_updates
+
+' === Tech Stack Notes ===
+note right of ObjectDetection
+Tech Stack:
+• YOLOv8/v9 (PyTorch)
+• OpenCV preprocessing
+• GPU acceleration (CUDA)
+end note
+
+note right of GraphDB
+Tech Stack:
+• Neo4j Community/Enterprise
+• Cypher queries
+• APOC procedures
+• Graph algorithms
+end note
+
+note right of IntentParser
+Tech Stack:
+• OpenAI GPT-4 API
+• Anthropic Claude API
+• Custom prompt templates
+• Response parsing
+end note
+
+note right of Executor
+Tech Stack:
+• Playwright (Node.js/Python)
+• Selenium WebDriver
+• Custom selectors
+• Screenshot comparison
+end note
+
+@enduml

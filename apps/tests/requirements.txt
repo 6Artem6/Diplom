@@ -1,0 +1,5 @@
+pytest==8.4.2
+networkx==3.5
+beautifulsoup4==4.13.5
+aiohttp==3.12.15
+pyyaml==6.0.2
