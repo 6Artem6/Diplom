@@ -28,7 +28,7 @@ BUTTON_WIDTH_PAGE_RATIO = 0.6
 BUTTON_MAX_WORDS = 5
 BUTTON_MIN_WORDS = 1
 BUTTON_MAX_CHARS = 30
-BUTTON_ASPECT_MIN = 1.5  # line.w / line.h ≥ 1.5 or text light/gray
+BUTTON_ASPECT_MIN = 1.2  # line.w / line.h ≥ 1.2 or text light/gray (View details = valid)
 BUTTON_GAP_ISOLATION_RATIO = 0.5  # gap above and below > this * local_body_h
 BUTTON_MAX_HEIGHT_RATIO = 2.0     # if h >= 2*local_body_h → not button (large container)
 LARGE_CONTAINER_HEIGHT_RATIO = 2.0  # container span >= this * body_h → not button
@@ -46,6 +46,12 @@ def _median(values: List[float]) -> float:
     return float(vv[len(vv) // 2])
 
 
+def _line_font_size_px(line: Line) -> float:
+    """Estimated font size (px) for scale; not raw line.h."""
+    v = getattr(line, "estimated_font_size_px", None)
+    return float(v) if v is not None and v > 0 else float(line.h)
+
+
 def _local_body_height(all_lines: List[Line]) -> float:
     """Median height of body-like lines (exclude header-like). Body defines scale."""
     if not all_lines:
@@ -54,6 +60,26 @@ def _local_body_height(all_lines: List[Line]) -> float:
     med_all = _median(heights)
     body_heights = [h for h in heights if h <= HEADER_OUTLIER_RATIO * med_all]
     return _median(body_heights) if body_heights else med_all
+
+
+def _is_button_like_line(line: Line) -> bool:
+    """Button/badge line: exclude from body scale so body does not spread."""
+    ratio_bg = _line_ratio_bg(line)
+    wc = _line_word_count(line)
+    tc = _line_total_char(line)
+    return ratio_bg >= BUTTON_BG_RATIO_MIN and 1 <= wc <= BUTTON_MAX_WORDS and tc <= BUTTON_MAX_CHARS
+
+
+def _local_body_font_size(all_lines: List[Line]) -> float:
+    """Median estimated_font_size_px of body-like lines. Buttons/badges excluded."""
+    if not all_lines:
+        return 18.0
+    sizes = [_line_font_size_px(l) for l in all_lines if not _is_button_like_line(l)]
+    if not sizes:
+        sizes = [_line_font_size_px(l) for l in all_lines]
+    med_all = _median(sizes)
+    body_sizes = [s for s in sizes if s <= HEADER_OUTLIER_RATIO * med_all]
+    return _median(body_sizes) if body_sizes else med_all
 
 
 def _line_font_weight(line: Line) -> float | None:
@@ -235,11 +261,13 @@ def classify_line(line: Line, all_lines: List[Line], page_width: float | None = 
     ratio_bg = _line_ratio_bg(line)
     word_count = _line_word_count(line)
     total_char = _line_total_char(line)
+    local_body_fs = _local_body_font_size(all_lines)
+    line_fs = _line_font_size_px(line)
 
-    # HEADER only if ALL: tall, (font_weight > median_body when available), no background, short text, gap above
+    # HEADER only if ALL: tall (by font size), (font_weight > median_body when available), no background, gap above
     median_body_weight = _median_body_weight(all_lines, local_body_h)
     line_weight = _line_font_weight(line)
-    header_height_ok = local_body_h > 0 and line.h >= HEADER_HEIGHT_BODY_RATIO * local_body_h
+    header_height_ok = local_body_fs > 0 and line_fs >= HEADER_HEIGHT_BODY_RATIO * local_body_fs
     header_words_ok = word_count <= HEADER_MAX_WORDS
     header_no_bg = ratio_bg < HEADER_NO_BG_RATIO
     header_gap_ok = gap_above >= HEADER_GAP_ABOVE_RATIO * local_body_h
@@ -250,8 +278,8 @@ def classify_line(line: Line, all_lines: List[Line], page_width: float | None = 
     if header_height_ok and header_words_ok and header_no_bg and header_gap_ok and header_weight_ok:
         return "header"
 
-    # BUTTON only if ALL: short, bounded, bg, isolated; NOT next to body same X; NOT inside card; NOT large container
-    if local_body_h > 0 and line.h >= BUTTON_MAX_HEIGHT_RATIO * local_body_h:
+    # BUTTON only if ALL: short (by font size), bounded, bg, isolated; NOT next to body; NOT large container
+    if local_body_fs > 0 and line_fs >= BUTTON_MAX_HEIGHT_RATIO * local_body_fs:
         pass  # large line → never button
     elif _inside_card(line, all_lines, local_body_h):
         pass  # inside card/list → not button
@@ -261,7 +289,7 @@ def classify_line(line: Line, all_lines: List[Line], page_width: float | None = 
         pass  # inside large background container (card/navbar/form) → not button
     elif (
         ratio_bg >= BUTTON_BG_RATIO_MIN
-        and line.h <= BUTTON_HEIGHT_BODY_RATIO * local_body_h
+        and line_fs <= BUTTON_HEIGHT_BODY_RATIO * local_body_fs
         and line.w <= BUTTON_WIDTH_PAGE_RATIO * pw
         and BUTTON_MIN_WORDS <= word_count <= BUTTON_MAX_WORDS
         and total_char <= BUTTON_MAX_CHARS
@@ -307,10 +335,12 @@ def classify_line_with_reason(
     if role == "label":
         return "label", "short_narrow"
 
+    local_body_fs = _local_body_font_size(all_lines)
+    line_fs = _line_font_size_px(line)
     if role == "header":
         reasons: List[str] = []
-        if local_body_h > 0 and line.h >= HEADER_HEIGHT_BODY_RATIO * local_body_h:
-            reasons.append(f"h>={HEADER_HEIGHT_BODY_RATIO}*body_h")
+        if local_body_fs > 0 and line_fs >= HEADER_HEIGHT_BODY_RATIO * local_body_fs:
+            reasons.append(f"font_size>={HEADER_HEIGHT_BODY_RATIO}*body_fs")
         if word_count <= HEADER_MAX_WORDS:
             reasons.append("word_count<=10")
         if ratio_bg < HEADER_NO_BG_RATIO:
@@ -331,8 +361,8 @@ def classify_line_with_reason(
             reasons.append(f"word_count={word_count}")
         if total_char <= BUTTON_MAX_CHARS:
             reasons.append(f"chars={total_char}")
-        if line.h <= BUTTON_HEIGHT_BODY_RATIO * local_body_h:
-            reasons.append("h<=1.1*body_h")
+        if line_fs <= BUTTON_HEIGHT_BODY_RATIO * local_body_fs:
+            reasons.append("font_size<=1.1*body_fs")
         if line.w <= BUTTON_WIDTH_PAGE_RATIO * pw:
             reasons.append("w<=0.6*page")
         if gap_above >= BUTTON_GAP_ISOLATION_RATIO * local_body_h:

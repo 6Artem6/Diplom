@@ -6,16 +6,31 @@ from typing import Any, Dict, List, Literal, Optional
 BlockType = Literal["header", "paragraph", "standalone"]
 TextColorClass = Literal["dark", "gray", "light"]
 LineRole = Literal["body", "header", "button", "label"]
+RegionType = Literal["text_region", "ui_region", "background"]
+
+
+@dataclass
+class Region:
+    """CV-level region: top-level container. Words belong to one region; layout is inside region only."""
+
+    x: int
+    y: int
+    w: int
+    h: int
+    region_type: RegionType
+    area: int = 0  # w * h for diagnostics
 
 
 @dataclass
 class Word:
     """Canonical OCR atom: single word with bbox and optional confidence.
-    Visual attributes (set by CV prepass): has_background, bg_color_cluster, text_color_class.
+
+    Layout vs OCR: x, y, w, h are ALWAYS layout_bbox (original page coords).
+    OCR may run on upscaled/dilated crops — that never changes layout bbox.
     """
 
     text: str
-    x: int
+    x: int  # layout bbox (original page coords)
     y: int
     w: int
     h: int
@@ -24,8 +39,19 @@ class Word:
     has_background: bool = False
     bg_color_cluster: Optional[int] = None
     text_color_class: TextColorClass = "dark"
-    # Typography: 400=normal, 700=bold (from OCR if available). Used for header vs body.
     font_weight: Optional[float] = None
+    estimated_font_size_px: Optional[float] = None
+    # Diagnostics: set when fallback OCR was run on this word
+    ocr_fallback_dilation: bool = False
+    ocr_fallback_inversion: bool = False
+    ocr_fallback_upscale: float = 1.0
+    # Bbox used for OCR (crop in page coords); layout uses x,y,w,h only
+    ocr_bbox: Optional[tuple[int, int, int, int]] = None
+
+    @property
+    def layout_bbox(self) -> tuple[int, int, int, int]:
+        """Layout bbox in page coords. All distances/merge use this."""
+        return (self.x, self.y, self.w, self.h)
 
 
 @dataclass
@@ -42,6 +68,8 @@ class Line:
     h: int
     is_header: bool = False
     role: Optional[LineRole] = None
+    # Median of words' estimated_font_size_px; used for merge/scale, not raw line.h.
+    estimated_font_size_px: Optional[float] = None
 
     @property
     def text(self) -> str:

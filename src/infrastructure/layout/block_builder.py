@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional, Sequence
+from typing import List, Optional, Sequence, Tuple
 
 from .atoms import BlockType, Line, TextBlock, HorizontalRule
 
@@ -13,11 +13,20 @@ GAP_FORBID_FACTOR = 2.0
 # §3B: height_ratio <= 1.25 (different font size → no merge; header and body stay separate)
 HEIGHT_RATIO_MAX = 1.25
 
-# BODY-paragraph: merge body lines using LOCAL body height; horizontal overlap required
-BODY_PARAGRAPH_GAP_FACTOR = 1.2    # vertical_gap <= 1.2 * local_body_h
-BODY_HEIGHT_TOLERANCE_RATIO = 0.1  # abs(prev.h - curr.h) <= 0.1 * local_body_h
-BODY_OVERLAP_X_MIN = 0.6           # horizontal overlap_ratio >= 0.6 (same column/block)
+# BODY-paragraph: merge by estimated_font_size (≤1.5×), vertical_gap ≤ 2–3 char heights
+BODY_PARAGRAPH_GAP_FONT_FACTOR = 2.5   # vertical_gap <= 2.5 * font_size (2–3 char heights)
+BODY_FONT_SIZE_RATIO_MAX = 1.5         # estimated_font_size ratio ≤ 1.5×
+BODY_OVERLAP_X_MIN = 0.6
 
+# Region merge: merge all blocks inside text_region when gap ≤ this × median_font_size
+REGION_MERGE_GAP_FONT_FACTOR = 2.5
+
+
+def _median(values: List[float]) -> float:
+    if not values:
+        return 18.0
+    vv = sorted(values)
+    return float(vv[len(vv) // 2])
 
 def _median_line_height(lines: List[Line]) -> float:
     """Median of line heights for stable gap threshold (use medians, not means)."""
@@ -37,6 +46,21 @@ def _local_body_height(lines: List[Line]) -> float:
     body_heights.sort()
     n = len(body_heights)
     return float(body_heights[n // 2])
+
+
+def _line_font_size_px(line: Line) -> float:
+    """Estimated font size (px) for merge; not raw line.h."""
+    v = getattr(line, "estimated_font_size_px", None)
+    return float(v) if v is not None and v > 0 else float(line.h)
+
+
+def _local_body_font_size(lines: List[Line]) -> float:
+    """Median estimated_font_size_px of body lines."""
+    body_sizes = [_line_font_size_px(l) for l in lines if getattr(l, "role", None) == "body"]
+    if not body_sizes:
+        return _median([int(_line_font_size_px(l)) for l in lines])
+    body_sizes.sort()
+    return float(body_sizes[len(body_sizes) // 2])
 
 
 def _horizontal_overlap_ratio(prev: Line, curr: Line) -> float:
@@ -126,14 +150,11 @@ def lines_to_blocks_with_headers(
     dividers: Optional[Sequence[HorizontalRule]] = None,
 ) -> List[TextBlock]:
     """
-    Lines → blocks. Merge ONLY body with body.
+    Lines → blocks. TEXT SPLIT BY ROLE HERE: header/body/button never merge; cards stay separate.
 
-    - prev.role == body AND curr.role == body AND vertical_gap <= 1.2*local_body_h
-      AND |h1-h2| <= 0.1*local_body_h AND overlap_x >= 0.6 → merge.
-    - Header (role=header) and button (role=button) never participate in body-merge;
-      each forms its own block; they do not block body-merge when beside.
-    - Divider between lines → no merge.
-    - _is_button_line = role only (no has_background fallback).
+    - Body+body merge only: vertical_gap <= 2.5×font_size, overlap_x >= 0.6, font_ratio <= 1.5×, no divider.
+    - Header and button each form their own block (no merge with body or each other).
+    - Divider between lines → no merge. Role from line_classifier (not has_background fallback).
     """
     if not lines:
         return []
@@ -220,15 +241,18 @@ def lines_to_blocks_with_headers(
             bx2, by2 = ln.x + ln.w, ln.y + ln.h
             continue
 
-        # Merge ONLY body with body. Button and header never participate; they don't block when beside (we flush).
+        # Merge ONLY body with body. Use estimated_font_size (≤1.5×), vertical_gap ≤ 2–3 char heights.
         prev_role = getattr(prev, "role", None)
         ln_role = getattr(ln, "role", None)
-        local_body_h = _local_body_height(sorted_lines)
+        local_font_size = _local_body_font_size(sorted_lines)
         overlap_x = _horizontal_overlap_ratio(prev, ln)
+        prev_fs = _line_font_size_px(prev)
+        ln_fs = _line_font_size_px(ln)
+        font_ratio = max(prev_fs, ln_fs) / max(1.0, min(prev_fs, ln_fs))
         if prev_role == "body" and ln_role == "body":
             if (
-                gap <= BODY_PARAGRAPH_GAP_FACTOR * local_body_h
-                and abs(prev.h - ln.h) <= BODY_HEIGHT_TOLERANCE_RATIO * local_body_h
+                gap <= BODY_PARAGRAPH_GAP_FONT_FACTOR * min(prev_fs, ln_fs)
+                and font_ratio <= BODY_FONT_SIZE_RATIO_MAX
                 and overlap_x >= BODY_OVERLAP_X_MIN
                 and abs(ln.x - prev.x) <= align_dx
                 and max(prev.w, ln.w) / max(1, min(prev.w, ln.w)) <= WIDTH_RATIO_MAX
@@ -248,6 +272,151 @@ def lines_to_blocks_with_headers(
 
     flush(cur, cur[0].is_header if cur else False)
     return blocks
+
+
+def lines_to_blocks_geometry_only(
+    lines: List[Line],
+    char_width_px: float,
+    dividers: Optional[Sequence[HorizontalRule]] = None,
+) -> List[TextBlock]:
+    """
+    Lines → blocks by GEOMETRY only. Role (button/header/body) is NOT used for merge.
+    Merge consecutive lines if: vertical_gap ≤ 2.5×font_size, font_size ratio ≤ 1.5×,
+    overlap_x ≥ 0.6, no horizontal_rule. Block type is set from line roles after (by caller).
+    """
+    if not lines:
+        return []
+    rules = dividers or ()
+    sorted_lines = sorted(lines, key=lambda l: l.y)
+    align_dx = max(1, int(ALIGN_CHAR_WIDTH_RATIO * char_width_px))
+    median_font = _median([_line_font_size_px(l) for l in sorted_lines])
+
+    blocks: List[TextBlock] = []
+    cur: List[Line] = [sorted_lines[0]]
+    bx1, by1 = sorted_lines[0].x, sorted_lines[0].y
+    bx2 = sorted_lines[0].x + sorted_lines[0].w
+    by2 = sorted_lines[0].y + sorted_lines[0].h
+
+    def flush(cur_lines: List[Line]) -> None:
+        if not cur_lines:
+            return
+        x1 = min(l.x for l in cur_lines)
+        y1 = min(l.y for l in cur_lines)
+        x2 = max(l.x + l.w for l in cur_lines)
+        y2 = max(l.y + l.h for l in cur_lines)
+        med_h = _median_line_height(cur_lines)
+        blocks.append(
+            TextBlock(
+                lines=list(cur_lines),
+                x=x1, y=y1, w=x2 - x1, h=y2 - y1,
+                block_type="paragraph",
+                stats={"median_line_height": med_h},
+            )
+        )
+
+    for ln in sorted_lines[1:]:
+        prev = cur[-1]
+        gap = ln.y - (prev.y + prev.h)
+        prev_fs = _line_font_size_px(prev)
+        ln_fs = _line_font_size_px(ln)
+        min_fs = min(prev_fs, ln_fs)
+        font_ratio = max(prev_fs, ln_fs) / max(1.0, min_fs)
+        overlap_x = _horizontal_overlap_ratio(prev, ln)
+        if (
+            gap >= 0
+            and gap <= BODY_PARAGRAPH_GAP_FONT_FACTOR * min_fs
+            and font_ratio <= BODY_FONT_SIZE_RATIO_MAX
+            and overlap_x >= BODY_OVERLAP_X_MIN
+            and abs(ln.x - prev.x) <= align_dx
+            and max(prev.w, ln.w) / max(1, min(prev.w, ln.w)) <= WIDTH_RATIO_MAX
+            and not _has_divider_between(prev.y + prev.h, ln.y, rules)
+        ):
+            cur.append(ln)
+            bx1 = min(bx1, ln.x)
+            by1 = min(by1, ln.y)
+            bx2 = max(bx2, ln.x + ln.w)
+            by2 = max(by2, ln.y + ln.h)
+        else:
+            flush(cur)
+            cur = [ln]
+            bx1, by1 = ln.x, ln.y
+            bx2, by2 = ln.x + ln.w, ln.y + ln.h
+    flush(cur)
+    return blocks
+
+
+def merge_blocks_inside_region(
+    region_bbox: Tuple[int, int, int, int],
+    blocks: List[TextBlock],
+    median_font_size_px: float,
+    dividers: Optional[Sequence[HorizontalRule]] = None,
+) -> List[TextBlock]:
+    """
+    Merge blocks inside one text_region when there is no horizontal_rule and
+    vertical_gap ≤ 2.5 × median_font_size between consecutive blocks.
+    Resulting block bbox is clipped to region. Region = (rx, ry, rw, rh).
+    """
+    if not blocks:
+        return []
+    rx, ry, rw, rh = region_bbox
+    rules = dividers or ()
+    sorted_blocks = sorted(blocks, key=lambda b: b.y)
+    max_gap = REGION_MERGE_GAP_FONT_FACTOR * median_font_size_px
+    merged: List[TextBlock] = []
+    cur_lines: List[Line] = []
+    cur_x1, cur_y1, cur_x2, cur_y2 = 0, 0, 0, 0
+
+    def flush_merged() -> None:
+        if not cur_lines:
+            return
+        x1 = min(l.x for l in cur_lines)
+        y1 = min(l.y for l in cur_lines)
+        x2 = max(l.x + l.w for l in cur_lines)
+        y2 = max(l.y + l.h for l in cur_lines)
+        x1 = max(x1, rx)
+        y1 = max(y1, ry)
+        x2 = min(x2, rx + rw)
+        y2 = min(y2, ry + rh)
+        if x2 <= x1 or y2 <= y1:
+            return
+        merged.append(
+            TextBlock(
+                lines=cur_lines,
+                x=x1, y=y1, w=x2 - x1, h=y2 - y1,
+                block_type="paragraph",
+                stats={},
+            )
+        )
+
+    for b in sorted_blocks:
+        if not b.lines:
+            continue
+        if not cur_lines:
+            cur_lines = list(b.lines)
+            cur_x1 = min(l.x for l in cur_lines)
+            cur_y1 = min(l.y for l in cur_lines)
+            cur_x2 = max(l.x + l.w for l in cur_lines)
+            cur_y2 = max(l.y + l.h for l in cur_lines)
+            continue
+        prev_bottom = cur_y2
+        curr_top = b.y
+        gap = curr_top - prev_bottom
+        has_rule = _has_divider_between(prev_bottom, curr_top, rules)
+        if not has_rule and gap <= max_gap:
+            cur_lines.extend(b.lines)
+            cur_x1 = min(cur_x1, b.x)
+            cur_y1 = min(cur_y1, b.y)
+            cur_x2 = max(cur_x2, b.x + b.w)
+            cur_y2 = max(cur_y2, b.y + b.h)
+        else:
+            flush_merged()
+            cur_lines = list(b.lines)
+            cur_x1 = min(l.x for l in cur_lines)
+            cur_y1 = min(l.y for l in cur_lines)
+            cur_x2 = max(l.x + l.w for l in cur_lines)
+            cur_y2 = max(l.y + l.h for l in cur_lines)
+    flush_merged()
+    return merged
 
 
 def lines_to_blocks_hdbscan(

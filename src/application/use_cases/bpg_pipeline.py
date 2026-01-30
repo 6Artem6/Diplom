@@ -261,13 +261,22 @@ class BuildBPGUseCase:
                 )
             if not view:
                 continue  # Skip if view not found
-            
+
+            # bounding_box must be Dict[str, float]; extract container_bbox if present
+            bb = getattr(block, "bounding_box", None) or {}
+            bbox_flat = {k: float(v) for k, v in bb.items() if k != "container_bbox" and not isinstance(v, dict)}
+            container = bb.get("container_bbox")
+            container_flat = None
+            if isinstance(container, dict):
+                container_flat = {k: float(v) for k, v in container.items()}
+
             manifestation = GUIManifestation(
                 id=uuid4(),
                 entity_instance_id=uuid4(),  # Placeholder, will be updated after clustering
                 view_id=view.id,  # CRITICAL: view_id for cross-view semantics
                 screenshot_id=block.screenshot_id,
-                bounding_box=block.bounding_box,
+                bounding_box=bbox_flat,
+                container_bbox=container_flat,
                 visual_embedding=embedding.visual_embedding,
                 text_embedding=embedding.text_embedding,
                 layout_features=embedding.layout_features,

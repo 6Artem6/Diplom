@@ -23,10 +23,14 @@ from PIL import Image
 from src.domain.interfaces.gui_detection import GUIDetectionService
 from src.domain.models.gui_block import GUIBlock
 from src.infrastructure.layout import Word, Line
+from src.infrastructure.layout.atoms import Region, TextBlock
 from src.infrastructure.layout.cv_prepass import run_cv_prepass
+from src.infrastructure.layout.region_prepass import cv_detect_regions, assign_words_to_region
+from src.infrastructure.layout.layout_debug import render_layout_debug
 from src.infrastructure.layout.line_builder import words_to_lines
 from src.infrastructure.layout.line_classifier import classify_line, classify_line_with_reason
 from src.infrastructure.layout.block_builder import lines_to_blocks_with_headers
+from src.infrastructure.ocr.ocr_preprocess import preprocess_full_page, preprocess_crop, crop_bbox
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +44,12 @@ HORIZ_OVERLAP_RATIO = 0.4  # min horizontal overlap between consecutive lines
 MAX_WIDTH_CHANGE_RATIO = 2.0  # width_j / width_i in [1/MAX, MAX]
 # Gap between lines: ~1.2–1.5 × line height → new block (smaller = less over-merge, e.g. form fields)
 BLOCK_GAP_LINE_HEIGHT_FACTOR = 1.4
+
+# Region-based layout: block ≥ this fraction of screen → INVALID (do not emit)
+BLOCK_MAX_SCREEN_AREA_RATIO = 0.8
+# UI region: small compact → badge; else button (never drop by area/char count)
+UI_BADGE_MAX_AREA_RATIO = 0.02
+UI_BADGE_MAX_HEIGHT_PX = 40
 
 # Sanitizer thresholds
 MIN_AREA_RATIO = 0.0005  # blocks smaller этой доли от экрана считаются шумом (если ещё и пустые)
@@ -60,60 +70,49 @@ INTERACTIVE_TYPES = {
 
 
 def _ocr_words_bbox(image_path: str, psm: int = 11) -> List[Tuple[str, int, int, int, int, Optional[float]]]:
-    """Return list of (text, x, y, w, h, conf) using pytesseract.
-
-    Invariant: if Tesseract returned bbox + non-empty text → Word is created.
-    No filtering by color, font thickness, text length, or contrast.
-    Only skip empty text or invalid bbox (w < MIN_BBOX_WIDTH or h < MIN_BBOX_HEIGHT).
-    """
-    logger.info("FlowLayout: OCR start for %s (psm=%d)", image_path, psm)
+    """First OCR pass on preprocessed full page (grayscale, CLAHE, Otsu). No scaling."""
+    logger.info("FlowLayout: OCR start for %s (psm=%d) with full-page preprocess", image_path, psm)
     try:
         import pytesseract
-    except ImportError as e:  # pragma: no cover - environment dependent
-        # At INFO-level конфиге это единственный сигнал, почему words=0
-        logger.warning("FlowLayout: pytesseract not available: %s", e)
+        import numpy as np
+    except ImportError as e:  # pragma: no cover
+        logger.warning("FlowLayout: pytesseract/numpy not available: %s", e)
         return []
     path = Path(image_path)
     if not path.exists():
         logger.warning("FlowLayout: image not found for OCR %s", image_path)
         return []
     try:
-        img = Image.open(path).convert("RGB")
-    except Exception as e:  # pragma: no cover - image IO
+        img_pil = Image.open(path).convert("RGB")
+        img_np = np.array(img_pil)
+    except Exception as e:  # pragma: no cover
         logger.warning("FlowLayout: failed to load image %s: %s", image_path, e)
         return []
+    img_prep = preprocess_full_page(img_np)
+    img_prep_pil = Image.fromarray(img_prep)
     try:
         data = pytesseract.image_to_data(
-            img, output_type=pytesseract.Output.DICT, config=f"--psm {psm}"
+            img_prep_pil, output_type=pytesseract.Output.DICT, config=f"--psm {psm}"
         )
-    except Exception as e:  # pragma: no cover - OCR failure
-        # Повышаем уровень, чтобы видеть реальные проблемы OCR в прод-логах
+    except Exception as e:  # pragma: no cover
         logger.warning("FlowLayout: pytesseract.image_to_data failed for %s: %s", image_path, e)
         return []
 
     texts = data.get("text", []) or []
-    n_raw = len(texts)
     n_non_empty = sum(1 for t in texts if (t or "").strip())
-    logger.info(
-        "FlowLayout: OCR image_to_data for %s returned n_raw=%d n_non_empty=%d (psm=%d)",
-        image_path,
-        n_raw,
-        n_non_empty,
-        psm,
-    )
+    logger.info("FlowLayout: OCR (preprocessed) for %s n_non_empty=%d (psm=%d)", image_path, n_non_empty, psm)
 
     out: List[Tuple[str, int, int, int, int, Optional[float]]] = []
     conf_list = data.get("conf", [])
     for i, t in enumerate(texts):
         t = (t or "").strip()
-        if not t:
-            continue
         x = int(data["left"][i])
         y = int(data["top"][i])
         w = int(data["width"][i])
         h = int(data["height"][i])
         if w < MIN_BBOX_WIDTH or h < MIN_BBOX_HEIGHT:
-            logger.debug("FlowLayout: OCR skipped invalid bbox %r w=%d h=%d", t, w, h)
+            if t:
+                logger.debug("FlowLayout: OCR skipped invalid bbox %r w=%d h=%d", t, w, h)
             continue
         conf_val = conf_list[i] if conf_list and i < len(conf_list) else None
         conf: Optional[float] = None
@@ -123,7 +122,118 @@ def _ocr_words_bbox(image_path: str, psm: int = 11) -> List[Tuple[str, int, int,
             except (ValueError, TypeError):
                 pass
         out.append((t, x, y, w, h, conf))
-    logger.info("FlowLayout: OCR for %s words=%d (from %d non-empty)", image_path, len(out), n_non_empty)
+    n_empty = sum(1 for (t, *_) in out if not t)
+    logger.info("FlowLayout: OCR for %s words=%d (empty_bbox=%d)", image_path, len(out), n_empty)
+    return out
+
+
+# Short button-like words: never drop if len≤4, light/gray, has_background, aspect≥1.2
+SHORT_BUTTON_MAX_LEN = 4
+SHORT_BUTTON_ASPECT_MIN = 1.2
+
+
+def _is_short_button_like(w: Word) -> bool:
+    """Keep such words even with low conf or empty after fallback."""
+    text = (w.text or "").strip()
+    if len(text) > SHORT_BUTTON_MAX_LEN:
+        return False
+    if getattr(w, "text_color_class", "dark") not in ("light", "gray"):
+        return False
+    if not getattr(w, "has_background", False):
+        return False
+    if w.h <= 0:
+        return False
+    aspect = w.w / float(w.h)
+    return aspect >= SHORT_BUTTON_ASPECT_MIN
+
+
+def _ocr_fallback_light_words(image_path: str, words: List[Word]) -> List[Word]:
+    """Retry OCR with aggressive preprocess for empty/short light/gray words on primary/secondary.
+    Layout bbox (x,y,w,h) never changes; ocr_bbox set when fallback used.
+    """
+    try:
+        import pytesseract
+        import numpy as np
+    except ImportError:
+        return words
+    path = Path(image_path)
+    if not path.exists():
+        return words
+    try:
+        img_pil = Image.open(path).convert("RGB")
+        img_np = np.array(img_pil)
+    except Exception:
+        return words
+    heights = [w.h for w in words if w.h and w.h > 0]
+    median_body_h = float(sorted(heights)[len(heights) // 2]) if heights else 24.0
+    out: List[Word] = []
+    for w in words:
+        text = (w.text or "").strip()
+        need_fallback = (
+            (not text or len(text) <= SHORT_BUTTON_MAX_LEN)
+            and getattr(w, "text_color_class", "dark") in ("light", "gray")
+            and (getattr(w, "has_background", False) or (w.h > 0 and (w.w / float(w.h)) >= SHORT_BUTTON_ASPECT_MIN))
+        )
+        if not need_fallback:
+            out.append(w)
+            continue
+        crop, _, _ = crop_bbox(img_np, w.x, w.y, w.w, w.h, padding=2)
+        if crop.size == 0:
+            out.append(w)
+            continue
+        res = preprocess_crop(crop, dilation_px=2, upscale_factor=2.0, invert_if_dark=True)
+        try:
+            crop_pil = Image.fromarray(res.image)
+            fallback_text = (pytesseract.image_to_string(crop_pil, config="--psm 7") or "").strip()
+        except Exception:
+            fallback_text = ""
+        new_text = fallback_text.replace("\n", " ").strip() if fallback_text else ""
+        layout_bbox = (w.x, w.y, w.w, w.h)
+        if new_text:
+            out.append(
+                Word(
+                    text=new_text,
+                    x=w.x,
+                    y=w.y,
+                    w=w.w,
+                    h=w.h,
+                    conf=w.conf,
+                    has_background=w.has_background,
+                    bg_color_cluster=w.bg_color_cluster,
+                    text_color_class=w.text_color_class,
+                    font_weight=getattr(w, "font_weight", None),
+                    estimated_font_size_px=getattr(w, "estimated_font_size_px", None) or float(w.h),
+                    ocr_fallback_dilation=res.applied_dilation,
+                    ocr_fallback_inversion=res.applied_inversion,
+                    ocr_fallback_upscale=res.upscale_factor,
+                    ocr_bbox=layout_bbox,
+                )
+            )
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug(
+                    "FlowLayout: fallback OCR at (%s,%s) dilation=%s inv=%s upscale=%s len=%s",
+                    w.x, w.y, res.applied_dilation, res.applied_inversion, res.upscale_factor, len(new_text),
+                )
+            continue
+        if _is_short_button_like(w):
+            out.append(
+                Word(
+                    text=w.text,
+                    x=w.x,
+                    y=w.y,
+                    w=w.w,
+                    h=w.h,
+                    conf=w.conf,
+                    has_background=w.has_background,
+                    bg_color_cluster=w.bg_color_cluster,
+                    text_color_class=w.text_color_class,
+                    font_weight=getattr(w, "font_weight", None),
+                    estimated_font_size_px=getattr(w, "estimated_font_size_px", None) or float(w.h),
+                    ocr_bbox=layout_bbox,
+                )
+            )
+            continue
+        out.append(w)
     return out
 
 
@@ -161,10 +271,10 @@ def _line_bbox(line: List[Tuple[str, int, int, int, int]]) -> Tuple[int, int, in
 
 
 def _estimate_line_height(words: List[Word]) -> float:
-    """Estimate typical line (cap) height from word heights. Used for line/block grouping."""
+    """Estimate typical line height = median(font_size_px); font_size_px from word, not raw bbox h."""
     if not words:
         return float(LINE_DY_PX_DEFAULT)
-    heights = [w.h for w in words]
+    heights = [getattr(w, "estimated_font_size_px", None) or float(w.h) for w in words]
     heights.sort()
     n = len(heights)
     return float(heights[n // 2]) if n else float(LINE_DY_PX_DEFAULT)
@@ -181,6 +291,138 @@ def _estimate_char_width(words: List[Word]) -> float:
     per_char.sort()
     n = len(per_char)
     return per_char[n // 2] if n else 8.0
+
+
+def _text_blocks_to_gui_blocks(
+    text_blocks: List[TextBlock],
+    screenshot_id: str,
+    screenshot_path: str,
+    image_area: int,
+    block_start_index: int,
+    container_bbox: Optional[Tuple[int, int, int, int]] = None,
+) -> List[GUIBlock]:
+    """
+    Map TextBlocks to GUIBlock. bounding_box = text_bbox (tight from words).
+    If container_bbox (x,y,w,h) is given, add it to bounding_box dict as container_bbox.
+    Skip blocks with area >= BLOCK_MAX_SCREEN_AREA_RATIO * image_area.
+    """
+    gui_blocks: List[GUIBlock] = []
+    for i, tb in enumerate(text_blocks):
+        area = tb.w * tb.h
+        if image_area > 0 and area >= BLOCK_MAX_SCREEN_AREA_RATIO * image_area:
+            logger.warning(
+                "FlowLayout: invalid block (area %.0f >= %.0f%% screen) skipped bbox=(%d,%d,%d,%d)",
+                area, BLOCK_MAX_SCREEN_AREA_RATIO * 100, tb.x, tb.y, tb.w, tb.h,
+            )
+            continue
+        text = "\n".join(ln.text for ln in tb.lines)
+        etypes: List[str] = ["text_block"]
+        if tb.block_type == "header":
+            etypes = ["header", "text_block"]
+        elif any(getattr(ln, "role", None) == "button" for ln in tb.lines):
+            etypes = ["button", "text_block"]
+        bbox: Dict[str, Any] = {
+            "x": tb.x,
+            "y": tb.y,
+            "width": tb.w,
+            "height": tb.h,
+            "x1": tb.x,
+            "y1": tb.y,
+            "x2": tb.x + tb.w,
+            "y2": tb.y + tb.h,
+        }
+        if container_bbox is not None:
+            cx, cy, cw, ch = container_bbox
+            bbox["container_bbox"] = {
+                "x": cx, "y": cy, "width": cw, "height": ch,
+                "x1": cx, "y1": cy, "x2": cx + cw, "y2": cy + ch,
+            }
+        gui_blocks.append(
+            GUIBlock(
+                id=f"{screenshot_id}_tb_{block_start_index + i}",
+                screenshot_id=screenshot_id,
+                screenshot_path=screenshot_path,
+                bounding_box=bbox,
+                element_types=etypes,
+                ocr_text=text,
+                visual_features=[],
+            )
+        )
+    return gui_blocks
+
+
+def _layout_inside_region(
+    region: Region,
+    region_words: List[Word],
+    line_dy_px: int,
+    char_width_px: float,
+    horizontal_rules: List[Any],
+    vertical_rules: List[Any],
+    screenshot_id: str,
+    screenshot_path: str,
+    image_area: int,
+    block_index_offset: int,
+) -> List[GUIBlock]:
+    """
+    Run words→lines→blocks inside one text_region. Region = context only.
+    lines_to_blocks_with_headers: header/body/button do NOT merge. No merge_blocks_inside_region.
+    TextBlock bbox = text (tight); container_bbox = region. Block bbox clipped to region.
+    """
+    if not region_words:
+        return []
+    lines = words_to_lines(
+        region_words,
+        line_dy_px=line_dy_px,
+        char_width_px=char_width_px,
+        horizontal_rules=horizontal_rules,
+        vertical_rules=vertical_rules,
+    )
+    lines_with_roles: List[Line] = []
+    for ln in lines:
+        role = classify_line(ln, lines)
+        lines_with_roles.append(
+            Line(
+                words=ln.words,
+                x=ln.x,
+                y=ln.y,
+                w=ln.w,
+                h=ln.h,
+                is_header=(role == "header"),
+                role=role,
+                estimated_font_size_px=getattr(ln, "estimated_font_size_px", None),
+            )
+        )
+    text_blocks = lines_to_blocks_with_headers(
+        lines_with_roles,
+        char_width_px=char_width_px,
+        dividers=horizontal_rules,
+    )
+    # Clip each block to region (no block extends beyond region)
+    rx, ry, rw, rh = region.x, region.y, region.w, region.h
+    clipped: List[TextBlock] = []
+    for tb in text_blocks:
+        x1 = max(tb.x, rx)
+        y1 = max(tb.y, ry)
+        x2 = min(tb.x + tb.w, rx + rw)
+        y2 = min(tb.y + tb.h, ry + rh)
+        if x2 <= x1 or y2 <= y1:
+            continue
+        clipped.append(
+            TextBlock(
+                lines=tb.lines,
+                x=x1, y=y1, w=x2 - x1, h=y2 - y1,
+                block_type=tb.block_type,
+                stats=tb.stats,
+            )
+        )
+    return _text_blocks_to_gui_blocks(
+        clipped,
+        screenshot_id,
+        screenshot_path,
+        image_area,
+        block_index_offset,
+        container_bbox=(rx, ry, rw, rh),
+    )
 
 
 class FlowLayoutDetectionService(GUIDetectionService):
@@ -204,114 +446,178 @@ class FlowLayoutDetectionService(GUIDetectionService):
         # 1) OCR → Words (psm 11 = sparse text, better vertical separation for lists/cards)
         raw_words = _ocr_words_bbox(screenshot_path, psm=11)
         words: List[Word] = [
-            Word(text=t, x=x, y=y, w=w, h=h, conf=conf)
+            Word(
+                text=t,
+                x=x,
+                y=y,
+                w=w,
+                h=h,
+                conf=conf,
+                estimated_font_size_px=float(h),
+            )
             for (t, x, y, w, h, conf) in raw_words
         ]
 
-        # 2) CV prepass: visual context (background, text color, separators) for layout invariants
+        # 2) CV prepass: visual context (background, text color, separators)
         words, horizontal_rules, vertical_rules = run_cv_prepass(screenshot_path, words)
 
-        # 3) Font-size–dependent estimates from words (for line/block grouping)
+        # 2b) Fallback OCR for empty/short light/gray text (dilation + upscale per bbox)
+        words = _ocr_fallback_light_words(screenshot_path, words)
+
+        # Image size for region fallback and "whole screen" invalid block rule
+        try:
+            with Image.open(path) as im:
+                img_w, img_h = im.size
+        except Exception:
+            img_w = max((w.x + w.w for w in words), default=800)
+            img_h = max((w.y + w.h for w in words), default=600)
+        image_area = max(1, img_w * img_h)
+
+        # 3) Region prepass: CV regions before OCR grouping; layout only inside each region
+        regions = cv_detect_regions(screenshot_path)
+        if not regions:
+            # No regions: words → lines → blocks (header/body/button separated). No region merge.
+            line_height_px = _estimate_line_height(words)
+            line_dy_px = max(10, int(line_height_px * 0.8))
+            char_width_px = _estimate_char_width(words)
+            logger.debug(
+                "FlowLayout: no regions, pipeline line_height=%.0f line_dy_px=%d char_width=%.1f for %s",
+                line_height_px, line_dy_px, char_width_px, screenshot_path,
+            )
+            lines = words_to_lines(
+                words,
+                line_dy_px=line_dy_px,
+                char_width_px=char_width_px,
+                horizontal_rules=horizontal_rules,
+                vertical_rules=vertical_rules,
+            )
+            lines_with_roles = []
+            for idx, ln in enumerate(lines):
+                role = classify_line(ln, lines)
+                lines_with_roles.append(
+                    Line(
+                        words=ln.words,
+                        x=ln.x, y=ln.y, w=ln.w, h=ln.h,
+                        is_header=(role == "header"),
+                        role=role,
+                        estimated_font_size_px=getattr(ln, "estimated_font_size_px", None),
+                    )
+                )
+                if logger.isEnabledFor(logging.DEBUG):
+                    _, reason = classify_line_with_reason(ln, lines, page_width=None)
+                    short_info = [
+                        (w.text or "?", getattr(w, "conf", None), getattr(w, "ocr_fallback_dilation", False), getattr(w, "text_color_class", "?"))
+                        for w in ln.words if len((w.text or "").strip()) <= SHORT_BUTTON_MAX_LEN
+                    ]
+                    logger.debug(
+                        "Line(id=%s): words=[%s] role=%s reason=%s short_words=%s",
+                        idx, ",".join((w.text or "").strip() or "?" for w in ln.words), role, reason, short_info,
+                    )
+            text_blocks = lines_to_blocks_with_headers(
+                lines_with_roles, char_width_px=char_width_px, dividers=horizontal_rules,
+            )
+            return _text_blocks_to_gui_blocks(
+                text_blocks, screenshot_id, screenshot_path, image_area, 0, container_bbox=None,
+            )
+
+        # Regions: assign words to region; layout per region; ui_region → one button/badge block
+        region_assignments = assign_words_to_region(words, regions)
+        for r, rwords in region_assignments:
+            logger.info(
+                "FlowLayout: region bbox=(%d,%d,%d,%d) type=%s area=%d words=%d",
+                r.x, r.y, r.w, r.h, r.region_type, r.area, len(rwords),
+            )
         line_height_px = _estimate_line_height(words)
-        line_dy_px = max(10, int(line_height_px * 0.8))  # same-line tolerance ~ height of capitals
-        char_width_px = _estimate_char_width(words)  # horizontal continuity: gap up to a few chars
-        logger.debug(
-            "FlowLayout: line_height=%.0f line_dy_px=%d char_width=%.1f for %s",
-            line_height_px,
-            line_dy_px,
-            char_width_px,
-            screenshot_path,
-        )
-
-        # 4) Words → Lines (Y-band + X-islands; height_ratio ≤ 2; color/rules/bg compatibility)
-        lines = words_to_lines(
-            words,
-            line_dy_px=line_dy_px,
-            char_width_px=char_width_px,
-            horizontal_rules=horizontal_rules,
-            vertical_rules=vertical_rules,
-        )
-
-        # 5) Line classification: role (body/header/button/label); body default
-        lines_with_roles: List[Line] = []
-        for idx, ln in enumerate(lines):
-            role = classify_line(ln, lines)
-            lines_with_roles.append(
-                Line(
-                    words=ln.words,
-                    x=ln.x,
-                    y=ln.y,
-                    w=ln.w,
-                    h=ln.h,
-                    is_header=(role == "header"),
-                    role=role,
+        line_dy_px = max(10, int(line_height_px * 0.8))
+        char_width_px = _estimate_char_width(words)
+        gui_blocks = []
+        block_index = 0
+        for region, region_words in region_assignments:
+            if region.region_type == "background":
+                continue
+            if region.region_type == "ui_region":
+                # Button/badge: text_bbox = tight from words (or region if no words); container_bbox = region.
+                # Never drop by area or char count (View details = valid button).
+                text = " ".join((w.text or "").strip() for w in region_words if (w.text or "").strip()).strip()
+                if region_words:
+                    tx1 = min(w.x for w in region_words)
+                    ty1 = min(w.y for w in region_words)
+                    tx2 = max(w.x + w.w for w in region_words)
+                    ty2 = max(w.y + w.h for w in region_words)
+                    # small padding
+                    pad = 2
+                    tx1 = max(region.x, tx1 - pad)
+                    ty1 = max(region.y, ty1 - pad)
+                    tx2 = min(region.x + region.w, tx2 + pad)
+                    ty2 = min(region.y + region.h, ty2 + pad)
+                else:
+                    tx1, ty1 = region.x, region.y
+                    tx2, ty2 = region.x + region.w, region.y + region.h
+                is_badge = (
+                    region.area < image_area * UI_BADGE_MAX_AREA_RATIO
+                    and region.h <= UI_BADGE_MAX_HEIGHT_PX
                 )
-            )
-            if logger.isEnabledFor(logging.DEBUG):
-                _, reason = classify_line_with_reason(ln, lines, page_width=None)
+                etypes = ["badge", "text_block"] if is_badge else ["button", "text_block"]
+                bbox: Dict[str, Any] = {
+                    "x": tx1, "y": ty1,
+                    "width": tx2 - tx1, "height": ty2 - ty1,
+                    "x1": tx1, "y1": ty1, "x2": tx2, "y2": ty2,
+                }
+                bbox["container_bbox"] = {
+                    "x": region.x, "y": region.y,
+                    "width": region.w, "height": region.h,
+                    "x1": region.x, "y1": region.y,
+                    "x2": region.x + region.w, "y2": region.y + region.h,
+                }
+                gui_blocks.append(
+                    GUIBlock(
+                        id=f"{screenshot_id}_ui_{block_index}",
+                        screenshot_id=screenshot_id,
+                        screenshot_path=screenshot_path,
+                        bounding_box=bbox,
+                        element_types=etypes,
+                        ocr_text=text or "",
+                        visual_features=[],
+                    )
+                )
+                block_index += 1
                 logger.debug(
-                    "Line(id=%s): words=[%s] font_px=%s role=%s reason=%s",
-                    idx,
-                    ",".join((w.text or "").strip() or "?" for w in ln.words),
-                    ln.h,
-                    role,
-                    reason,
+                    "FlowLayout: ui_region → %s text_bbox=(%d,%d,%d,%d) container=(%d,%d,%d,%d) text=%r",
+                    "badge" if is_badge else "button",
+                    tx1, ty1, tx2 - tx1, ty2 - ty1,
+                    region.x, region.y, region.w, region.h,
+                    text or "(none)",
                 )
-        n_headers = sum(1 for l in lines_with_roles if l.role == "header")
-        n_buttons = sum(1 for l in lines_with_roles if l.role == "button")
-        logger.info(
-            "FlowLayout: headers=%d buttons=%d of %d lines for %s",
-            n_headers,
-            n_buttons,
-            len(lines_with_roles),
-            screenshot_path,
-        )
-
-        # 6) Lines → TextBlocks: role + dividers; button/header never merge with body
-        text_blocks = lines_to_blocks_with_headers(
-            lines_with_roles,
-            char_width_px=char_width_px,
-            dividers=horizontal_rules,
-        )
-
-        logger.info(
-            "FlowLayout: words=%d, lines=%d, text_blocks=%d for %s",
-            len(words),
-            len(lines),
-            len(text_blocks),
-            screenshot_path,
-        )
-
-        # 7) Map TextBlocks → GUIBlock (§6: type header|paragraph|standalone|button)
-        gui_blocks: List[GUIBlock] = []
-        for i, tb in enumerate(text_blocks):
-            text = "\n".join(ln.text for ln in tb.lines)
-            etypes = ["text_block"]
-            if tb.block_type == "header":
-                etypes = ["header", "text_block"]
-            elif any(getattr(ln, "role", None) == "button" for ln in tb.lines):
-                etypes = ["button", "text_block"]
-            gui_blocks.append(
-                GUIBlock(
-                    id=f"{screenshot_id}_tb_{i}",
-                    screenshot_id=screenshot_id,
-                    screenshot_path=screenshot_path,
-                    bounding_box={
-                        "x": tb.x,
-                        "y": tb.y,
-                        "width": tb.w,
-                        "height": tb.h,
-                        "x1": tb.x,
-                        "y1": tb.y,
-                        "x2": tb.x + tb.w,
-                        "y2": tb.y + tb.h,
-                    },
-                    element_types=etypes,
-                    ocr_text=text,
-                    visual_features=[],
-                )
+                continue
+            # text_region (or fallback page): words → lines → blocks inside region
+            region_blocks = _layout_inside_region(
+                region,
+                region_words,
+                line_dy_px,
+                char_width_px,
+                horizontal_rules,
+                vertical_rules,
+                screenshot_id,
+                screenshot_path,
+                image_area,
+                block_index,
             )
-
+            gui_blocks.extend(region_blocks)
+            block_index += len(region_blocks)
+        # Debug: draw regions + words + final gui_blocks
+        debug_out = render_layout_debug(
+            screenshot_path,
+            regions,
+            region_assignments=region_assignments,
+            gui_blocks=gui_blocks,
+            output_path=str(path.parent / f"debug_regions_{path.stem}.png"),
+        )
+        if debug_out and logger.isEnabledFor(logging.DEBUG):
+            logger.debug("FlowLayout: region debug image -> %s", debug_out)
+        logger.info(
+            "FlowLayout: regions=%d words=%d gui_blocks=%d for %s",
+            len(regions), len(words), len(gui_blocks), screenshot_path,
+        )
         return gui_blocks
 
 

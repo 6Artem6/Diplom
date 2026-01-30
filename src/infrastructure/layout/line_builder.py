@@ -10,13 +10,12 @@ from typing import List, Optional, Sequence
 
 from .atoms import HorizontalRule, Line, VerticalRule, Word
 
-# Y-band: word joins band iff y_center within band AND height_ratio ≤ 2
-Y_BAND_DY_RATIO = 0.55
-HEIGHT_RATIO_MAX = 2.0  # height_ratio_word / median_height_band ≤ 2
-
-# X-island: new cluster if gap_x > max(1.5 * h_band, 2.5 * char_width)
-X_GAP_HEIGHT_FACTOR = 1.5
-X_GAP_CHAR_FACTOR = 2.5
+# Line grouping: |y_center − y_center_ref| ≤ 2×font_size_px, height_ratio ≤ 2
+Y_CENTER_TOLERANCE_FONT_FACTOR = 2.0   # band: allow word if |y_center - band_y| ≤ 2×font_size
+FONT_SIZE_RATIO_MAX = 2.0
+# Horizontal gap: gap_x ≤ max(3×font_size_px, 2×char_width)
+X_GAP_FONT_FACTOR = 3.0
+X_GAP_CHAR_FACTOR = 2.0
 
 
 def _median(values: List[int]) -> float:
@@ -26,12 +25,30 @@ def _median(values: List[int]) -> float:
     return float(vv[len(vv) // 2])
 
 
+def _word_font_size_px(w: Word) -> float:
+    """Estimated font size (px). Use for merge, not raw bbox h."""
+    v = getattr(w, "estimated_font_size_px", None)
+    return float(v) if v is not None and v > 0 else float(w.h)
+
+
+def _word_baseline_y(w: Word) -> float:
+    """Approximate baseline Y (cap height ~0.75 * font_size from top)."""
+    fs = _word_font_size_px(w)
+    return float(w.y) + fs * 0.75
+
+
 def _word_center_y(w: Word) -> float:
     return float(w.y + w.h / 2.0)
 
 
+def _word_avg_char_width(w: Word) -> float:
+    """word.w / max(len(text), 1). Layout coords."""
+    n = max(1, len((w.text or "").strip()))
+    return float(w.w) / n
+
+
 def _estimate_char_width(words: List[Word]) -> Optional[float]:
-    """Median char width from word width / len(text)."""
+    """Median char width from word width / len(text). Layout coords."""
     vals: List[float] = []
     for w in words:
         t = (w.text or "").strip()
@@ -90,48 +107,44 @@ def _has_rule_between_words(
 
 def _group_into_local_y_bands(words: List[Word]) -> List[List[Word]]:
     """
-    Y-bands: words on same visual line. Word joins band iff:
-    - y_center within 0.55 * local_median_h of band center
-    - height_ratio(word, band) ≤ 2
+    Y-bands by y_center: |y_center − y_center_ref| ≤ 2×font_size_px, height_ratio ≤ 2.
+    Font size = median(word.h) per band; raw bbox h not used for membership.
     """
     if not words:
         return []
 
     sorted_words = sorted(words, key=lambda w: (_word_center_y(w), w.x))
     bands: List[List[Word]] = []
-    band_centers: List[float] = []
-    band_med_h_list: List[float] = []
+    band_center_y: List[float] = []
+    band_font_sizes: List[float] = []
 
     for w in sorted_words:
         cy = _word_center_y(w)
+        fs = _word_font_size_px(w)
         best_idx: Optional[int] = None
         best_dist = 1e18
-        for i, center in enumerate(band_centers):
-            dist = abs(cy - center)
-            if dist < best_dist:
+        for i, band_cy in enumerate(band_center_y):
+            band_fs = band_font_sizes[i]
+            font_ok = _height_ratio(fs, band_fs) <= FONT_SIZE_RATIO_MAX
+            tol = Y_CENTER_TOLERANCE_FONT_FACTOR * max(fs, band_fs)
+            dist = abs(cy - band_cy)
+            if font_ok and dist <= tol and dist < best_dist:
                 best_dist = dist
                 best_idx = i
 
         if best_idx is None:
             bands.append([w])
-            band_centers.append(cy)
-            band_med_h_list.append(float(w.h))
+            band_center_y.append(cy)
+            band_font_sizes.append(fs)
             continue
 
-        local_med_h = band_med_h_list[best_idx]
-        height_ok = _height_ratio(float(w.h), local_med_h) <= HEIGHT_RATIO_MAX
-        if best_dist <= Y_BAND_DY_RATIO * local_med_h and height_ok:
-            bands[best_idx].append(w)
-            band_centers[best_idx] = _median([int(_word_center_y(ww)) for ww in bands[best_idx]])
-            band_med_h_list[best_idx] = _median([ww.h for ww in bands[best_idx]])
-        else:
-            bands.append([w])
-            band_centers.append(cy)
-            band_med_h_list.append(float(w.h))
+        bands[best_idx].append(w)
+        band_center_y[best_idx] = _median([int(_word_center_y(ww)) for ww in bands[best_idx]])
+        band_font_sizes[best_idx] = _median([int(_word_font_size_px(ww)) for ww in bands[best_idx]])
 
-    bands_with_center = list(zip(bands, band_centers))
-    bands_with_center.sort(key=lambda bc: bc[1])
-    return [b for (b, _c) in bands_with_center]
+    bands_with_cy = list(zip(bands, band_center_y))
+    bands_with_cy.sort(key=lambda bc: bc[1])
+    return [b for (b, _c) in bands_with_cy]
 
 
 def _split_band_into_x_islands(
@@ -149,9 +162,6 @@ def _split_band_into_x_islands(
     if not band_words:
         return []
 
-    cw = char_width_px or _estimate_char_width(band_words) or (band_med_h * 0.5)
-    max_gap_x = max(X_GAP_HEIGHT_FACTOR * band_med_h, X_GAP_CHAR_FACTOR * cw)
-
     ws = sorted(band_words, key=lambda w: w.x)
     islands: List[List[Word]] = []
     cur: List[Word] = [ws[0]]
@@ -159,7 +169,7 @@ def _split_band_into_x_islands(
 
     for w in ws[1:]:
         gap_x = w.x - last_x2
-        cur_med_h = _median([ww.h for ww in cur])
+        cur_font_size = _median([int(_word_font_size_px(ww)) for ww in cur])
         cur_has_bg = any(getattr(ww, "has_background", False) for ww in cur)
         w_has_bg = getattr(w, "has_background", False)
 
@@ -170,14 +180,19 @@ def _split_band_into_x_islands(
             last_x2 = w.x + w.w
             continue
 
+        # gap_x ≤ max(3×font_size_px, 2×char_width)
+        prev_w = cur[-1]
+        avg_cw = (_word_avg_char_width(prev_w) + _word_avg_char_width(w)) / 2.0
+        cw = float(char_width_px) if char_width_px is not None else avg_cw
+        max_gap_x = max(X_GAP_FONT_FACTOR * cur_font_size, X_GAP_CHAR_FACTOR * cw)
         if gap_x > max_gap_x:
             islands.append(cur)
             cur = [w]
             last_x2 = w.x + w.w
             continue
 
-        # height_ratio ≤ 2
-        if _height_ratio(float(w.h), cur_med_h) > HEIGHT_RATIO_MAX:
+        # estimated_font_size ratio ≤ 2
+        if _height_ratio(_word_font_size_px(w), cur_font_size) > FONT_SIZE_RATIO_MAX:
             islands.append(cur)
             cur = [w]
             last_x2 = w.x + w.w
@@ -212,10 +227,10 @@ def words_to_lines(
     vertical_rules: Optional[Sequence[VerticalRule]] = None,
 ) -> List[Line]:
     """
-    Words → Lines. Y-bands (local median h, height_ratio ≤ 2) + X-islands.
+    Words → Lines. TEXT MERGED HERE: same line = Y within 2×font_size, gap_x ≤ max(3×font, 2×cw).
 
-    X-island: gap_x ≤ max(1.5*h_band, 2.5*char_width); height_ratio ≤ 2;
-    text color compatible; no horizontal/vertical rule between words;
+    Y-bands: |y_center − y_ref| ≤ 2×font_size_px, height_ratio ≤ 2.
+    X-islands: gap_x ≤ max(3×font_size_px, 2×char_width); color compatible; no rule between words;
     words with has_background do not merge with words without.
     """
     _ = line_dy_px
@@ -228,11 +243,11 @@ def words_to_lines(
     lines: List[Line] = []
 
     for band in bands:
-        band_med_h = _median([w.h for w in band])
+        band_font_size = _median([int(_word_font_size_px(w)) for w in band])
         for island in _split_band_into_x_islands(
             band,
             char_width_px=char_width_px,
-            band_med_h=band_med_h,
+            band_med_h=band_font_size,
             horizontal_rules=h_rules,
             vertical_rules=v_rules,
         ):
@@ -241,7 +256,17 @@ def words_to_lines(
             y1 = min(w.y for w in ws)
             x2 = max(w.x + w.w for w in ws)
             y2 = max(w.y + w.h for w in ws)
-            lines.append(Line(words=ws, x=x1, y=y1, w=x2 - x1, h=y2 - y1))
+            line_font_size = _median([int(_word_font_size_px(w)) for w in ws])
+            lines.append(
+                Line(
+                    words=ws,
+                    x=x1,
+                    y=y1,
+                    w=x2 - x1,
+                    h=y2 - y1,
+                    estimated_font_size_px=float(line_font_size),
+                )
+            )
 
     lines.sort(key=lambda l: (l.y + l.h // 2, l.x))
     return lines

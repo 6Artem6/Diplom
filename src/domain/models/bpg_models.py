@@ -87,7 +87,11 @@ class GUIManifestation(BaseModel):
     )
     bounding_box: Dict[str, float] = Field(
         ...,
-        description="Bounding box: {'x': float, 'y': float, 'width': float, 'height': float}",
+        description="Text bbox (tight): {'x', 'y', 'width', 'height'} and/or {'x1','y1','x2','y2'}",
+    )
+    container_bbox: Optional[Dict[str, float]] = Field(
+        None,
+        description="Optional container bbox (e.g. region/button) when different from text bbox",
     )
     visual_embedding: Optional[List[float]] = Field(
         None,

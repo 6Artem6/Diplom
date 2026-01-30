@@ -103,6 +103,11 @@ def _enrich_word(img: np.ndarray, w: Word, img_w: int, img_h: int) -> Word:
         bg_color_cluster=bg_cluster if has_bg else None,
         text_color_class=text_class,
         font_weight=getattr(w, "font_weight", None),
+        estimated_font_size_px=getattr(w, "estimated_font_size_px", None),
+        ocr_fallback_dilation=getattr(w, "ocr_fallback_dilation", False),
+        ocr_fallback_inversion=getattr(w, "ocr_fallback_inversion", False),
+        ocr_fallback_upscale=getattr(w, "ocr_fallback_upscale", 1.0),
+        ocr_bbox=getattr(w, "ocr_bbox", None),
     )
 
 

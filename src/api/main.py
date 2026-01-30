@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routes import bpg, visualization
+from .routes import bpg, visualization, debug
 from .dependencies import ensure_models_loaded
 
 # Configure logging
@@ -55,8 +55,9 @@ app.add_middleware(
 )
 
 # Register routes
-app.include_router(bpg.router, prefix="/api/v1", tags=["bpg"])
-app.include_router(visualization.router, prefix="/api/v1", tags=["visualization"])
+app.include_router(bpg.router, prefix="/api/v1")
+app.include_router(visualization.router, prefix="/api/v1")
+app.include_router(debug.router, prefix="/api/v1")
 
 
 @app.get("/")
