@@ -13,16 +13,19 @@ from pathlib import Path
 from typing import Any, List
 
 import json
-from fastapi import APIRouter, File, Form, UploadFile
+from fastapi import APIRouter, File, Form, UploadFile, HTTPException
 from pydantic import BaseModel, Field
 
 from src.infrastructure.debug import (
     run_layout,
+    run_ui_regions,
     run_text_detect,
     run_ocr_boxes,
     run_full_pipeline,
     save_debug_image_regions,
     save_debug_image_boxes,
+    save_debug_image_ui_regions_hierarchy,
+    save_debug_image_full_pipeline,
 )
 
 logger = logging.getLogger(__name__)
@@ -48,7 +51,8 @@ class RegionOut(BaseModel):
     y: int
     w: int
     h: int
-    type: str  # text_region | ui_region | background
+    type: str
+    parent_region_id: int | None = None  # None = parent (navbar, card, section)
 
 
 class LayoutResponse(BaseModel):
@@ -83,20 +87,28 @@ class OcrResponse(BaseModel):
 class FullPipelineResponse(BaseModel):
     regions: List[RegionOut]
     text_boxes: List[TextBoxOut]
-    gui_blocks: List[Any]  # dict with container_bbox, text_bbox, text, etc.
+    lines: List[List[TextBoxOut]] = Field(default_factory=list)
+    paragraphs: List[List[List[TextBoxOut]]] = Field(default_factory=list)
+    gui_blocks: List[Any]
     dropped_count: int = 0
     drop_reasons: List[str] = Field(default_factory=list)
     debug_image_path: str | None = None
-    message: str = "Full pipeline: layout → text detect → OCR → blocks."
+    message: str = "Full pipeline: UI regions → text detect → OCR → grouping → blocks."
 
 
 # --- Endpoints ---
 
 
+# Blue for UI regions (layout-first)
+_UI_REGIONS_COLOR = (0, 0, 255)
+# Red for text_boxes
+_TEXT_BOXES_COLOR = (255, 0, 0)
+
+
 @router.post("/layout", response_model=LayoutResponse)
 async def debug_layout(image: UploadFile = File(..., description="Screenshot image")):
     """
-    Layout detection only. Returns region bbox + type (text / ui / background). No OCR.
+    Layout detection only (legacy region_prepass). Returns region bbox + type. No OCR.
     Saves debug image with regions to DEBUG_OUTPUT_DIR.
     """
     logger.info("debug/layout: filename=%s content_type=%s", image.filename, image.content_type)
@@ -108,6 +120,61 @@ async def debug_layout(image: UploadFile = File(..., description="Screenshot ima
         return LayoutResponse(
             regions=[RegionOut(x=r["x"], y=r["y"], w=r["w"], h=r["h"], type=r["type"]) for r in regions],
             debug_image_path=debug_path,
+        )
+    finally:
+        try:
+            Path(path).unlink(missing_ok=True)
+        except Exception:
+            pass
+
+
+@router.post("/ui-regions", response_model=LayoutResponse)
+async def debug_ui_regions(image: UploadFile = File(..., description="Screenshot image")):
+    """
+    Hierarchical UI region detection: parents (card, navbar, section) then children (button, badge, text_region, etc.) inside ROI.
+    Returns bbox + type + parent_region_id. Debug image: parent=blue, child=purple.
+    """
+    logger.info("debug/ui-regions: filename=%s content_type=%s", image.filename, image.content_type)
+    path = _save_upload_and_get_path(image)
+    try:
+        regions = run_ui_regions(path)
+        out_name = f"ui_regions_{Path(path).stem}.png"
+        debug_path = save_debug_image_ui_regions_hierarchy(path, regions, out_name)
+        return LayoutResponse(
+            regions=[
+                RegionOut(
+                    x=r["x"], y=r["y"], w=r["w"], h=r["h"],
+                    type=r["type"],
+                    parent_region_id=r.get("parent_region_id"),
+                )
+                for r in regions
+            ],
+            debug_image_path=debug_path,
+            message="UI regions (hierarchical); parent=blue, child=purple.",
+        )
+    finally:
+        try:
+            Path(path).unlink(missing_ok=True)
+        except Exception:
+            pass
+
+
+@router.post("/text-boxes", response_model=TextDetectResponse)
+async def debug_text_boxes(image: UploadFile = File(..., description="Screenshot image")):
+    """
+    Text detection only (bbox of text). No layout, no OCR. Uses PaddleOCR if available.
+    Saves debug image with text_boxes in red to DEBUG_OUTPUT_DIR.
+    """
+    logger.info("debug/text-boxes: filename=%s content_type=%s", image.filename, image.content_type)
+    path = _save_upload_and_get_path(image)
+    try:
+        boxes = run_text_detect(path)
+        out_name = f"text_boxes_{Path(path).stem}.png"
+        debug_path = save_debug_image_boxes(path, boxes, out_name, color=_TEXT_BOXES_COLOR)
+        return TextDetectResponse(
+            boxes=[TextBoxOut(x=b["x"], y=b["y"], w=b["w"], h=b["h"]) for b in boxes],
+            debug_image_path=debug_path,
+            message="Text boxes only; no layout, no OCR.",
         )
     finally:
         try:
@@ -168,11 +235,15 @@ async def debug_ocr(
             pass
 
 
+def _box_out(b: Any) -> TextBoxOut:
+    return TextBoxOut(x=b["x"], y=b["y"], w=b["w"], h=b["h"])
+
+
 @router.post("/full-pipeline", response_model=FullPipelineResponse)
 async def debug_full_pipeline(image: UploadFile = File(..., description="Screenshot image")):
     """
-    Full pipeline: layout → text detection (inside region) → OCR → GUI blocks.
-    Returns regions, text_boxes, gui_blocks. Saves debug image to DEBUG_OUTPUT_DIR.
+    Hierarchical pipeline: UI regions (parent+child) → text detect INSIDE each region → OCR → blocks.
+    Paragraphs only for text_region; button/badge = one block per region. Debug: parent=blue, child=purple, text=red, button text=green.
     """
     logger.info("debug/full-pipeline: filename=%s content_type=%s", image.filename, image.content_type)
     path = _save_upload_and_get_path(image)
@@ -180,18 +251,21 @@ async def debug_full_pipeline(image: UploadFile = File(..., description="Screens
         out = run_full_pipeline(path)
         regions = out["regions"]
         text_boxes = out["text_boxes"]
+        lines = out.get("lines", [])
+        paragraphs = out.get("paragraphs", [])
         gui_blocks = out["gui_blocks"]
         out_name = f"full_{Path(path).stem}.png"
-        debug_path = save_debug_image_regions(path, regions, out_name)
-        if text_boxes and debug_path:
-            debug_path_boxes = save_debug_image_boxes(
-                path, text_boxes, f"full_boxes_{Path(path).stem}.png", color=(80, 80, 255)
-            )
-            if debug_path_boxes:
-                debug_path = debug_path_boxes
+        debug_path = save_debug_image_full_pipeline(
+            path, regions, text_boxes, lines, paragraphs, out_name
+        )
         return FullPipelineResponse(
-            regions=[RegionOut(x=r["x"], y=r["y"], w=r["w"], h=r["h"], type=r["type"]) for r in regions],
-            text_boxes=[TextBoxOut(x=b["x"], y=b["y"], w=b["w"], h=b["h"]) for b in text_boxes],
+            regions=[
+                RegionOut(x=r["x"], y=r["y"], w=r["w"], h=r["h"], type=r["type"], parent_region_id=r.get("parent_region_id"))
+                for r in regions
+            ],
+            text_boxes=[_box_out(b) for b in text_boxes],
+            lines=[[_box_out(b) for b in ln] for ln in lines],
+            paragraphs=[[[_box_out(b) for b in ln] for ln in para] for para in paragraphs],
             gui_blocks=gui_blocks,
             dropped_count=out.get("dropped_count", 0),
             drop_reasons=out.get("drop_reasons", []),
