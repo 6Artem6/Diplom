@@ -34,3 +34,8 @@ python-multipart>=0.0.6  # For file uploads
 
 # Optional: HDBSCAN for alternative line→block clustering (layout/block_builder)
 hdbscan>=0.8.33
+
+# Optional: DL layout detection (LayoutParser + Detectron2). Fallback: CV-based ui_region_detection.
+# On Windows, detectron2 may need manual install: pip install 'git+https://github.com/facebookresearch/detectron2.git'
+layoutparser>=0.3.4
+# detectron2>=0.7.0

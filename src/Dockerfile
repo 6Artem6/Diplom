@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.11-slim
 
 WORKDIR /app
 
@@ -50,6 +50,13 @@ RUN mkdir -p \
 # --------------------
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# --------------------
+# Detectron2 manual install (not on PyPI)
+# --------------------
+RUN pip install --no-cache-dir \
+    'git+https://github.com/facebookresearch/detectron2.git@v0.6'
+
 
 # --------------------
 # Init script

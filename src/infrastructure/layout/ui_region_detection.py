@@ -34,15 +34,28 @@ CARD_ASPECT_RANGE = (0.4, 5.0)
 
 # --- Second pass: inside ROI (children) ---
 ROI_SCALE = 2.0
-CHILD_MIN_AREA_PX2 = 80
+CHILD_MIN_AREA_PX2 = 120   # skip tiny blobs (e.g. 9×11) from any UI control
 CHILD_MIN_SIDE_PX = 8
 CHILD_RECTANGULARITY = 0.55
 BUTTON_ASPECT_MIN = 1.2
 BUTTON_ASPECT_MAX = 5.0
 BUTTON_MAX_AREA_RATIO_IN_ROI = 0.4
+BUTTON_MIN_WIDTH_PX = 24
+BUTTON_MIN_HEIGHT_PX = 12
+BUTTON_MIN_AREA_PX2 = 288
+BUTTON_MAX_WIDTH_RATIO = 0.6
 BADGE_MAX_HEIGHT_PX = 45
 BADGE_MAX_AREA_RATIO_IN_ROI = 0.15
-OUTLINE_FILL_RATIO_MAX = 0.55
+BADGE_MIN_WIDTH_PX = 18
+BADGE_MIN_HEIGHT_PX = 8
+BADGE_MIN_AREA_PX2 = 144
+PILL_MIN_WIDTH_PX = 20
+PILL_MIN_HEIGHT_PX = 10
+PILL_MIN_AREA_PX2 = 200
+INPUT_LIKE_MIN_WIDTH_PX = 30
+INPUT_LIKE_MIN_HEIGHT_PX = 12
+INPUT_LIKE_MIN_AREA_PX2 = 360
+OUTLINE_FILL_RATIO_MAX = 0.65
 
 
 def _load_image(image_path: str) -> Tuple[Any, int, int]:
@@ -85,22 +98,23 @@ def _contour_fill_ratio(gray: np.ndarray, x: int, y: int, w: int, h: int) -> flo
 
 
 def _first_pass_parents(img: Any, img_w: int, img_h: int) -> List[Dict[str, Any]]:
-    """Large regions only: navbar, card, section. No buttons/badges."""
+    """Large regions only: navbar (only if top strip has content), card, section."""
     import cv2
     image_area = img_w * img_h
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     regions: List[Dict[str, Any]] = []
 
-    # Navbar: top strip
-    navbar_h = max(PARENT_MIN_SIDE_PX, int(img_h * NAVBAR_HEIGHT_RATIO))
-    if navbar_h < img_h and int(img_w * NAVBAR_WIDTH_RATIO) > 0:
-        regions.append({
-            "x": 0, "y": 0, "w": img_w, "h": navbar_h,
-            "type": "navbar",
-            "parent_region_id": None,
-        })
-
     edges = cv2.Canny(gray, 40, 120)
+    navbar_h = max(PARENT_MIN_SIDE_PX, int(img_h * NAVBAR_HEIGHT_RATIO))
+    NAVBAR_MIN_EDGE_PX = 80
+    if navbar_h < img_h and int(img_w * NAVBAR_WIDTH_RATIO) > 0:
+        top_edges = edges[0:navbar_h, 0:img_w]
+        if np.sum(top_edges > 0) >= NAVBAR_MIN_EDGE_PX:
+            regions.append({
+                "x": 0, "y": 0, "w": img_w, "h": navbar_h,
+                "type": "navbar",
+                "parent_region_id": None,
+            })
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
     closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
     contours, _ = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -186,18 +200,23 @@ def _second_pass_children_in_roi(
         gy = ry + int(y / scale)
         gw = max(1, int(w / scale))
         gh = max(1, int(h / scale))
+        area_global = gw * gh
+        max_w = int(BUTTON_MAX_WIDTH_RATIO * rw)
+        max_h = int(BUTTON_MAX_WIDTH_RATIO * rh)
 
-        if ar <= BADGE_MAX_AREA_RATIO_IN_ROI and gh <= BADGE_MAX_HEIGHT_PX and aspect >= BUTTON_ASPECT_MIN:
+        if gw > max_w or gh > max_h:
+            pass
+        elif ar <= BADGE_MAX_AREA_RATIO_IN_ROI and gh <= BADGE_MAX_HEIGHT_PX and aspect >= BUTTON_ASPECT_MIN and gw >= BADGE_MIN_WIDTH_PX and gh >= BADGE_MIN_HEIGHT_PX and area_global >= BADGE_MIN_AREA_PX2:
             children.append({"x": gx, "y": gy, "w": gw, "h": gh, "type": "badge", "parent_region_id": parent_index})
             continue
-        if BUTTON_ASPECT_MIN <= aspect <= BUTTON_ASPECT_MAX and ar <= BUTTON_MAX_AREA_RATIO_IN_ROI:
-            if fill >= 0.45 or fill <= OUTLINE_FILL_RATIO_MAX:
+        elif BUTTON_ASPECT_MIN <= aspect <= BUTTON_ASPECT_MAX and ar <= BUTTON_MAX_AREA_RATIO_IN_ROI and gw >= BUTTON_MIN_WIDTH_PX and gh >= BUTTON_MIN_HEIGHT_PX and area_global >= BUTTON_MIN_AREA_PX2:
+            if fill >= 0.4 or fill <= OUTLINE_FILL_RATIO_MAX:
                 children.append({"x": gx, "y": gy, "w": gw, "h": gh, "type": "button", "parent_region_id": parent_index})
                 continue
-        if 2.0 <= aspect <= 8.0 and ar <= 0.2:
+        if 2.0 <= aspect <= 8.0 and ar <= 0.2 and gw <= max_w and gh <= max_h and gw >= INPUT_LIKE_MIN_WIDTH_PX and gh >= INPUT_LIKE_MIN_HEIGHT_PX and area_global >= INPUT_LIKE_MIN_AREA_PX2:
             children.append({"x": gx, "y": gy, "w": gw, "h": gh, "type": "input_like", "parent_region_id": parent_index})
             continue
-        if aspect >= 0.8 and aspect <= 2.5 and ar <= 0.25:
+        if aspect >= 0.8 and aspect <= 2.5 and ar <= 0.25 and gw <= max_w and gh <= max_h and gw >= PILL_MIN_WIDTH_PX and gh >= PILL_MIN_HEIGHT_PX and area_global >= PILL_MIN_AREA_PX2:
             children.append({"x": gx, "y": gy, "w": gw, "h": gh, "type": "pill", "parent_region_id": parent_index})
             continue
         if ar <= 0.7:

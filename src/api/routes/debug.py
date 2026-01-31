@@ -10,7 +10,7 @@ import logging
 import tempfile
 import uuid
 from pathlib import Path
-from typing import Any, List
+from typing import Any, Dict, List
 
 import json
 from fastapi import APIRouter, File, Form, UploadFile, HTTPException
@@ -90,10 +90,11 @@ class FullPipelineResponse(BaseModel):
     lines: List[List[TextBoxOut]] = Field(default_factory=list)
     paragraphs: List[List[List[TextBoxOut]]] = Field(default_factory=list)
     gui_blocks: List[Any]
+    button_labels: Dict[int, str] = Field(default_factory=dict)
     dropped_count: int = 0
     drop_reasons: List[str] = Field(default_factory=list)
     debug_image_path: str | None = None
-    message: str = "Full pipeline: UI regions → text detect → OCR → grouping → blocks."
+    message: str = "OCR-first for button/badge/pill/input_like; Paddle only for text_region."
 
 
 # --- Endpoints ---
@@ -242,8 +243,8 @@ def _box_out(b: Any) -> TextBoxOut:
 @router.post("/full-pipeline", response_model=FullPipelineResponse)
 async def debug_full_pipeline(image: UploadFile = File(..., description="Screenshot image")):
     """
-    Hierarchical pipeline: UI regions (parent+child) → text detect INSIDE each region → OCR → blocks.
-    Paragraphs only for text_region; button/badge = one block per region. Debug: parent=blue, child=purple, text=red, button text=green.
+    OCR-first for button/badge/pill/input_like (Tesseract on ROI). Paddle text detection only for text_region.
+    Debug: button bbox=purple + OCR label below; text_region: text_boxes=red, lines=green, paragraphs=yellow.
     """
     logger.info("debug/full-pipeline: filename=%s content_type=%s", image.filename, image.content_type)
     path = _save_upload_and_get_path(image)
@@ -254,9 +255,12 @@ async def debug_full_pipeline(image: UploadFile = File(..., description="Screens
         lines = out.get("lines", [])
         paragraphs = out.get("paragraphs", [])
         gui_blocks = out["gui_blocks"]
+        button_labels = out.get("button_labels", {})
         out_name = f"full_{Path(path).stem}.png"
         debug_path = save_debug_image_full_pipeline(
-            path, regions, text_boxes, lines, paragraphs, out_name
+            path, regions, text_boxes, lines, paragraphs, out_name,
+            button_labels=button_labels,
+            skip_region_ids=out.get("empty_parent_ids"),
         )
         return FullPipelineResponse(
             regions=[
@@ -267,6 +271,7 @@ async def debug_full_pipeline(image: UploadFile = File(..., description="Screens
             lines=[[_box_out(b) for b in ln] for ln in lines],
             paragraphs=[[[_box_out(b) for b in ln] for ln in para] for para in paragraphs],
             gui_blocks=gui_blocks,
+            button_labels=button_labels,
             dropped_count=out.get("dropped_count", 0),
             drop_reasons=out.get("drop_reasons", []),
             debug_image_path=debug_path,

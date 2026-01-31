@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -52,22 +52,32 @@ def run_layout(image_path: str) -> List[Dict[str, Any]]:
 
 def run_ui_regions(image_path: str) -> List[Dict[str, Any]]:
     """
-    Layout-first UI region detection. No OCR.
-    Returns list of {"x", "y", "w", "h", "type"}.
-    type in: button, badge, card, text_region, navbar, background.
-    Outline buttons by geometry (border), not by fill.
+    Layout-first UI region detection. DL (LayoutParser + Detectron2) first, fallback to CV.
+    No OCR. Returns list of {"x", "y", "w", "h", "type", "parent_region_id"}.
+    type in: button, badge, card, text_region, navbar, section, input_like, pill.
     """
+    regions: List[Dict[str, Any]] = []
     try:
-        from src.infrastructure.layout.ui_region_detection import cv_detect_ui_regions
+        from src.infrastructure.layout.dl_region_detection import dl_detect_ui_regions
+        regions = dl_detect_ui_regions(image_path)
     except ImportError:
-        logger.warning("debug: ui_region_detection not available")
-        return []
-    regions = cv_detect_ui_regions(image_path)
+        logger.debug("debug: dl_region_detection not available, using CV fallback")
+    except Exception as e:
+        logger.warning("debug: DL region detection failed: %s, using CV fallback", e)
+
+    if not regions:
+        try:
+            from src.infrastructure.layout.ui_region_detection import cv_detect_ui_regions
+            regions = cv_detect_ui_regions(image_path)
+        except ImportError:
+            logger.warning("debug: ui_region_detection not available")
     logger.info("debug/ui-regions: image_path=%s regions=%d", image_path, len(regions))
     return regions
 
 
-ROI_TEXT_SCALE = 2.0  # scale ROI before text detection (button/badge thin text)
+ROI_TEXT_SCALE = 2.0   # scale ROI for text_region, card, etc.
+ROI_TEXT_SCALE_BUTTON = 3.0  # higher scale for button/badge so thin text is found
+ROI_MIN_SIDE_PX = 32   # pad tiny ROIs so Paddle gets valid input
 
 
 def _run_text_detect_on_image(img: Any) -> List[Dict[str, Any]]:
@@ -126,7 +136,8 @@ def run_text_detect_roi(
 ) -> List[Dict[str, Any]]:
     """
     Text detection INSIDE region: crop ROI, scale ×scale, run detector, remap bbox to global.
-    Returns list of {x, y, w, h} in global image coordinates. Required for button/badge thin text.
+    Very small ROIs are padded to ROI_MIN_SIDE_PX so Paddle gets valid input.
+    Returns list of {x, y, w, h} in global image coordinates.
     """
     try:
         import cv2
@@ -150,19 +161,29 @@ def run_text_detect_roi(
     h_full, w_full = full.shape[:2]
     x2 = min(w_full, rx + rw)
     y2 = min(h_full, ry + rh)
-    roi = full[ry:y2, rx:x2]
+    roi = full[ry:y2, rx:x2].copy()
     if roi.size == 0:
         return []
     roi_h, roi_w = roi.shape[:2]
-    scaled = cv2.resize(roi, (int(roi_w * scale), int(roi_h * scale)), interpolation=cv2.INTER_LINEAR)
+    # Pad tiny ROIs so Paddle doesn't fail
+    min_side = max(ROI_MIN_SIDE_PX, int(min(roi_w, roi_h) * scale))
+    if roi_w * scale < min_side or roi_h * scale < min_side:
+        target_w = max(min_side, int(roi_w * scale))
+        target_h = max(min_side, int(roi_h * scale))
+        scaled = cv2.resize(roi, (target_w, target_h), interpolation=cv2.INTER_LINEAR)
+        effective_scale_x = target_w / roi_w
+        effective_scale_y = target_h / roi_h
+    else:
+        scaled = cv2.resize(roi, (int(roi_w * scale), int(roi_h * scale)), interpolation=cv2.INTER_LINEAR)
+        effective_scale_x = effective_scale_y = scale
     boxes_local = _run_text_detect_on_image(scaled)
     out: List[Dict[str, Any]] = []
     for b in boxes_local:
         out.append({
-            "x": rx + int(b["x"] / scale),
-            "y": ry + int(b["y"] / scale),
-            "w": max(1, int(b["w"] / scale)),
-            "h": max(1, int(b["h"] / scale)),
+            "x": rx + int(b["x"] / effective_scale_x),
+            "y": ry + int(b["y"] / effective_scale_y),
+            "w": max(1, int(b["w"] / effective_scale_x)),
+            "h": max(1, int(b["h"] / effective_scale_y)),
         })
     return out
 
@@ -171,18 +192,135 @@ def run_text_detect_per_regions(
     image_path: str,
     regions: List[Dict[str, Any]],
     scale: float = ROI_TEXT_SCALE,
+    scale_button_badge: float = ROI_TEXT_SCALE_BUTTON,
+    only_for_types: Optional[Tuple[str, ...]] = None,
 ) -> List[Dict[str, Any]]:
     """
-    Run text detection INSIDE each region (crop ROI, scale, detect, remap). Each box gets region_id.
-    Returns flat list of {x, y, w, h, region_id}. No global run — text inside buttons/badges is found.
+    Run Paddle text detection INSIDE each region (crop ROI, scale, detect, remap). Each box gets region_id.
+    If only_for_types is set, Paddle runs only for those types. Use ("text_region", "button", "badge", "pill", "input_like")
+    so text_region gets lines/paragraphs and button/badge/pill/input_like get text_boxes for OCR (ROI ×3 for controls).
     """
     all_boxes: List[Dict[str, Any]] = []
     for ri, reg in enumerate(regions):
-        boxes = run_text_detect_roi(image_path, reg, scale=scale)
+        reg_type = reg.get("type", "")
+        if only_for_types is not None and reg_type not in only_for_types:
+            continue
+        s = scale_button_badge if reg_type in ("button", "badge") else scale
+        boxes = run_text_detect_roi(image_path, reg, scale=s)
         for b in boxes:
             all_boxes.append({**b, "region_id": ri})
-    logger.info("debug/text-detect-per-regions: image_path=%s regions=%d total_boxes=%d", image_path, len(regions), len(all_boxes))
+    logger.info(
+        "debug/text-detect-per-regions: image_path=%s regions=%d only_for=%s total_boxes=%d",
+        image_path, len(regions), only_for_types, len(all_boxes),
+    )
     return all_boxes
+
+
+OCR_FIRST_REGION_TYPES = ("button", "badge", "pill", "input_like")
+ROI_OCR_SCALE = 2.5
+
+
+def _preprocess_roi_for_ocr(roi: Any) -> Any:
+    """Grayscale, adaptive threshold or Otsu, optional invert. Returns PIL Image for Tesseract."""
+    try:
+        import cv2
+        import numpy as np
+        from PIL import Image
+    except ImportError:
+        return None
+    if roi is None or roi.size == 0:
+        return None
+    if len(roi.shape) == 3:
+        gray = cv2.cvtColor(roi, cv2.COLOR_RGB2GRAY)
+    else:
+        gray = roi
+    gray = np.clip(gray, 0, 255).astype(np.uint8)
+    thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+    pil = Image.fromarray(thresh)
+    return pil
+
+
+def _preprocess_roi_for_ocr_inverted(roi: Any) -> Any:
+    """Same but invert (light text on dark background)."""
+    try:
+        import cv2
+        import numpy as np
+        from PIL import Image
+    except ImportError:
+        return None
+    if roi is None or roi.size == 0:
+        return None
+    if len(roi.shape) == 3:
+        gray = cv2.cvtColor(roi, cv2.COLOR_RGB2GRAY)
+    else:
+        gray = roi
+    gray = np.clip(gray, 0, 255).astype(np.uint8)
+    thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+    pil = Image.fromarray(thresh)
+    return pil
+
+
+def run_ocr_roi(
+    image_path: str,
+    region: Dict[str, Any],
+    scale: float = ROI_OCR_SCALE,
+) -> Dict[str, Any]:
+    """
+    OCR-first for button/badge/pill/input_like: no Paddle. Crop ROI, scale, preprocess (grayscale + Otsu),
+    run Tesseract on full ROI. Returns {"text": str, "confidence": float}. If text ≥ 2 chars → label.
+    """
+    try:
+        import cv2
+        import numpy as np
+        import pytesseract
+        from PIL import Image
+    except ImportError as e:
+        logger.debug("run_ocr_roi: %s", e)
+        return {"text": "", "confidence": 0.0}
+    path = Path(image_path)
+    if not path.exists():
+        return {"text": "", "confidence": 0.0}
+    try:
+        full = np.array(Image.open(path).convert("RGB"))
+    except Exception:
+        return {"text": "", "confidence": 0.0}
+    rx, ry = int(region.get("x", 0)), int(region.get("y", 0))
+    rw, rh = int(region.get("w", 0)), int(region.get("h", 0))
+    if rw <= 0 or rh <= 0:
+        return {"text": "", "confidence": 0.0}
+    h_full, w_full = full.shape[:2]
+    x2 = min(w_full, rx + rw)
+    y2 = min(h_full, ry + rh)
+    roi = full[ry:y2, rx:x2]
+    if roi.size == 0:
+        return {"text": "", "confidence": 0.0}
+    roi_h, roi_w = roi.shape[:2]
+    scaled = cv2.resize(roi, (int(roi_w * scale), int(roi_h * scale)), interpolation=cv2.INTER_LINEAR)
+    pil_norm = _preprocess_roi_for_ocr(scaled)
+    if pil_norm is None:
+        return {"text": "", "confidence": 0.0}
+    try:
+        text_norm = pytesseract.image_to_string(pil_norm, config="--psm 7").strip()
+        data_norm = pytesseract.image_to_data(pil_norm, config="--psm 7", output_type=pytesseract.Output.DICT)
+        confs = [c for c in data_norm.get("conf", []) if c != -1]
+        conf_norm = float(sum(confs) / len(confs)) / 100.0 if confs else 0.0
+    except Exception:
+        text_norm, conf_norm = "", 0.0
+    if len(text_norm) >= 2:
+        return {"text": text_norm, "confidence": conf_norm}
+    pil_inv = _preprocess_roi_for_ocr_inverted(scaled)
+    if pil_inv is None:
+        return {"text": text_norm, "confidence": conf_norm}
+    try:
+        text_inv = pytesseract.image_to_string(pil_inv, config="--psm 7").strip()
+        data_inv = pytesseract.image_to_data(pil_inv, config="--psm 7", output_type=pytesseract.Output.DICT)
+        confs_inv = [c for c in data_inv.get("conf", []) if c != -1]
+        conf_inv = float(sum(confs_inv) / len(confs_inv)) / 100.0 if confs_inv else 0.0
+    except Exception:
+        text_inv, conf_inv = "", 0.0
+    if len(text_inv) >= 2 and (conf_inv > conf_norm or len(text_norm) < 2):
+        return {"text": text_inv, "confidence": conf_inv}
+    return {"text": text_norm, "confidence": conf_norm}
 
 
 def run_ocr_boxes(image_path: str, boxes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -241,8 +379,10 @@ def run_ocr_boxes(image_path: str, boxes: List[Dict[str, Any]]) -> List[Dict[str
 
 def run_full_pipeline(image_path: str) -> Dict[str, Any]:
     """
-    Hierarchical layout-first: UI regions (parents + children in ROI) → text detect INSIDE each region → OCR → blocks.
-    Paragraphs ONLY for text_region; button/badge/card/navbar = one block per region, no paragraph grouping.
+    Layout-first: UI regions (parents + children) → text detection for text_region + button/badge/pill/input_like (ROI ×3 for controls).
+    - text_region: Paddle → text_boxes → OCR → lines/paragraphs.
+    - button/badge/pill/input_like: Paddle on ROI ×3 → text_boxes → OCR per box; if empty → fallback OCR on full ROI.
+    - Empty navbar/section skipped (no gui_block, not drawn on debug).
     """
     from src.infrastructure.layout.text_grouping import (
         group_text_boxes_into_lines,
@@ -250,7 +390,10 @@ def run_full_pipeline(image_path: str) -> Dict[str, Any]:
     )
 
     regions = run_ui_regions(image_path)
-    text_boxes = run_text_detect_per_regions(image_path, regions)
+    text_boxes = run_text_detect_per_regions(
+        image_path, regions,
+        only_for_types=("text_region", "button", "badge", "pill", "input_like"),
+    )
     boxes_with_index: List[Dict[str, Any]] = []
     for i, b in enumerate(text_boxes):
         boxes_with_index.append({**b, "box_index": i})
@@ -268,10 +411,62 @@ def run_full_pipeline(image_path: str) -> Dict[str, Any]:
     all_paragraphs: List[List[List[Dict[str, Any]]]] = []
     gui_blocks: List[Dict[str, Any]] = []
     drop_reasons: List[str] = []
+    button_labels: Dict[int, str] = {}
+    empty_parent_ids: Set[int] = set()
+
+    def is_empty_parent(rid: int) -> bool:
+        if rid >= len(regions):
+            return True
+        r = regions[rid]
+        if r.get("parent_region_id") is not None:
+            return False
+        if r.get("type") not in ("navbar", "section"):
+            return False
+        has_boxes = any(b.get("region_id") == rid for b in boxes_with_index)
+        if has_boxes:
+            return False
+        has_children = any(regions[j].get("parent_region_id") == rid for j in range(len(regions)))
+        return not has_children
 
     for rid, reg in enumerate(regions):
         reg_type = reg.get("type", "text_region")
         boxes_in_region = [b for b in boxes_with_index if b.get("region_id") == rid]
+
+        if is_empty_parent(rid):
+            drop_reasons.append(f"empty parent region {rid} ({reg_type})")
+            continue
+
+        if reg_type in OCR_FIRST_REGION_TYPES:
+            if boxes_in_region:
+                texts = [ocr_results[b["box_index"]].get("text", "") for b in boxes_in_region if 0 <= b.get("box_index", -1) < len(ocr_results)]
+                label = " ".join(t for t in texts if t).strip()
+            else:
+                ocr = run_ocr_roi(image_path, reg, scale=ROI_OCR_SCALE)
+                label = ocr.get("text", "").strip()
+            if len(label) >= 2:
+                button_labels[rid] = label
+            container_bbox = {"x": reg["x"], "y": reg["y"], "w": reg["w"], "h": reg["h"]}
+            block_area = reg["w"] * reg["h"]
+            if image_area > 0 and block_area >= MAX_BLOCK_SCREEN_RATIO * image_area:
+                drop_reasons.append(f"block area {block_area} >= 80% screen")
+            else:
+                if boxes_in_region:
+                    xs = [b["x"] for b in boxes_in_region]
+                    ys = [b["y"] for b in boxes_in_region]
+                    x2s = [b["x"] + b["w"] for b in boxes_in_region]
+                    y2s = [b["y"] + b["h"] for b in boxes_in_region]
+                    text_bbox = {"x": min(xs), "y": min(ys), "w": max(x2s) - min(xs), "h": max(y2s) - min(ys)}
+                else:
+                    text_bbox = dict(container_bbox)
+                gui_blocks.append({
+                    "region_index": rid,
+                    "region_type": reg_type,
+                    "container_bbox": container_bbox,
+                    "text_bbox": text_bbox,
+                    "text": label,
+                    "text_boxes_count": len(boxes_in_region),
+                })
+            continue
 
         if reg_type == "text_region":
             lines = group_text_boxes_into_lines(boxes_with_index, rid)
@@ -298,33 +493,25 @@ def run_full_pipeline(image_path: str) -> Dict[str, Any]:
                     "text": " ".join(t for t in texts if t),
                     "text_boxes_count": len(boxes_in_para),
                 })
+            continue
+
+        container_bbox = {"x": reg["x"], "y": reg["y"], "w": reg["w"], "h": reg["h"]}
+        block_area = reg["w"] * reg["h"]
+        if image_area > 0 and block_area >= MAX_BLOCK_SCREEN_RATIO * image_area:
+            drop_reasons.append(f"block area {block_area} >= 80% screen")
         else:
-            container_bbox = {"x": reg["x"], "y": reg["y"], "w": reg["w"], "h": reg["h"]}
-            if boxes_in_region:
-                xs = [b["x"] for b in boxes_in_region]
-                ys = [b["y"] for b in boxes_in_region]
-                x2s = [b["x"] + b["w"] for b in boxes_in_region]
-                y2s = [b["y"] + b["h"] for b in boxes_in_region]
-                text_bbox = {"x": min(xs), "y": min(ys), "w": max(x2s) - min(xs), "h": max(y2s) - min(ys)}
-            else:
-                text_bbox = dict(container_bbox)
-            block_area = text_bbox["w"] * text_bbox["h"]
-            if image_area > 0 and block_area >= MAX_BLOCK_SCREEN_RATIO * image_area:
-                drop_reasons.append(f"block area {block_area} >= 80% screen")
-            else:
-                texts = [ocr_results[b["box_index"]].get("text", "") for b in boxes_in_region if 0 <= b.get("box_index", -1) < len(ocr_results)]
-                gui_blocks.append({
-                    "region_index": rid,
-                    "region_type": reg_type,
-                    "container_bbox": container_bbox,
-                    "text_bbox": text_bbox,
-                    "text": " ".join(t for t in texts if t),
-                    "text_boxes_count": len(boxes_in_region),
-                })
+            gui_blocks.append({
+                "region_index": rid,
+                "region_type": reg_type,
+                "container_bbox": container_bbox,
+                "text_bbox": dict(container_bbox),
+                "text": "",
+                "text_boxes_count": 0,
+            })
 
     logger.info(
-        "debug/full-pipeline: image_path=%s regions=%d text_boxes=%d lines=%d paragraphs=%d gui_blocks=%d dropped=%d",
-        image_path, len(regions), len(text_boxes), len(all_lines), sum(len(p) for p in all_paragraphs), len(gui_blocks), len(drop_reasons),
+        "debug/full-pipeline: image_path=%s regions=%d text_boxes=%d lines=%d paragraphs=%d gui_blocks=%d button_labels=%d dropped=%d",
+        image_path, len(regions), len(text_boxes), len(all_lines), sum(len(p) for p in all_paragraphs), len(gui_blocks), len(button_labels), len(drop_reasons),
     )
     return {
         "regions": regions,
@@ -332,6 +519,8 @@ def run_full_pipeline(image_path: str) -> Dict[str, Any]:
         "lines": all_lines,
         "paragraphs": all_paragraphs,
         "gui_blocks": gui_blocks,
+        "button_labels": button_labels,
+        "empty_parent_ids": empty_parent_ids,
         "dropped_count": len(drop_reasons),
         "drop_reasons": drop_reasons,
     }
@@ -465,13 +654,15 @@ def save_debug_image_full_pipeline(
     lines: List[List[Dict[str, Any]]],
     paragraphs: List[List[List[Dict[str, Any]]]],
     output_filename: str,
+    button_labels: Optional[Dict[int, str]] = None,
+    skip_region_ids: Optional[Set[int]] = None,
 ) -> Optional[str]:
     """
-    Draw: parent regions blue (dashed), child regions purple (dashed), text_boxes red, button text_boxes green,
-    then lines (green rect), paragraphs (yellow rect). text_boxes must have region_id for button coloring.
+    Draw: parent=blue, child=purple (skip empty parents if skip_region_ids); button labels;
+    green=text_boxes inside button/badge/pill/input_like, red=text_region; lines/paragraphs=yellow.
     """
     try:
-        from PIL import Image, ImageDraw
+        from PIL import Image, ImageDraw, ImageFont
     except ImportError:
         return None
     path = Path(image_path)
@@ -479,20 +670,34 @@ def save_debug_image_full_pipeline(
         return None
     out_dir = _ensure_debug_dir()
     out_path = out_dir / output_filename
+    button_labels = button_labels or {}
+    skip_region_ids = skip_region_ids or set()
     try:
         img = Image.open(path).convert("RGB")
         draw = ImageDraw.Draw(img)
-        for r in regions:
+        try:
+            font = ImageFont.truetype(
+                "C:\\Windows\\Fonts\\arial.ttf" if Path("C:\\Windows\\Fonts\\arial.ttf").exists()
+                else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 11
+            )
+        except Exception:
+            font = ImageFont.load_default()
+        for rid, r in enumerate(regions):
+            if rid in skip_region_ids:
+                continue
             x, y, w, h = r.get("x", 0), r.get("y", 0), r.get("w", 0), r.get("h", 0)
             if r.get("parent_region_id") is None:
                 _dashed_rect(draw, x, y, x + w, y + h, COLOR_PARENT_REGIONS)
             else:
                 _dashed_rect(draw, x, y, x + w, y + h, COLOR_CHILD_REGIONS)
+            if rid in button_labels and button_labels[rid]:
+                tx, ty = x, y + h + 2
+                draw.text((tx, ty), button_labels[rid][:40], fill=COLOR_CHILD_REGIONS, font=font)
         for b in text_boxes:
             x, y, w, h = b.get("x", 0), b.get("y", 0), b.get("w", 0), b.get("h", 0)
             rid = b.get("region_id", -1)
             reg_type = regions[rid].get("type", "") if 0 <= rid < len(regions) else ""
-            color = COLOR_BUTTON_TEXT_BOXES if reg_type == "button" else COLOR_TEXT_BOXES
+            color = COLOR_BUTTON_TEXT_BOXES if reg_type in ("button", "badge", "pill", "input_like") else COLOR_TEXT_BOXES
             draw.rectangle([x, y, x + w, y + h], outline=color, width=2)
         for line in lines:
             if not line:
