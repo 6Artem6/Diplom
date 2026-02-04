@@ -22,6 +22,7 @@ from src.infrastructure.debug import (
     run_text_detect,
     run_ocr_boxes,
     run_full_pipeline,
+    run_improved_full_pipeline,
     save_debug_image_regions,
     save_debug_image_boxes,
     save_debug_image_ui_regions_hierarchy,
@@ -84,9 +85,16 @@ class OcrResponse(BaseModel):
     message: str = "OCR on given boxes."
 
 
+class TextBoxDropReason(BaseModel):
+    box_index: int
+    reason: str
+
+
 class FullPipelineResponse(BaseModel):
     regions: List[RegionOut]
+    raw_paddle_text_boxes: List[TextBoxOut] = Field(default_factory=list, description="Raw Paddle boxes before assign/filter")
     text_boxes: List[TextBoxOut]
+    text_box_drop_reasons: List[TextBoxDropReason] = Field(default_factory=list, description="Why each dropped box was excluded")
     lines: List[List[TextBoxOut]] = Field(default_factory=list)
     paragraphs: List[List[List[TextBoxOut]]] = Field(default_factory=list)
     gui_blocks: List[Any]
@@ -94,7 +102,32 @@ class FullPipelineResponse(BaseModel):
     dropped_count: int = 0
     drop_reasons: List[str] = Field(default_factory=list)
     debug_image_path: str | None = None
-    message: str = "OCR-first for button/badge/pill/input_like; Paddle only for text_region."
+    message: str = "Layout-first; raw/final boxes and drop reasons for transparency."
+    ocr_called: bool = Field(description="Whether text detection (Paddle) was invoked")
+    ocr_engine: str = Field(default="paddle", description="Engine used for text detection")
+    bpg_called: bool = Field(default=False, description="Whether full-page fallback was run after 0 boxes")
+    reason_why_text_boxes_empty: str | None = Field(default=None, description="If no text boxes: why (e.g. paddle_returned_empty_or_unavailable)")
+
+
+class GUIBlockOut(BaseModel):
+    x: int
+    y: int
+    w: int
+    h: int
+    type: str  # button | card | text | input
+    text: str = ""
+    confidence: float = 0.0
+    parent: str | None = None  # layout_id e.g. L1 (container: card, header, table)
+
+
+class ImprovedFullPipelineResponse(BaseModel):
+    gui_blocks: List[GUIBlockOut]
+    layout_log: List[str] = Field(default_factory=list, description="Step 1: Layout detection log")
+    ocr_log: List[str] = Field(default_factory=list, description="Step 2: OCR per block log")
+    merge_log: List[str] = Field(default_factory=list, description="Step 3: Merge log")
+    ocr_skipped: bool = Field(description="True when PaddleOCR in-process disabled (e.g. Mac); text can still come from Tesseract)")
+    debug_image_path: str | None = Field(default=None, description="Path to saved debug image (regions + gui_blocks)")
+    message: str = "Layout → OCR (per block) → GUI blocks."
 
 
 # --- Endpoints ---
@@ -241,17 +274,23 @@ def _box_out(b: Any) -> TextBoxOut:
 
 
 @router.post("/full-pipeline", response_model=FullPipelineResponse)
-async def debug_full_pipeline(image: UploadFile = File(..., description="Screenshot image")):
+async def debug_full_pipeline(
+    image: UploadFile = File(..., description="Screenshot image"),
+    use_dl_only: bool = Form(False, description="DL layout only, full-page Paddle text (no CV second pass)"),
+):
     """
-    OCR-first for button/badge/pill/input_like (Tesseract on ROI). Paddle text detection only for text_region.
-    Debug: button bbox=purple + OCR label below; text_region: text_boxes=red, lines=green, paragraphs=yellow.
+    Layout → text detection → OCR → gui_blocks.
+    use_dl_only=True: DL layout only (no CV second pass), full-page Paddle text, assign by overlap. Types: card, section, text_region.
+    use_dl_only=False: run_ui_regions (DL+CV or CV), Paddle per ROI.
     """
-    logger.info("debug/full-pipeline: filename=%s content_type=%s", image.filename, image.content_type)
+    logger.info("debug/full-pipeline: filename=%s use_dl_only=%s", image.filename, use_dl_only)
     path = _save_upload_and_get_path(image)
     try:
-        out = run_full_pipeline(path)
+        out = run_full_pipeline(path, use_dl_only=use_dl_only)
         regions = out["regions"]
+        raw_boxes = out.get("raw_paddle_text_boxes", [])
         text_boxes = out["text_boxes"]
+        box_drop_reasons = out.get("text_box_drop_reasons", [])
         lines = out.get("lines", [])
         paragraphs = out.get("paragraphs", [])
         gui_blocks = out["gui_blocks"]
@@ -267,7 +306,9 @@ async def debug_full_pipeline(image: UploadFile = File(..., description="Screens
                 RegionOut(x=r["x"], y=r["y"], w=r["w"], h=r["h"], type=r["type"], parent_region_id=r.get("parent_region_id"))
                 for r in regions
             ],
+            raw_paddle_text_boxes=[_box_out(b) for b in raw_boxes],
             text_boxes=[_box_out(b) for b in text_boxes],
+            text_box_drop_reasons=[TextBoxDropReason(box_index=d["box_index"], reason=d["reason"]) for d in box_drop_reasons],
             lines=[[_box_out(b) for b in ln] for ln in lines],
             paragraphs=[[[_box_out(b) for b in ln] for ln in para] for para in paragraphs],
             gui_blocks=gui_blocks,
@@ -275,6 +316,40 @@ async def debug_full_pipeline(image: UploadFile = File(..., description="Screens
             dropped_count=out.get("dropped_count", 0),
             drop_reasons=out.get("drop_reasons", []),
             debug_image_path=debug_path,
+            message=out.get("message", "Layout-first; raw/final boxes and drop reasons for transparency."),
+            ocr_called=out.get("ocr_called", True),
+            ocr_engine=out.get("ocr_engine", "paddle"),
+            bpg_called=out.get("bpg_called", False),
+            reason_why_text_boxes_empty=out.get("reason_why_text_boxes_empty"),
+        )
+    finally:
+        try:
+            Path(path).unlink(missing_ok=True)
+        except Exception:
+            pass
+
+
+@router.post("/improved-full-pipeline", response_model=ImprovedFullPipelineResponse)
+async def debug_improved_full_pipeline(
+    image: UploadFile = File(..., description="Screenshot image"),
+):
+    """
+    Three-step pipeline: Layout → OCR inside blocks (adaptive) → Merge to GUI blocks.
+    Returns list of {x, y, w, h, type, text, confidence}. type in: button, card, text, input.
+    When OCR disabled (Mac): text may be empty; blocks still returned.
+    """
+    logger.info("debug/improved-full-pipeline: filename=%s", image.filename)
+    path = _save_upload_and_get_path(image)
+    try:
+        out = run_improved_full_pipeline(path)
+        return ImprovedFullPipelineResponse(
+            gui_blocks=[GUIBlockOut(x=b["x"], y=b["y"], w=b["w"], h=b["h"], type=b["type"], text=b.get("text", ""), confidence=b.get("confidence", 0.0), parent=b.get("parent")) for b in out["gui_blocks"]],
+            layout_log=out.get("layout_log", []),
+            ocr_log=out.get("ocr_log", []),
+            merge_log=out.get("merge_log", []),
+            ocr_skipped=out.get("ocr_skipped", False),
+            debug_image_path=out.get("debug_image_path"),
+            message=out.get("message", ""),
         )
     finally:
         try:

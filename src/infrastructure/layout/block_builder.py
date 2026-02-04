@@ -13,9 +13,10 @@ GAP_FORBID_FACTOR = 2.0
 # §3B: height_ratio <= 1.25 (different font size → no merge; header and body stay separate)
 HEIGHT_RATIO_MAX = 1.25
 
-# BODY-paragraph: merge by estimated_font_size (≤1.5×), vertical_gap ≤ 2–3 char heights
-BODY_PARAGRAPH_GAP_FONT_FACTOR = 2.5   # vertical_gap <= 2.5 * font_size (2–3 char heights)
-BODY_FONT_SIZE_RATIO_MAX = 1.5         # estimated_font_size ratio ≤ 1.5×
+# BODY-paragraph: merge only if abs(h1-h2)/max(h1,h2) <= 0.25 (same as text_grouping)
+BODY_FONT_SIZE_RELATIVE_DIFF_MAX = 0.25
+BODY_FONT_SIZE_RATIO_MAX = 1.0 / (1.0 - BODY_FONT_SIZE_RELATIVE_DIFF_MAX)  # ~1.333
+BODY_PARAGRAPH_GAP_FONT_FACTOR = 2.5   # vertical_gap <= 2.5 * font_size
 BODY_OVERLAP_X_MIN = 0.6
 
 # Region merge: merge all blocks inside text_region when gap ≤ this × median_font_size

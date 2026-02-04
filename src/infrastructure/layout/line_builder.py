@@ -10,9 +10,10 @@ from typing import List, Optional, Sequence
 
 from .atoms import HorizontalRule, Line, VerticalRule, Word
 
-# Line grouping: |y_center − y_center_ref| ≤ 2×font_size_px, height_ratio ≤ 2
+# Line grouping: same font size rule as text_grouping — abs(h1-h2)/max(h1,h2) <= 0.25
+FONT_SIZE_RELATIVE_DIFF_MAX = 0.25
+FONT_SIZE_RATIO_MAX = 1.0 / (1.0 - FONT_SIZE_RELATIVE_DIFF_MAX)  # ~1.333
 Y_CENTER_TOLERANCE_FONT_FACTOR = 2.0   # band: allow word if |y_center - band_y| ≤ 2×font_size
-FONT_SIZE_RATIO_MAX = 2.0
 # Horizontal gap: gap_x ≤ max(3×font_size_px, 2×char_width)
 X_GAP_FONT_FACTOR = 3.0
 X_GAP_CHAR_FACTOR = 2.0

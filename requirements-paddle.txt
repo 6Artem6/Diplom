@@ -1,0 +1,4 @@
+# PaddleOCR 2.x — install only on Linux amd64 (not for Mac/arm64/QEMU).
+# Main app uses this when DISABLE_PADDLEOCR != 1.
+paddlepaddle==2.6.2
+paddleocr==2.7.3

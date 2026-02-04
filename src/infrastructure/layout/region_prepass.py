@@ -13,6 +13,7 @@ from typing import List, Tuple
 import numpy as np
 
 from .atoms import Region, RegionType, Word
+from .region_merge import merge_regions_atoms, OVERLAP_RATIO
 
 logger = logging.getLogger(__name__)
 
@@ -159,8 +160,8 @@ def cv_detect_regions(image_path: str) -> List[Region]:
             if r.area >= image_area * UI_MIN_AREA_RATIO and r.area <= image_area * 0.5:
                 all_regions.append(r)
 
-    # Deduplicate by merging overlapping; keep larger
-    all_regions = _merge_overlapping_regions(all_regions)
+    # Mandatory merge: intersection / min(area_a, area_b) >= 0.9 → merge (before OCR/classification)
+    all_regions = merge_regions_atoms(all_regions, overlap_threshold=OVERLAP_RATIO)
     # Sort by y then x
     all_regions.sort(key=lambda r: (r.y, r.x))
     n_text = sum(1 for r in all_regions if r.region_type == "text_region")
@@ -171,24 +172,6 @@ def cv_detect_regions(image_path: str) -> List[Region]:
         len(all_regions), n_text, n_ui, n_bg, image_path,
     )
     return all_regions
-
-
-def _merge_overlapping_regions(regions: List[Region]) -> List[Region]:
-    """Merge heavily overlapping regions; keep one per group (largest area)."""
-    if not regions:
-        return []
-    out: List[Region] = []
-    for r in regions:
-        merged = False
-        for i, o in enumerate(out):
-            if _iou_rect(r, o) > 0.5:
-                if r.area > o.area:
-                    out[i] = r
-                merged = True
-                break
-        if not merged:
-            out.append(r)
-    return out
 
 
 def _iou_rect(a: Region, b: Region) -> float:

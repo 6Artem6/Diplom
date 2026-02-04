@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: src/Dockerfile
+      args:
+        DISABLE_PADDLEOCR: "1"   # "0" on Linux amd64, "1" on Mac/arm64
     container_name: bpg_construction_service
     ports:
       - "8001:8000"
@@ -25,55 +27,29 @@ services:
       - TRANSFORMERS_OFFLINE=1
       - TORCH_OFFLINE=1
       - YOLO_OFFLINE=1
+      - DISABLE_PADDLEOCR=1
+      - PADDLE_OCR_SERVICE_URL=http://paddleocr_service:8000
+      - PADDLEOCR_OFFLINE=1
+      - PADDLE_OFFLINE=1
+    networks:
+      - internal_net
     stdin_open: true
     tty: true
 
-  sitegpt:
-    build: ./apps/sitegpt
-    container_name: sitegpt_app
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./apps/sitegpt:/app
-    environment:
-      - QDRANT_HOST=qdrant
-      - QDRANT_PORT=6333
-    stdin_open: true
-    tty: true
-    depends_on:
-#      - vision_analyzer
-      - qdrant
-
-#  vision_analyzer:
-#    build: ./apps/vision_analyzer
-#    container_name: vision_analyzer
-#    volumes:
-#      - ./apps/vision_analyzer:/app
-#    networks:
-#      - internal_net
-#    expose:
-#      - "5001" # только внутри сети
-
-  templates:
-    build: ./apps/templates_service
-    container_name: templates_service
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./apps/templates_service:/app
-
-  test_runner:
+  paddleocr_service:
     build:
-      context: ./apps
-      dockerfile: ./tests/Dockerfile
-    container_name: test_runner
-    volumes:
-      - ./apps/tests:/tests
-      - ./apps/sitegpt:/sitegpt
-    depends_on:
-      - sitegpt
-      - templates
-#      - vision_analyzer
+      context: paddleocr_service
+      dockerfile: Dockerfile
+    image: paddleocr-service
+    container_name: paddleocr_service
+    platform: linux/amd64
+    ports:
+      - "8002:8000"
+    environment:
+      - PADDLEOCR_OFFLINE=1
+      - PADDLE_OFFLINE=1
+    networks:
+      - internal_net
 
   qdrant:
     image: qdrant/qdrant:v1.15.4

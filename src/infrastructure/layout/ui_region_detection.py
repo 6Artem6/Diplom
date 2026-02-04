@@ -16,11 +16,15 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
+from .region_merge import merge_regions_dict, OVERLAP_RATIO
+
 logger = logging.getLogger(__name__)
 
 UI_REGION_TYPES = ("button", "badge", "card", "text_region", "navbar", "section", "input_like", "pill")
 PARENT_TYPES = ("navbar", "card", "section")
 CHILD_TYPES = ("button", "badge", "text_region", "input_like", "pill")
+# For 90% merge: merged type = higher priority
+TYPE_PRIORITY_CHILDREN = ("button", "input_like", "pill", "badge", "text_region")
 
 # --- First pass: large regions (parents) ---
 PARENT_MIN_AREA_RATIO = 0.015   # ≥ 1.5% of screen
@@ -40,15 +44,18 @@ CHILD_RECTANGULARITY = 0.55
 BUTTON_ASPECT_MIN = 1.2
 BUTTON_ASPECT_MAX = 5.0
 BUTTON_MAX_AREA_RATIO_IN_ROI = 0.4
-BUTTON_MIN_WIDTH_PX = 24
-BUTTON_MIN_HEIGHT_PX = 12
-BUTTON_MIN_AREA_PX2 = 288
+# Button: text-relative mins preferred; absolutes only as fallback (small "OK"/"Yes"/"Add")
+BUTTON_MIN_WIDTH_PX = 16
+BUTTON_MIN_HEIGHT_PX = 8
+BUTTON_MIN_AREA_PX2 = 128
 BUTTON_MAX_WIDTH_RATIO = 0.6
+# Badge: tag-like only by geometry (narrow, small). NOT "text ≈ container" → badge.
 BADGE_MAX_HEIGHT_PX = 45
 BADGE_MAX_AREA_RATIO_IN_ROI = 0.15
-BADGE_MIN_WIDTH_PX = 18
+BADGE_MIN_WIDTH_PX = 14
 BADGE_MIN_HEIGHT_PX = 8
-BADGE_MIN_AREA_PX2 = 144
+BADGE_MIN_AREA_PX2 = 100
+BADGE_MAX_WIDTH_PX = 72  # tag-like: short label only; wider → button
 PILL_MIN_WIDTH_PX = 20
 PILL_MIN_HEIGHT_PX = 10
 PILL_MIN_AREA_PX2 = 200
@@ -150,7 +157,12 @@ def _first_pass_parents(img: Any, img_w: int, img_h: int) -> List[Dict[str, Any]
                 "parent_region_id": None,
             })
 
-    regions = _merge_overlapping(regions)
+    # Mandatory merge: intersection/min(area) >= 0.9 (before classification/OCR)
+    regions = merge_regions_dict(
+        regions,
+        overlap_threshold=OVERLAP_RATIO,
+        type_priority=["card", "section", "navbar"],
+    )
     regions.sort(key=lambda r: (r["y"], r["x"]))
     return regions
 
@@ -206,13 +218,14 @@ def _second_pass_children_in_roi(
 
         if gw > max_w or gh > max_h:
             pass
-        elif ar <= BADGE_MAX_AREA_RATIO_IN_ROI and gh <= BADGE_MAX_HEIGHT_PX and aspect >= BUTTON_ASPECT_MIN and gw >= BADGE_MIN_WIDTH_PX and gh >= BADGE_MIN_HEIGHT_PX and area_global >= BADGE_MIN_AREA_PX2:
+        elif BUTTON_ASPECT_MIN <= aspect <= BUTTON_ASPECT_MAX and ar <= BUTTON_MAX_AREA_RATIO_IN_ROI and gw >= BUTTON_MIN_WIDTH_PX and gh >= BUTTON_MIN_HEIGHT_PX and area_global >= BUTTON_MIN_AREA_PX2:
+            # Button: rectangular geometry, centering; allow no fill (outline/ghost). Badge decided later by text (h_region/h_text ≤ 1.4).
+            children.append({"x": gx, "y": gy, "w": gw, "h": gh, "type": "button", "parent_region_id": parent_index})
+            continue
+        # Badge: tag-like only — narrow width, small; NOT "text ≈ container"
+        if ar <= BADGE_MAX_AREA_RATIO_IN_ROI and gh <= BADGE_MAX_HEIGHT_PX and gw <= BADGE_MAX_WIDTH_PX and gw >= BADGE_MIN_WIDTH_PX and gh >= BADGE_MIN_HEIGHT_PX and area_global >= BADGE_MIN_AREA_PX2:
             children.append({"x": gx, "y": gy, "w": gw, "h": gh, "type": "badge", "parent_region_id": parent_index})
             continue
-        elif BUTTON_ASPECT_MIN <= aspect <= BUTTON_ASPECT_MAX and ar <= BUTTON_MAX_AREA_RATIO_IN_ROI and gw >= BUTTON_MIN_WIDTH_PX and gh >= BUTTON_MIN_HEIGHT_PX and area_global >= BUTTON_MIN_AREA_PX2:
-            if fill >= 0.4 or fill <= OUTLINE_FILL_RATIO_MAX:
-                children.append({"x": gx, "y": gy, "w": gw, "h": gh, "type": "button", "parent_region_id": parent_index})
-                continue
         if 2.0 <= aspect <= 8.0 and ar <= 0.2 and gw <= max_w and gh <= max_h and gw >= INPUT_LIKE_MIN_WIDTH_PX and gh >= INPUT_LIKE_MIN_HEIGHT_PX and area_global >= INPUT_LIKE_MIN_AREA_PX2:
             children.append({"x": gx, "y": gy, "w": gw, "h": gh, "type": "input_like", "parent_region_id": parent_index})
             continue
@@ -222,36 +235,13 @@ def _second_pass_children_in_roi(
         if ar <= 0.7:
             children.append({"x": gx, "y": gy, "w": gw, "h": gh, "type": "text_region", "parent_region_id": parent_index})
 
-    return _merge_overlapping(children)
-
-
-def _merge_overlapping(regions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    out: List[Dict[str, Any]] = []
-    for r in regions:
-        merged = False
-        for i, o in enumerate(out):
-            if _iou(r, o) > 0.5:
-                if r["w"] * r["h"] > o["w"] * o["h"]:
-                    out[i] = {**r}
-                merged = True
-                break
-        if not merged:
-            out.append({**r})
-    return out
-
-
-def _iou(a: Dict[str, Any], b: Dict[str, Any]) -> float:
-    ax2, ay2 = a["x"] + a["w"], a["y"] + a["h"]
-    bx2, by2 = b["x"] + b["w"], b["y"] + b["h"]
-    ix1 = max(a["x"], b["x"])
-    iy1 = max(a["y"], b["y"])
-    ix2 = min(ax2, bx2)
-    iy2 = min(ay2, by2)
-    if ix2 <= ix1 or iy2 <= iy1:
-        return 0.0
-    inter = (ix2 - ix1) * (iy2 - iy1)
-    ua = a["w"] * a["h"] + b["w"] * b["h"] - inter
-    return inter / ua if ua > 0 else 0.0
+    # Mandatory merge: intersection/min(area) >= 0.9; type priority button > input_like > pill > badge > text_region
+    merged = merge_regions_dict(
+        children,
+        overlap_threshold=OVERLAP_RATIO,
+        type_priority=list(TYPE_PRIORITY_CHILDREN),
+    )
+    return merged
 
 
 def cv_detect_ui_regions(image_path: str) -> List[Dict[str, Any]]:
@@ -278,7 +268,14 @@ def cv_detect_ui_regions(image_path: str) -> List[Dict[str, Any]]:
         for c in children:
             all_regions.append(c)
 
-    n_parents = len(parents)
+    # Global merge: any two regions with overlap >= 90% merged (type by priority)
+    all_regions = merge_regions_dict(
+        all_regions,
+        overlap_threshold=OVERLAP_RATIO,
+        type_priority=["button", "input_like", "pill", "badge", "text_region", "card", "section", "navbar"],
+    )
+
+    n_parents = sum(1 for r in all_regions if r.get("parent_region_id") is None)
     n_children = len(all_regions) - n_parents
     by_type: Dict[str, int] = {}
     for r in all_regions:

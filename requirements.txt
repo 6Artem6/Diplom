@@ -10,20 +10,20 @@ pydantic>=2.5.0
 chromadb>=0.4.15
 
 # Image Processing (placeholders - not used in skeleton)
-opencv-python>=4.8.0
+opencv-python==4.6.0.66
 Pillow>=10.0.0
 
 # OCR: Tesseract for OCR only (not as text detector)
 pytesseract>=0.3.10
-paddleocr>=2.7.0
-paddlepaddle>=2.7.0
+# PaddleOCR: see requirements-paddle.txt; installed only when DISABLE_PADDLEOCR != 1 (Linux amd64).
 
 # ML Models (REAL implementations)
-torch>=2.0.0  # PyTorch for CLIP
+torch>=2.1  # PyTorch for CLIP
 torchvision>=0.15.0  # For image transforms
-ultralytics>=8.0.0  # YOLO
+ultralytics>=8.1
+  # YOLO
 transformers>=4.35.0  # CLIP
-numpy>=1.24.0  # For numerical operations
+numpy>=1.24,<2  # Pin <2 for Paddle/compat
 huggingface_hub>=0.22.0  # For Hugging Face models
 
 # Utilities

@@ -1,0 +1,10 @@
+# PaddleOCR 2.x standalone — Linux amd64 only. No Torch/YOLO/Transformers.
+numpy>=1.24,<2
+opencv-python==4.6.0.66
+paddlepaddle==2.6.2
+paddleocr==2.7.3
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.5.0
+python-multipart>=0.0.6
+Pillow>=10.0.0

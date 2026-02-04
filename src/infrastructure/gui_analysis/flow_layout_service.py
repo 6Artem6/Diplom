@@ -47,9 +47,11 @@ BLOCK_GAP_LINE_HEIGHT_FACTOR = 1.4
 
 # Region-based layout: block ≥ this fraction of screen → INVALID (do not emit)
 BLOCK_MAX_SCREEN_AREA_RATIO = 0.8
-# UI region: small compact → badge; else button (never drop by area/char count)
-UI_BADGE_MAX_AREA_RATIO = 0.02
-UI_BADGE_MAX_HEIGHT_PX = 40
+# Badge vs button by semantics: badge = h_region/h_text ≤ 1.4, short text. NOT "text ≈ container".
+UI_BADGE_H_REGION_TEXT_RATIO = 1.4
+UI_BADGE_MAX_CHARS = 15
+# Button: region must not be huge vs text (else container)
+UI_MAX_BUTTON_AREA_MULT = 10
 
 # Sanitizer thresholds
 MIN_AREA_RATIO = 0.0005  # blocks smaller этой доли от экрана считаются шумом (если ещё и пустые)
@@ -537,27 +539,36 @@ class FlowLayoutDetectionService(GUIDetectionService):
                 continue
             if region.region_type == "ui_region":
                 # Button/badge: text_bbox = tight from words (or region if no words); container_bbox = region.
-                # Never drop by area or char count (View details = valid button).
+                # Badge vs button by semantics: h_region/h_text ≤ 1.4 and short text → badge.
+                # Region too large vs text → section (not button).
                 text = " ".join((w.text or "").strip() for w in region_words if (w.text or "").strip()).strip()
                 if region_words:
                     tx1 = min(w.x for w in region_words)
                     ty1 = min(w.y for w in region_words)
                     tx2 = max(w.x + w.w for w in region_words)
                     ty2 = max(w.y + w.h for w in region_words)
-                    # small padding
                     pad = 2
                     tx1 = max(region.x, tx1 - pad)
                     ty1 = max(region.y, ty1 - pad)
                     tx2 = min(region.x + region.w, tx2 + pad)
                     ty2 = min(region.y + region.h, ty2 + pad)
+                    text_h = ty2 - ty1
+                    text_w = tx2 - tx1
+                    text_area = max(1, text_w * text_h)
+                    # Huge region → section, not button
+                    if region.area > text_area * UI_MAX_BUTTON_AREA_MULT:
+                        etypes = ["section", "text_block"]
+                    else:
+                        is_badge = (
+                            text_h > 0
+                            and region.h / text_h <= UI_BADGE_H_REGION_TEXT_RATIO
+                            and len(text) <= UI_BADGE_MAX_CHARS
+                        )
+                        etypes = ["badge", "text_block"] if is_badge else ["button", "text_block"]
                 else:
                     tx1, ty1 = region.x, region.y
                     tx2, ty2 = region.x + region.w, region.y + region.h
-                is_badge = (
-                    region.area < image_area * UI_BADGE_MAX_AREA_RATIO
-                    and region.h <= UI_BADGE_MAX_HEIGHT_PX
-                )
-                etypes = ["badge", "text_block"] if is_badge else ["button", "text_block"]
+                    etypes = ["button", "text_block"]
                 bbox: Dict[str, Any] = {
                     "x": tx1, "y": ty1,
                     "width": tx2 - tx1, "height": ty2 - ty1,
@@ -583,7 +594,7 @@ class FlowLayoutDetectionService(GUIDetectionService):
                 block_index += 1
                 logger.debug(
                     "FlowLayout: ui_region → %s text_bbox=(%d,%d,%d,%d) container=(%d,%d,%d,%d) text=%r",
-                    "badge" if is_badge else "button",
+                    etypes[0],
                     tx1, ty1, tx2 - tx1, ty2 - ty1,
                     region.x, region.y, region.w, region.h,
                     text or "(none)",

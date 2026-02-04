@@ -48,14 +48,16 @@
 
 ### `POST /api/v1/debug/full-pipeline`
 
-**Вход:** изображение (multipart `image`).
+**Вход:**
+- изображение (multipart `image`);
+- опционально: **`use_dl_only`** (form, bool, по умолчанию `false`). При `true`: layout только из DL (LayoutParser PubLayNet), **без CV second pass**; Paddle text detection **по всему изображению**; привязка text_boxes к регионам по overlap. Типы регионов: card, section, text_region (нет button/badge из контуров).
 
 **Выход:**
-- `regions`, `text_boxes`, `gui_blocks`;
-- `dropped_count`, `drop_reasons` (сколько блоков отброшено и почему);
+- `regions`, `raw_paddle_text_boxes`, `text_boxes`, `gui_blocks`;
+- `dropped_count`, `drop_reasons`, `text_box_drop_reasons`;
 - `debug_image_path`: путь к debug-изображению.
 
-**Полный пайплайн:** layout → text detect (по региону/изображению) → OCR по каждому bbox → сборка блоков. Блоки с площадью ≥ 80% экрана не возвращаются и попадают в `drop_reasons`.
+**Полный пайплайн:** layout → text detect → OCR → сборка блоков. При `use_dl_only=false`: layout из DL+CV или CV, text detect по ROI. При `use_dl_only=true`: layout только из DL, text по всему кадру. Статус пайплайна и ограничения — см. **docs/PIPELINE_STATUS.md**.
 
 ---
 
