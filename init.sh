@@ -108,16 +108,45 @@ print("Pix2Struct OK")
 PY
 
 # -----------------------
-# LayoutLMv3 warmup
+# LayoutLMv3 warmup (REAL)
 # -----------------------
-echo "===> Loading LayoutLMv3..."
+echo "===> Loading LayoutLMv3 (token classification)..."
 python3 - <<'PY'
-from transformers import AutoProcessor, AutoModel
+from transformers import LayoutLMv3Processor, LayoutLMv3ForTokenClassification
+import torch
+from PIL import Image
 
 cache = "/app/models/transformers"
-AutoProcessor.from_pretrained("microsoft/layoutlmv3-base", cache_dir=cache, local_files_only=False)
-AutoModel.from_pretrained("microsoft/layoutlmv3-base", cache_dir=cache, local_files_only=False)
-print("LayoutLMv3 OK")
+
+processor = LayoutLMv3Processor.from_pretrained(
+    "nielsr/layoutlmv3-finetuned-funsd",
+    cache_dir=cache,
+    apply_ocr=False
+)
+
+model = LayoutLMv3ForTokenClassification.from_pretrained(
+    "nielsr/layoutlmv3-finetuned-funsd",
+    cache_dir=cache
+)
+
+# dummy image
+image = Image.new("RGB", (224, 224), "white")
+
+# Делаем 1 токен, чтобы не было mismatch
+text = ["Hello"]  
+boxes = [[0, 0, 100, 50]]  # ровно один bbox → один токен
+
+encoding = processor(
+    images=image,
+    text=text,
+    boxes=boxes,
+    return_tensors="pt"
+)
+
+with torch.no_grad():
+    model(**encoding)
+
+print("LayoutLMv3 token-classification OK")
 PY
 
 # -----------------------

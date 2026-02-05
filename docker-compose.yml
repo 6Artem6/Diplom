@@ -6,6 +6,8 @@ services:
       args:
         DISABLE_PADDLEOCR: "1"   # "0" on Linux amd64, "1" on Mac/arm64
     container_name: bpg_construction_service
+    env_file:
+      - .env
     ports:
       - "8001:8000"
     volumes:
@@ -14,6 +16,8 @@ services:
       - ./debug:/app/debug  # For visualization PNGs
       - ./models:/app/models      # All ML models cache (persistent)
     environment:
+      - HUGGINGFACE_HUB_TOKEN=${HUGGINGFACE_HUB_TOKEN}
+      - HF_TOKEN=${HF_TOKEN}
       - CHROMA_PERSIST_DIR=/app/data/chroma
       - TORCH_HOME=/app/models/torch
       - TRANSFORMERS_CACHE=/app/models/transformers

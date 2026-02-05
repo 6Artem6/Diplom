@@ -1096,8 +1096,20 @@ def run_improved_full_pipeline(image_path: str) -> Dict[str, Any]:
     ocr_log: List[str] = []
     merge_log: List[str] = []
 
-    # --- Step 1: Layout — CONTAINERS ONLY, stable layout_id ---
-    regions = run_ui_regions(image_path)
+    # --- Step 1: Layout — LayoutLMv3 first (OCR → layout blocks), fallback Detectron2/CV ---
+    regions = []
+    try:
+        from src.infrastructure.layout.layoutlmv3_layout import run_layoutlmv3_regions
+        regions = run_layoutlmv3_regions(image_path, run_text_detect, run_ocr_boxes)
+        if regions:
+            layout_log.append("layout_source=layoutlmv3")
+    except ImportError:
+        logger.debug("improved-pipeline: layoutlmv3 not available")
+    except Exception as e:
+        logger.warning("improved-pipeline: layoutlmv3 failed %s", e)
+    if not regions:
+        regions = run_ui_regions(image_path)
+        layout_log.append("layout_source=dl_or_cv")
     img_w, img_h = 0, 0
     try:
         from PIL import Image
@@ -1105,11 +1117,12 @@ def run_improved_full_pipeline(image_path: str) -> Dict[str, Any]:
             img_w, img_h = im.width, im.height
     except Exception:
         pass
-    # Layout: контейнеры только. page_frame не удаляем — помечаем: OCR=yes, emit=no.
+    # Иерархия без глобального page-frame. Header/navbar — локальные контейнеры, не помечаем как page_frame.
     for ri, r in enumerate(regions):
         r["layout_id"] = f"L{ri}"
         r["container_type"] = _layout_container_type(r.get("type", "text_region"))
-        if _is_page_frame_geometry(r, img_w, img_h):
+        ct = r.get("container_type", "panel")
+        if ct not in ("button", "input", "header") and _is_page_frame_geometry(r, img_w, img_h):
             r["container_type"] = "page_frame"
             layout_log.append("page_frame detected: OCR=yes, emit=no")
             logger.info("improved-pipeline page_frame detected: layout_id=%s OCR=yes, emit=no", r["layout_id"])
