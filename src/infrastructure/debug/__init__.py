@@ -13,6 +13,7 @@ from .services import (
     save_debug_image_boxes,
     save_debug_image_ui_regions_hierarchy,
     save_debug_image_full_pipeline,
+    save_debug_image_atoms_v2,
 )
 
 __all__ = [
@@ -28,4 +29,5 @@ __all__ = [
     "save_debug_image_boxes",
     "save_debug_image_ui_regions_hierarchy",
     "save_debug_image_full_pipeline",
+    "save_debug_image_atoms_v2",
 ]

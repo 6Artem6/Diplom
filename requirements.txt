@@ -11,7 +11,7 @@ chromadb>=0.4.15
 
 # Image Processing (placeholders - not used in skeleton)
 opencv-python==4.6.0.66
-Pillow>=10.0.0
+pillow==9.5.0
 
 # OCR: Tesseract for OCR only (not as text detector)
 pytesseract>=0.3.10

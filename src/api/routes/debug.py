@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 import json
-from fastapi import APIRouter, File, Form, UploadFile, HTTPException
+from fastapi import APIRouter, File, Form, Query, UploadFile, HTTPException
 from pydantic import BaseModel, Field
 
 from src.infrastructure.debug import (
@@ -350,6 +350,61 @@ async def debug_improved_full_pipeline(
             ocr_skipped=out.get("ocr_skipped", False),
             debug_image_path=out.get("debug_image_path"),
             message=out.get("message", ""),
+        )
+    finally:
+        try:
+            Path(path).unlink(missing_ok=True)
+        except Exception:
+            pass
+
+
+# --- Atoms_v2 pipeline (отдельный режим, не заменяет improved-full-pipeline) ---
+
+
+class AtomsV2PipelineResponse(BaseModel):
+    """Результат пайплайна atoms_v2: CV (atoms) + параллельный OCR, merge & conflict resolution, legacy grouping."""
+    unified_ui: List[Any] = Field(default_factory=list, description="Дерево UI: card, form, navbar, panel с children")
+    atoms: List[Any] = Field(default_factory=list, description="Атомарные элементы от Detectron2")
+    regions: List[Any] = Field(default_factory=list, description="CV visual regions")
+    text_blocks: List[Any] = Field(default_factory=list, description="Текстовые блоки по регионам")
+    independent_text_blocks: List[Any] = Field(default_factory=list, description="Независимые текстовые блоки (paragraph, label) из legacy grouping")
+    lines: List[Any] = Field(default_factory=list, description="Строки текста (legacy grouping)")
+    paragraphs: List[Any] = Field(default_factory=list, description="Абзацы (legacy grouping)")
+    text_inside_ui: Dict[str, Any] = Field(default_factory=dict, description="atom_id -> [{text, bbox, confidence}] — текст внутри UI-элементов")
+    log: List[str] = Field(default_factory=list, description="Шаги пайплайна")
+    debug_image_path: str | None = Field(default=None, description="Путь к сохранённому отладочному изображению")
+    message: str = "Atoms_v2: CV atoms + parallel OCR, merge, legacy grouping."
+
+
+@router.post("/atoms-v2-pipeline", response_model=AtomsV2PipelineResponse)
+async def debug_atoms_v2_pipeline(
+    image: UploadFile = File(..., description="Screenshot image"),
+    parallel_ocr: bool = Query(True, description="Полностраничный OCR независимо от Detectron2"),
+    legacy_text_pipeline: bool = Query(True, description="Группировка в строки/абзацы, фильтр шума"),
+):
+    """
+    Режим atoms_v2: Detectron2 — атомы; параллельный полностраничный OCR (текст не подавляется UI);
+    merge & conflict resolution; legacy grouping (строки/абзацы). improved-full-pipeline не вызывается.
+
+    parallel_ocr=True: OCR по всему изображению независимо от Detectron2 (текст внутри input/button тоже извлекается).
+    legacy_text_pipeline=True: группировка в строки/абзацы, фильтр шума.
+    """
+    logger.info("debug/atoms-v2-pipeline: filename=%s parallel_ocr=%s legacy_text_pipeline=%s", image.filename, parallel_ocr, legacy_text_pipeline)
+    path = _save_upload_and_get_path(image)
+    try:
+        from src.infrastructure.atoms_v2 import run_atoms_v2_pipeline
+        out = run_atoms_v2_pipeline(path, parallel_ocr=parallel_ocr, legacy_text_pipeline=legacy_text_pipeline)
+        return AtomsV2PipelineResponse(
+            unified_ui=out.get("unified_ui", []),
+            atoms=out.get("atoms", []),
+            regions=out.get("regions", []),
+            text_blocks=out.get("text_blocks", []),
+            independent_text_blocks=out.get("independent_text_blocks", []),
+            lines=out.get("lines", []),
+            paragraphs=out.get("paragraphs", []),
+            text_inside_ui=out.get("text_inside_ui", {}),
+            log=out.get("log", []),
+            debug_image_path=out.get("debug_image_path"),
         )
     finally:
         try:

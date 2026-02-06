@@ -1053,6 +1053,69 @@ def _is_button_like_bbox(w: int, h: int, text: str) -> bool:
     return len((text or "").strip()) <= BUTTON_LIKE_MAX_CHARS and w <= 400
 
 
+def _iou_box_region(box: Dict[str, Any], reg: Dict[str, Any]) -> float:
+    """IoU(box, region) = intersection_area / box_area. 0 if no overlap."""
+    bx, by, bw, bh = box.get("x", 0), box.get("y", 0), box.get("w", 0), box.get("h", 0)
+    rx, ry, rw, rh = reg.get("x", 0), reg.get("y", 0), reg.get("w", 0), reg.get("h", 0)
+    ix1 = max(bx, rx)
+    iy1 = max(by, ry)
+    ix2 = min(bx + bw, rx + rw)
+    iy2 = min(by + bh, ry + rh)
+    if ix2 <= ix1 or iy2 <= iy1:
+        return 0.0
+    inter = (ix2 - ix1) * (iy2 - iy1)
+    box_area = max(1, bw * bh)
+    return inter / box_area
+
+
+def _center_in_region(box: Dict[str, Any], reg: Dict[str, Any]) -> bool:
+    """True если центр box лежит внутри reg."""
+    bx, by, bw, bh = box.get("x", 0), box.get("y", 0), box.get("w", 0), box.get("h", 0)
+    cx, cy = bx + bw // 2, by + bh // 2
+    rx, ry, rw, rh = reg.get("x", 0), reg.get("y", 0), reg.get("w", 0), reg.get("h", 0)
+    return rx <= cx <= rx + rw and ry <= cy <= ry + rh
+
+
+def _assign_ocr_to_regions_by_iou(
+    text_boxes: List[Dict[str, Any]],
+    ocr_results: List[Dict[str, Any]],
+    regions: List[Dict[str, Any]],
+) -> Tuple[List[Dict[str, Any]], Dict[int, List[Dict[str, Any]]]]:
+    """
+    Привязка OCR к контейнерам: IoU, при отсутствии перекрытия — fallback по центру bbox.
+    """
+    all_boxes_with_region: List[Dict[str, Any]] = []
+    region_ocr: Dict[int, List[Dict[str, Any]]] = {ri: [] for ri in range(len(regions))}
+    for i, box in enumerate(text_boxes):
+        ocr = ocr_results[i] if i < len(ocr_results) else {}
+        best_ri = -1
+        best_iou = 0.0
+        best_area = 0
+        for ri, reg in enumerate(regions):
+            iou = _iou_box_region(box, reg)
+            if iou > 0:
+                area = reg.get("w", 0) * reg.get("h", 0)
+                if iou > best_iou or (iou == best_iou and (best_ri < 0 or area < best_area)):
+                    best_iou = iou
+                    best_ri = ri
+                    best_area = area
+        if best_ri < 0:
+            for ri, reg in enumerate(regions):
+                if _center_in_region(box, reg):
+                    area = reg.get("w", 0) * reg.get("h", 0)
+                    if best_ri < 0 or area < best_area:
+                        best_ri = ri
+                        best_area = area
+        if best_ri >= 0:
+            all_boxes_with_region.append({
+                "x": box.get("x", 0), "y": box.get("y", 0),
+                "w": box.get("w", 0), "h": box.get("h", 0),
+                "region_id": best_ri,
+            })
+            region_ocr[best_ri].append(ocr)
+    return all_boxes_with_region, region_ocr
+
+
 def _table_boxes_to_rows(
     boxes: List[Dict[str, Any]],
     y_tolerance_px: int = TABLE_ROW_Y_TOLERANCE_PX,
@@ -1084,8 +1147,10 @@ def _table_boxes_to_rows(
 
 def run_improved_full_pipeline(image_path: str) -> Dict[str, Any]:
     """
-    Strict: Layout (containers only) → OCR strictly inside blocks → Text BBox (no cross-container merge) → GUI blocks (children only, parent=layout_id).
-    No full-page OCR. No gluing across cards. Header/card/table emit nested elements only.
+    Vision-first: границы контейнеров только из vision (Detectron2 web UI или fallback DL/CV).
+    OCR не создаёт контейнеры; текст привязывается к ближайшему UI-элементу по IoU.
+    Порядок: 1) Vision → регионы (card, button, input, navbar), 2) Full-page OCR, 3) Assign OCR по IoU,
+    4) GUI blocks: bbox из vision, текст из OCR. Текст никогда не является контейнером.
     """
     from src.infrastructure.layout.text_grouping import (
         group_lines_into_paragraphs_strict,
@@ -1096,20 +1161,18 @@ def run_improved_full_pipeline(image_path: str) -> Dict[str, Any]:
     ocr_log: List[str] = []
     merge_log: List[str] = []
 
-    # --- Step 1: Layout — LayoutLMv3 first (OCR → layout blocks), fallback Detectron2/CV ---
+    # --- Step 1: Vision-only — Detectron2 Mask R-CNN (web UI). PubLayNet fallback убран. ---
     regions = []
     try:
-        from src.infrastructure.layout.layoutlmv3_layout import run_layoutlmv3_regions
-        regions = run_layoutlmv3_regions(image_path, run_text_detect, run_ocr_boxes)
+        from src.infrastructure.layout.vision_ui_detection import run_vision_ui_regions
+        regions = run_vision_ui_regions(image_path)
         if regions:
-            layout_log.append("layout_source=layoutlmv3")
+            layout_log.append("layout_source=vision_ui")
     except ImportError:
-        logger.debug("improved-pipeline: layoutlmv3 not available")
+        logger.debug("improved-pipeline: vision_ui not available")
     except Exception as e:
-        logger.warning("improved-pipeline: layoutlmv3 failed %s", e)
-    if not regions:
-        regions = run_ui_regions(image_path)
-        layout_log.append("layout_source=dl_or_cv")
+        logger.warning("improved-pipeline: vision_ui failed %s", e)
+    # Нет fallback на PubLayNet/DL: только vision. Нет регионов — пустой результат.
     img_w, img_h = 0, 0
     try:
         from PIL import Image
@@ -1117,7 +1180,6 @@ def run_improved_full_pipeline(image_path: str) -> Dict[str, Any]:
             img_w, img_h = im.width, im.height
     except Exception:
         pass
-    # Иерархия без глобального page-frame. Header/navbar — локальные контейнеры, не помечаем как page_frame.
     for ri, r in enumerate(regions):
         r["layout_id"] = f"L{ri}"
         r["container_type"] = _layout_container_type(r.get("type", "text_region"))
@@ -1126,7 +1188,7 @@ def run_improved_full_pipeline(image_path: str) -> Dict[str, Any]:
             r["container_type"] = "page_frame"
             layout_log.append("page_frame detected: OCR=yes, emit=no")
             logger.info("improved-pipeline page_frame detected: layout_id=%s OCR=yes, emit=no", r["layout_id"])
-    type_counts: Dict[str, int] = {}
+    type_counts = {}
     for r in regions:
         t = r.get("container_type", "panel")
         type_counts[t] = type_counts.get(t, 0) + 1
@@ -1144,44 +1206,14 @@ def run_improved_full_pipeline(image_path: str) -> Dict[str, Any]:
             "message": "No layout regions detected.",
         }
 
-    # --- Step 2: OCR STRICTLY inside each layout block (margin so overflow text not lost). Containers = soft spatial filter only. ---
-    all_boxes_with_region: List[Dict[str, Any]] = []
-    region_ocr: Dict[int, List[Dict[str, Any]]] = {}
-    for ri, reg in enumerate(regions):
-        # page_frame: OCR still runs; only emit/merge skipped in Step 3
-        reg_type = reg.get("type", "text_region")
-        rx, ry, rw, rh = reg.get("x", 0), reg.get("y", 0), reg.get("w", 0), reg.get("h", 0)
-        margin = LAYOUT_BBOX_MARGIN_PX
-        reg_expanded = {"x": max(0, rx - margin), "y": max(0, ry - margin), "w": rw + 2 * margin, "h": rh + 2 * margin}
-        scale = ROI_TEXT_SCALE_BUTTON if reg_type in ("button", "badge", "pill") else ROI_TEXT_SCALE
-        input_like = reg_type == "input_like"
-        boxes_in_region = run_text_detect_roi(
-            image_path, reg_expanded, scale=scale, input_like_mode=input_like
-        )
-        for b in boxes_in_region:
-            bx, by, bw, bh = b.get("x", 0), b.get("y", 0), b.get("w", 0), b.get("h", 0)
-            cx, cy = max(bx, rx), max(by, ry)
-            cx2, cy2 = min(bx + bw, rx + rw), min(by + bh, ry + rh)
-            if cx2 > cx and cy2 > cy:
-                all_boxes_with_region.append({"x": cx, "y": cy, "w": cx2 - cx, "h": cy2 - cy, "region_id": ri})
-        if boxes_in_region:
-            boxes_inside = [b for b in all_boxes_with_region if b.get("region_id") == ri]
-            if boxes_inside:
-                region_ocr[ri] = run_ocr_boxes_with_adaptive(image_path, boxes_inside)
-            else:
-                region_ocr[ri] = []
-            ocr_log.append(f"layout_id=L{ri} type={reg_type} boxes={len(boxes_in_region)}")
-        else:
-            region_ocr[ri] = []
-            if reg_type in OCR_FIRST_REGION_TYPES:
-                roi_ocr = run_ocr_roi(image_path, reg, scale=ROI_OCR_SCALE)
-                if roi_ocr.get("text", "").strip():
-                    region_ocr[ri] = [roi_ocr]
-                ocr_log.append(f"layout_id=L{ri} type={reg_type} roi_ocr=1")
-            else:
-                ocr_log.append(f"layout_id=L{ri} type={reg_type} boxes=0")
-
-    logger.info("improved-pipeline OCR: per-block only, no full-page OCR")
+    # --- Step 2: OCR только для текста. Full-page OCR → привязка к контейнерам по IoU. OCR не создаёт контейнеры. ---
+    text_boxes = run_text_detect(image_path)
+    ocr_results = run_ocr_boxes(image_path, text_boxes) if text_boxes else []
+    all_boxes_with_region, region_ocr = _assign_ocr_to_regions_by_iou(text_boxes, ocr_results, regions)
+    for ri in range(len(regions)):
+        n = len(region_ocr.get(ri, []))
+        ocr_log.append(f"layout_id=L{ri} type={regions[ri].get('type', '')} assigned_ocr_boxes={n}")
+    logger.info("improved-pipeline OCR: full-page, assign by IoU to %d regions", len(regions))
 
     # --- Step 3: Text BBox — STRICT grouping, no merge across containers; emit CHILDREN only ---
     # Containers = soft spatial filter only (limit OCR region); not used as anchor for block bbox.
@@ -1631,4 +1663,93 @@ def save_debug_image_full_pipeline(
         return str(out_path)
     except Exception as e:
         logger.warning("debug: failed to save full-pipeline image %s: %s", out_path, e)
+        return None
+
+
+def save_debug_image_atoms_v2(
+    image_path: str,
+    regions: List[Dict[str, Any]],
+    atoms: List[Dict[str, Any]],
+    output_filename: str,
+    lines: Optional[List[List[Dict[str, Any]]]] = None,
+    independent_text_blocks: Optional[List[Dict[str, Any]]] = None,
+) -> Optional[str]:
+    """Draw regions (dashed), atoms (solid + type), OCR lines (solid + text), independent_text_blocks (solid + type + text).
+    Saves to DEBUG_OUTPUT_DIR. regions/atoms use bbox [x1,y1,x2,y2]. Lines: list of lines, each line = list of {x,y,w,h,text}.
+    independent_text_blocks: list of {type, text, bbox [x1,y1,x2,y2]}."""
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+    except ImportError:
+        return None
+    path = Path(image_path)
+    if not path.exists():
+        return None
+    out_dir = _ensure_debug_dir()
+    out_path = out_dir / output_filename
+    try:
+        img = Image.open(path).convert("RGB")
+        draw = ImageDraw.Draw(img)
+        try:
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 10)
+            font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 9)
+        except Exception:
+            try:
+                font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 10)
+                font_small = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 9)
+            except Exception:
+                font = font_small = ImageFont.load_default()
+        # 1) Regions — пунктир
+        for r in regions:
+            bbox = r.get("bbox", [0, 0, 0, 0])
+            if len(bbox) >= 4:
+                x1, y1, x2, y2 = int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3])
+                _dashed_rect(draw, x1, y1, x2, y2, COLOR_PARENT_REGIONS)
+        # 2) Atoms — сплошная рамка + тип
+        type_colors: Dict[str, Tuple[int, int, int]] = {
+            "button": (0, 200, 0),
+            "input": (0, 150, 255),
+            "title": (200, 100, 0),
+            "text": (255, 0, 0),
+        }
+        for a in atoms:
+            bbox = a.get("bbox", [0, 0, 0, 0])
+            if len(bbox) < 4:
+                continue
+            x1, y1, x2, y2 = int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3])
+            t = a.get("type", "text")
+            color = type_colors.get(t, (128, 128, 128))
+            draw.rectangle([x1, y1, x2, y2], outline=color, width=2)
+            label = f"{t}"
+            draw.text((x1, max(0, y1 - 14)), label, fill=color, font=font)
+        # 3) OCR lines — рамка + текст (оранжевый)
+        color_ocr_line = (255, 140, 0)
+        if lines:
+            for line in lines:
+                for box in line:
+                    x, y = box.get("x", 0), box.get("y", 0)
+                    w, h = box.get("w", 0), box.get("h", 0)
+                    if w <= 0 or h <= 0:
+                        continue
+                    draw.rectangle([x, y, x + w, y + h], outline=color_ocr_line, width=2)
+                    text = (box.get("text") or "").strip()[:50]
+                    if text:
+                        draw.text((x, max(0, y - 12)), text, fill=color_ocr_line, font=font_small)
+        # 4) Независимые текстовые блоки (paragraph/label) — рамка + тип + текст (зелёный)
+        color_independent = (0, 180, 80)
+        if independent_text_blocks:
+            for blk in independent_text_blocks:
+                bbox = blk.get("bbox", [0, 0, 0, 0])
+                if len(bbox) < 4:
+                    continue
+                x1, y1, x2, y2 = int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3])
+                draw.rectangle([x1, y1, x2, y2], outline=color_independent, width=2)
+                t = blk.get("type", "text")
+                text = (blk.get("text") or "").strip()[:60]
+                label = f"{t}: {text}" if text else t
+                draw.text((x1, max(0, y1 - 14)), label, fill=color_independent, font=font_small)
+        img.save(out_path, "PNG")
+        logger.info("debug: saved atoms_v2 image to %s", out_path)
+        return str(out_path)
+    except Exception as e:
+        logger.warning("debug: failed to save atoms_v2 image %s: %s", out_path, e)
         return None
