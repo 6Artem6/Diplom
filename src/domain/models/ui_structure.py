@@ -170,33 +170,43 @@ class OCRBox(BaseModel):
         return self.bbox.to_xyxy()
 
 
-# --- Merge: связь текста и UI (геометрия) ---
+# --- Merge Layer v2: связь текста и UI (только геометрия) ---
+#
+# Инварианты: atom_id = None → текст вне UI; OCR-бокс всегда остаётся самостоятельным;
+# связь не удаляет и не перемещает текст. Атомы и raw_ocr_boxes не модифицируются.
+
 
 class TextUILinkType(str, Enum):
-    """Тип связи текстового бокса с UI-элементом."""
+    """Тип связи текстового бокса с UI-элементом (эвристика, без ML)."""
 
-    LABEL = "label"       # текст — подпись элемента (кнопка, поле)
-    CONTENT = "content"   # текст — содержимое элемента (поле ввода, карточка)
+    LABEL = "label"       # подпись элемента (кнопка, поле, title)
+    CONTENT = "content"   # содержимое элемента (карточка, контейнер)
     STANDALONE = "standalone"  # текст не привязан к одному элементу или вне UI
 
 
 class TextUILink(BaseModel):
     """
-    Связь OCR-бокса с UI-атомом по геометрии (IoU / покрытие).
+    Связь OCR-бокса с UI-атомом по геометрии (Merge Layer v2).
 
-    Текст остаётся в общем текстовом слое; связь добавляет привязку к элементу.
+    Только геометрия: не группирует текст, не вводит семантику, не модифицирует атомы/OCR.
+    atom_id = None → standalone (текст вне UI).
     """
 
-    ocr_box_id: str = Field(..., description="ID OCRBox")
-    atom_id: Optional[str] = Field(None, description="ID UIAtom, если привязан; None = standalone")
-    link_type: TextUILinkType = Field(..., description="Роль связи")
+    ocr_box_id: str = Field(..., description="ID RawOCRBox")
+    atom_id: Optional[str] = Field(None, description="ID UIAtom; None = standalone")
+    link_type: Literal["label", "content", "standalone"] = Field(
+        ...,
+        description="Эвристика: button/input/title→label; card/container→content; иначе content",
+    )
     coverage_ratio: float = Field(
         ...,
         ge=0.0,
         le=1.0,
-        description="Доля площади OCR-бокса внутри bbox атома (intersection/area(ocr_box))",
+        description="intersection(ocr_box, atom_bbox) / area(ocr_box)",
     )
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+    class Config:
+        extra = "forbid"
 
 
 # --- Semantic: логические роли текста (опциональный слой) ---

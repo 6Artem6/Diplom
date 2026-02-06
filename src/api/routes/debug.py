@@ -373,6 +373,7 @@ class AtomsV2PipelineResponse(BaseModel):
     atoms: List[Any] = Field(default_factory=list, description="Сырая карта UI от Detectron2 (id, source, type, bbox, confidence)")
     regions: List[Any] = Field(default_factory=list, description="CV visual regions")
     raw_ocr_boxes: List[Any] = Field(default_factory=list, description="Сырой выход OCR-слоя при parallel_ocr=true: [{id, source, bbox, text, confidence}]")
+    text_ui_links: List[Any] = Field(default_factory=list, description="Merge Layer v2: связи OCR↔UI [{ocr_box_id, atom_id, link_type, coverage_ratio}]")
     text_blocks: List[Any] = Field(default_factory=list, description="Текстовые блоки по регионам")
     independent_text_blocks: List[Any] = Field(default_factory=list, description="Только при legacy_text_pipeline=true")
     lines: List[Any] = Field(default_factory=list, description="Только при legacy_text_pipeline=true")
@@ -406,6 +407,7 @@ async def debug_atoms_v2_pipeline(
             atoms=out.get("atoms", []),
             regions=out.get("regions", []),
             raw_ocr_boxes=out.get("raw_ocr_boxes", []),
+            text_ui_links=out.get("text_ui_links", []),
             text_blocks=out.get("text_blocks", []),
             independent_text_blocks=out.get("independent_text_blocks", []),
             lines=out.get("lines", []),

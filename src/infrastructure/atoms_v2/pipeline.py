@@ -20,7 +20,6 @@ MIN_TEXT_BOX_AREA_PX = 15
 MAX_BLOCK_SCREEN_RATIO = 0.8
 
 # Маппинг имён классов датасета kvvb → визуальный тип (сырая карта UI).
-# Разрешённые типы: button, card, input, navbar, container, icon, checkbox, radio, dropdown, modal, text_block, unknown.
 KVVB_CLASS_TO_ATOM_TYPE: Dict[str, str] = {
     "contactsSendformButton": "button",
     "contactsSocialButtons": "button",
@@ -35,20 +34,84 @@ KVVB_CLASS_TO_ATOM_TYPE: Dict[str, str] = {
     "contactsEmail": "text_block",
     "contactsAddress": "text_block",
 }
+
+# UI-Elements (Yash Jain / output_ui_detectron2): классы уже в нужном виде (link, button, input, ...).
+# Маппинг только для совместимости с _build_logical_ui (select→dropdown, textarea→input).
+UI_ELEMENTS_CLASS_TO_ATOM_TYPE: Dict[str, str] = {
+    "link": "link",
+    "button": "button",
+    "input": "input",
+    "select": "dropdown",
+    "textarea": "input",
+    "label": "label",
+    "checkbox": "checkbox",
+    "radio": "radio",
+    "dropdown": "dropdown",
+    "slider": "slider",
+    "toggle": "toggle",
+    "menu_item": "menu_item",
+    "clickable": "button",
+    "icon": "icon",
+    "image": "image",
+    "text": "text_block",
+}
+
 ATOM_IOU_THRESHOLD = 0.5
+# Выбор модели: ATOMS_V2_DETECTION_MODEL=ui_elements | kvvb (по умолчанию ui_elements при наличии весов)
+DETECTION_MODEL_ENV = "ATOMS_V2_DETECTION_MODEL"
 REGION_CONTAINMENT_MARGIN = 2
+
+
+def _ui_elements_weights_available() -> bool:
+    """Проверяет наличие весов UI-Elements (output_ui_detectron2)."""
+    try:
+        from src.infrastructure.layout.inference_ui_elements import _resolve_weights_path
+        return _resolve_weights_path(None) is not None
+    except Exception:
+        return False
 
 
 def _run_detectron2_atoms(image_path: str) -> List[Dict[str, Any]]:
     """
-    Сырая карта UI: Detectron2 — только геометрия и визуальный тип.
+    Perception-слой: Detectron2 — только геометрия и тип. Стабильный JSON (id, source, type, bbox, confidence).
 
-    Инвариант CV-слоя: допустимы только id, source="detectron2", type, bbox, confidence.
-    Запрещены: text, role, paragraph, label, lines_count, region_id.
+    Модель выбирается по ATOMS_V2_DETECTION_MODEL: ui_elements (output_ui_detectron2) или kvvb.
+    Координаты в пикселях изображения, без рескейла. Детекция отделена от OCR и семантики.
     """
     path = Path(image_path)
     if not path.exists():
         return []
+    model_choice = os.environ.get(DETECTION_MODEL_ENV, "").strip().lower()
+    # По умолчанию: ui_elements, если веса есть; иначе kvvb
+    use_ui_elements = model_choice == "ui_elements" or (
+        model_choice != "kvvb"
+        and _ui_elements_weights_available()
+    )
+
+    # UI-Elements (output_ui_detectron2): стабильный JSON уже возвращается из predict()
+    if use_ui_elements:
+        try:
+            from src.infrastructure.layout.inference_ui_elements import predict as ui_elements_predict
+        except ImportError:
+            import sys
+            project_root = Path(__file__).resolve().parents[3]
+            if str(project_root) not in sys.path:
+                sys.path.insert(0, str(project_root))
+            from src.infrastructure.layout.inference_ui_elements import predict as ui_elements_predict
+        try:
+            atoms = ui_elements_predict(image_path, weights_path=None)
+            if not atoms:
+                return []
+            # Приводим type к единому виду для пайплайна (link_type, _build_logical_ui)
+            for a in atoms:
+                raw_type = a.get("type", "unknown")
+                a["type"] = UI_ELEMENTS_CLASS_TO_ATOM_TYPE.get(raw_type, raw_type)
+            return atoms
+        except FileNotFoundError as e:
+            logger.warning("atoms_v2: %s", e)
+            return []
+
+    # Kvvb (legacy)
     try:
         from src.infrastructure.layout.inference_kvvb import predict as kvvb_predict
     except ImportError:
@@ -64,7 +127,7 @@ def _run_detectron2_atoms(image_path: str) -> List[Dict[str, Any]]:
         logger.warning("atoms_v2: weights not found %s", weights)
         return []
     raw = kvvb_predict(image_path, weights_path=weights)
-    atoms: List[Dict[str, Any]] = []
+    atoms = []
     for i, r in enumerate(raw):
         cls_name = r.get("class", "")
         atom_type = KVVB_CLASS_TO_ATOM_TYPE.get(cls_name, "text_block")
@@ -205,6 +268,134 @@ def _iou_text_box_atom(box: Dict[str, Any], atom_bbox: List[float]) -> float:
         return 0.0
     inter = (ix2 - ix1) * (iy2 - iy1)
     return inter / max(1e-9, box_area)
+
+
+def _coverage_ocr_atom(ocr_bbox: List[float], atom_bbox: List[float]) -> float:
+    """coverage = area(intersection(ocr_box, atom_bbox)) / area(ocr_box). Оба bbox [x1,y1,x2,y2]."""
+    if len(ocr_bbox) < 4 or len(atom_bbox) < 4:
+        return 0.0
+    ox1, oy1, ox2, oy2 = ocr_bbox[0], ocr_bbox[1], ocr_bbox[2], ocr_bbox[3]
+    box_area = (ox2 - ox1) * (oy2 - oy1)
+    if box_area <= 0:
+        return 0.0
+    ix1 = max(ox1, atom_bbox[0])
+    iy1 = max(oy1, atom_bbox[1])
+    ix2 = min(ox2, atom_bbox[2])
+    iy2 = min(oy2, atom_bbox[3])
+    if ix2 <= ix1 or iy2 <= iy1:
+        return 0.0
+    inter = (ix2 - ix1) * (iy2 - iy1)
+    return inter / max(1e-9, box_area)
+
+
+# Эвристика link_type по типу атома (без ML). Не финальная семантика.
+ATOM_TYPE_TO_LINK_TYPE: Dict[str, str] = {
+    "button": "label",
+    "input": "label",
+    "title": "label",
+    "navbar": "label",
+    "card": "content",
+    "container": "content",
+    "text_block": "content",
+    "icon": "label",
+    "dropdown": "label",
+    "modal": "content",
+    "checkbox": "label",
+    "radio": "label",
+    "unknown": "content",
+    # UI-Elements (output_ui_detectron2)
+    "link": "label",
+    "label": "label",
+    "select": "label",
+    "textarea": "content",
+    "slider": "label",
+    "toggle": "label",
+    "menu_item": "label",
+    "clickable": "label",
+    "image": "content",
+}
+
+
+def _link_ocr_to_atoms(
+    ocr_boxes: List[Dict[str, Any]],
+    atoms: List[Dict[str, Any]],
+    threshold: float = 0.5,
+) -> List[Dict[str, Any]]:
+    """
+    Merge Layer v2: связывает OCR-боксы с UI-атомами только геометрически.
+
+    coverage = intersection(ocr_box, atom_bbox) / area(ocr_box).
+    Доминирующий атом: max coverage; при равенстве — меньшая площадь атома.
+    atom_id = None, link_type = standalone если ни один атом не подошёл.
+    Атомы и raw_ocr_boxes не модифицируются.
+    """
+    links: List[Dict[str, Any]] = []
+    atom_by_id = {a.get("id", ""): a for a in atoms}
+    for ob in ocr_boxes:
+        ocr_id = ob.get("id", "")
+        ocr_bbox = ob.get("bbox", [0, 0, 0, 0])
+        if len(ocr_bbox) < 4:
+            links.append({
+                "ocr_box_id": ocr_id,
+                "atom_id": None,
+                "link_type": "standalone",
+                "coverage_ratio": 0.0,
+            })
+            continue
+        best_atom_id: Optional[str] = None
+        best_coverage = 0.0
+        best_atom_area: Optional[float] = None
+        for a in atoms:
+            acid = a.get("id", "")
+            abbox = a.get("bbox", [0, 0, 0, 0])
+            cov = _coverage_ocr_atom(ocr_bbox, abbox)
+            if cov < threshold:
+                continue
+            atom_area = (abbox[2] - abbox[0]) * (abbox[3] - abbox[1]) if len(abbox) >= 4 else 0.0
+            if cov > best_coverage or (cov == best_coverage and best_atom_area is not None and atom_area < best_atom_area):
+                best_coverage = cov
+                best_atom_id = acid
+                best_atom_area = atom_area
+        if best_atom_id is None:
+            links.append({
+                "ocr_box_id": ocr_id,
+                "atom_id": None,
+                "link_type": "standalone",
+                "coverage_ratio": 0.0,
+            })
+        else:
+            atom_type = atom_by_id.get(best_atom_id, {}).get("type", "unknown")
+            link_type = ATOM_TYPE_TO_LINK_TYPE.get(atom_type, "content")
+            links.append({
+                "ocr_box_id": ocr_id,
+                "atom_id": best_atom_id,
+                "link_type": link_type,
+                "coverage_ratio": round(best_coverage, 4),
+            })
+    return links
+
+
+def _text_inside_ui_from_links(
+    text_ui_links: List[Dict[str, Any]],
+    raw_ocr_boxes: List[Dict[str, Any]],
+) -> Dict[str, List[Dict[str, Any]]]:
+    """Строит text_inside_ui (atom_id -> [{text, bbox, confidence}]) из text_ui_links и raw_ocr_boxes для _build_logical_ui. Атомы не модифицируются."""
+    ocr_by_id = {b.get("id", ""): b for b in raw_ocr_boxes}
+    text_inside_ui: Dict[str, List[Dict[str, Any]]] = {}
+    for link in text_ui_links:
+        acid = link.get("atom_id")
+        if not acid:
+            continue
+        ocr_id = link.get("ocr_box_id", "")
+        ob = ocr_by_id.get(ocr_id)
+        if not ob:
+            continue
+        text_inside_ui.setdefault(acid, []).append({
+            "text": ob.get("text", ""),
+            "bbox": ob.get("bbox", [0, 0, 0, 0]),
+            "confidence": ob.get("confidence", 0),
+        })
+    return text_inside_ui
 
 
 def _merge_ocr_with_atoms(
@@ -484,7 +675,7 @@ def run_atoms_v2_pipeline(
     if not path.exists():
         return {
             "unified_ui": [], "atoms": [], "regions": [], "atom_to_region": {},
-            "raw_ocr_boxes": [], "text_blocks": [], "independent_text_blocks": [], "lines": [], "paragraphs": [],
+            "raw_ocr_boxes": [], "text_ui_links": [], "text_blocks": [], "independent_text_blocks": [], "lines": [], "paragraphs": [],
             "text_inside_ui": {}, "log": ["Image not found"], "debug_image_path": None,
         }
 
@@ -497,6 +688,7 @@ def run_atoms_v2_pipeline(
 
     full_page_boxes: List[Dict[str, Any]] = []
     raw_ocr_boxes: List[Dict[str, Any]] = []
+    text_ui_links: List[Dict[str, Any]] = []
     text_inside_ui: Dict[str, List[Dict[str, Any]]] = {a.get("id", ""): [] for a in atoms}
     region_texts: Dict[str, List[Dict[str, Any]]] = {r["id"]: [] for r in regions}
     lines: List[List[Dict[str, Any]]] = []
@@ -527,7 +719,9 @@ def run_atoms_v2_pipeline(
             for i, b in enumerate(full_page_boxes)
         ]
         log.append(f"raw_ocr_boxes={len(raw_ocr_boxes)}")
-        text_inside_ui = _merge_ocr_with_atoms(full_page_boxes, atoms)
+        text_ui_links = _link_ocr_to_atoms(raw_ocr_boxes, atoms, threshold=TEXT_INSIDE_ATOM_IOU_THRESHOLD)
+        text_inside_ui = _text_inside_ui_from_links(text_ui_links, raw_ocr_boxes)
+        log.append(f"text_ui_links={len(text_ui_links)}")
         region_texts = _assign_full_page_ocr_to_regions(full_page_boxes, regions)
         if legacy_text_pipeline and full_page_boxes:
             lines, paragraphs, independent_text_blocks = _apply_legacy_grouping(full_page_boxes)
@@ -564,6 +758,7 @@ def run_atoms_v2_pipeline(
             atoms,
             f"atoms_v2_{path.stem}.png",
             raw_ocr_boxes=raw_ocr_boxes,
+            text_ui_links=text_ui_links,
             lines=lines,
             independent_text_blocks=independent_text_blocks,
         )
@@ -578,6 +773,7 @@ def run_atoms_v2_pipeline(
         "regions": regions,
         "atom_to_region": atom_to_region,
         "raw_ocr_boxes": raw_ocr_boxes,
+        "text_ui_links": text_ui_links,
         "text_blocks": text_blocks,
         "independent_text_blocks": independent_text_blocks,
         "lines": lines,

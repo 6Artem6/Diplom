@@ -82,10 +82,17 @@
    - `standalone` — текст не привязан к одному элементу или вне UI.
 4. **Текст не удаляется из общего слоя**: привязка к элементу добавляет связь `TextUILink`, но OCR-бокс остаётся в общем текстовом слое (строки, абзацы, независимые блоки).
 
-### 3.3 Выход Merge-слоя
+### 3.3 link_type (эвристика, без ML)
 
-- Список `TextUILink`: `ocr_box_id`, `atom_id` (или отсутствует), `link_type`, `coverage_ratio`.
-- По ним строится: для каждого атома — список текстов (label/content); для общего слоя — все OCR-боксы (с группировкой в строки/абзацы при необходимости).
+- **button, input, title, navbar, icon, dropdown, checkbox, radio** → `label`.
+- **card, container, text_block, modal, unknown** → `content`.
+- Это не финальная семантика, а первичная привязка для UI-дерева и последующих слоёв (LayoutLMv3, правила, LLM).
+
+### 3.4 Выход Merge Layer v2
+
+- Список `TextUILink`: `ocr_box_id`, `atom_id` (None = standalone), `link_type`, `coverage_ratio`. Модель с `extra = "forbid"`.
+- Атомы и `raw_ocr_boxes` не модифицируются; связь не удаляет и не перемещает текст.
+- По связям строится `text_inside_ui` для `_build_logical_ui` (подписи кнопок, контент карточек). Текст вне UI сохраняется (standalone).
 
 ---
 

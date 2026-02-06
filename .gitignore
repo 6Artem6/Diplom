@@ -7,6 +7,7 @@ __pycache__
 .venv/*
 .cursor
 .venv
+predictions/*
 *.pyc
 *.log
 output_kvvb/*
@@ -25,3 +26,4 @@ output_kvvb/*
 *.err
 *.out
 *.log.gz
+.env

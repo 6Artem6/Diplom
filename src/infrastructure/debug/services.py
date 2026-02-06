@@ -1672,12 +1672,12 @@ def save_debug_image_atoms_v2(
     atoms: List[Dict[str, Any]],
     output_filename: str,
     raw_ocr_boxes: Optional[List[Dict[str, Any]]] = None,
+    text_ui_links: Optional[List[Dict[str, Any]]] = None,
     lines: Optional[List[List[Dict[str, Any]]]] = None,
     independent_text_blocks: Optional[List[Dict[str, Any]]] = None,
 ) -> Optional[str]:
-    """Draw regions (dashed), atoms (solid + type), raw_ocr_boxes (solid + OCR: text (conf)), lines, independent_text_blocks.
-    raw_ocr_boxes: сырой выход OCR-слоя [{id, source, bbox [x1,y1,x2,y2], text, confidence}]. Рисуются всегда при parallel_ocr=true.
-    lines/independent_text_blocks: только при legacy_text_pipeline=true."""
+    """Draw regions, atoms, raw_ocr_boxes, text_ui_links (линии OCR→atom: label=синий, content=фиолетовый), lines, independent_text_blocks.
+    text_ui_links: Merge Layer v2 [{ocr_box_id, atom_id, link_type, coverage_ratio}]. standalone не рисуется."""
     try:
         from PIL import Image, ImageDraw, ImageFont
     except ImportError:
@@ -1736,7 +1736,35 @@ def save_debug_image_atoms_v2(
                 conf = box.get("confidence", 0)
                 label = f'OCR: "{text}" ({conf:.2f})' if text else f"OCR ({conf:.2f})"
                 draw.text((x1, max(0, y1 - 12)), label, fill=color_raw_ocr, font=font_small)
-        # 4) OCR lines (legacy) — рамка + текст
+        # 4) Merge Layer v2: линии от центра OCR-бокса к центру атома (label=синий, content=фиолетовый; standalone не рисуется)
+        if text_ui_links and raw_ocr_boxes and atoms:
+            ocr_by_id = {b.get("id", ""): b for b in raw_ocr_boxes}
+            atom_by_id = {a.get("id", ""): a for a in atoms}
+            color_label = (0, 100, 255)
+            color_content = (180, 0, 180)
+            for link in text_ui_links:
+                atom_id = link.get("atom_id")
+                if not atom_id:
+                    continue
+                ocr_id = link.get("ocr_box_id", "")
+                lt = link.get("link_type", "content")
+                cov = link.get("coverage_ratio", 0)
+                ob = ocr_by_id.get(ocr_id)
+                at = atom_by_id.get(atom_id)
+                if not ob or not at:
+                    continue
+                obbox = ob.get("bbox", [0, 0, 0, 0])
+                abbox = at.get("bbox", [0, 0, 0, 0])
+                if len(obbox) < 4 or len(abbox) < 4:
+                    continue
+                cx_ocr = int((obbox[0] + obbox[2]) / 2)
+                cy_ocr = int((obbox[1] + obbox[3]) / 2)
+                cx_atom = int((abbox[0] + abbox[2]) / 2)
+                cy_atom = int((abbox[1] + abbox[3]) / 2)
+                color = color_label if lt == "label" else color_content
+                draw.line([(cx_ocr, cy_ocr), (cx_atom, cy_atom)], fill=color, width=2)
+                draw.text((cx_ocr, max(0, cy_ocr - 10)), f"link: {lt} ({cov:.2f})", fill=color, font=font_small)
+        # 5) OCR lines (legacy) — рамка + текст
         color_ocr_line = (255, 165, 0)
         if lines:
             for line in lines:
@@ -1749,7 +1777,7 @@ def save_debug_image_atoms_v2(
                     text = (box.get("text") or "").strip()[:50]
                     if text:
                         draw.text((x, max(0, y - 12)), text, fill=color_ocr_line, font=font_small)
-        # 5) Независимые текстовые блоки (legacy paragraph/label) — рамка + тип + текст (зелёный)
+        # 6) Независимые текстовые блоки (legacy paragraph/label) — рамка + тип + текст (зелёный)
         color_independent = (0, 180, 80)
         if independent_text_blocks:
             for blk in independent_text_blocks:
