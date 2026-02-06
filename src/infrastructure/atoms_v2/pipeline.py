@@ -19,7 +19,8 @@ TEXT_INSIDE_ATOM_IOU_THRESHOLD = 0.5
 MIN_TEXT_BOX_AREA_PX = 15
 MAX_BLOCK_SCREEN_RATIO = 0.8
 
-# Маппинг имён классов kvvb → унифицированный type (button, input, title, text).
+# Маппинг имён классов датасета kvvb → визуальный тип (сырая карта UI).
+# Разрешённые типы: button, card, input, navbar, container, icon, checkbox, radio, dropdown, modal, text_block, unknown.
 KVVB_CLASS_TO_ATOM_TYPE: Dict[str, str] = {
     "contactsSendformButton": "button",
     "contactsSocialButtons": "button",
@@ -28,18 +29,23 @@ KVVB_CLASS_TO_ATOM_TYPE: Dict[str, str] = {
     "contactsNameFormInput": "input",
     "contactsSubjectFormInput": "input",
     "contactsTitle": "title",
-    "contactsSubtitle": "text",
-    "contactsDescription": "text",
-    "contactsPhone": "text",
-    "contactsEmail": "text",
-    "contactsAddress": "text",
+    "contactsSubtitle": "text_block",
+    "contactsDescription": "text_block",
+    "contactsPhone": "text_block",
+    "contactsEmail": "text_block",
+    "contactsAddress": "text_block",
 }
 ATOM_IOU_THRESHOLD = 0.5
 REGION_CONTAINMENT_MARGIN = 2
 
 
 def _run_detectron2_atoms(image_path: str) -> List[Dict[str, Any]]:
-    """Detectron2: только атомы. Выход: [{id, type, bbox: [x1,y1,x2,y2], score}, ...]."""
+    """
+    Сырая карта UI: Detectron2 — только геометрия и визуальный тип.
+
+    Инвариант CV-слоя: допустимы только id, source="detectron2", type, bbox, confidence.
+    Запрещены: text, role, paragraph, label, lines_count, region_id.
+    """
     path = Path(image_path)
     if not path.exists():
         return []
@@ -61,13 +67,16 @@ def _run_detectron2_atoms(image_path: str) -> List[Dict[str, Any]]:
     atoms: List[Dict[str, Any]] = []
     for i, r in enumerate(raw):
         cls_name = r.get("class", "")
-        atom_type = KVVB_CLASS_TO_ATOM_TYPE.get(cls_name, "text")
+        atom_type = KVVB_CLASS_TO_ATOM_TYPE.get(cls_name, "text_block")
         bbox = r.get("bbox", [0, 0, 0, 0])
+        if len(bbox) < 4:
+            bbox = [0.0, 0.0, 0.0, 0.0]
         atoms.append({
-            "id": f"det_{i}",
+            "id": f"ui_atom_{i + 1}",
+            "source": "detectron2",
             "type": atom_type,
-            "bbox": bbox,
-            "score": float(r.get("score", 0)),
+            "bbox": [float(bbox[0]), float(bbox[1]), float(bbox[2]), float(bbox[3])],
+            "confidence": float(r.get("score", 0)),
         })
     return atoms
 
@@ -419,9 +428,9 @@ def _build_logical_ui(
             if acid and text_inside_ui.get(acid):
                 label = " ".join(t.get("text", "") for t in text_inside_ui[acid] if t.get("text")).strip()
             children.append({
-                "type": a.get("type", "text"),
+                "type": a.get("type", "text_block"),
                 "bbox": a.get("bbox", []),
-                "score": a.get("score", 0),
+                "confidence": a.get("confidence", 0),
                 "label": label,
             })
         for tb in region_texts:
@@ -447,7 +456,8 @@ def _build_logical_ui(
                 "children": [
                     {
                         "type": "button",
-                        "bbox": a["bbox"],
+                        "bbox": a.get("bbox", []),
+                        "confidence": a.get("confidence", 0),
                         "label": " ".join(t.get("text", "") for t in text_inside_ui.get(a.get("id", ""), []) if t.get("text")).strip(),
                     }
                     for a in nav_buttons
@@ -474,7 +484,7 @@ def run_atoms_v2_pipeline(
     if not path.exists():
         return {
             "unified_ui": [], "atoms": [], "regions": [], "atom_to_region": {},
-            "text_blocks": [], "independent_text_blocks": [], "lines": [], "paragraphs": [],
+            "raw_ocr_boxes": [], "text_blocks": [], "independent_text_blocks": [], "lines": [], "paragraphs": [],
             "text_inside_ui": {}, "log": ["Image not found"], "debug_image_path": None,
         }
 
@@ -486,11 +496,14 @@ def run_atoms_v2_pipeline(
     atom_to_region = _assign_atoms_to_regions(atoms, regions)
 
     full_page_boxes: List[Dict[str, Any]] = []
+    raw_ocr_boxes: List[Dict[str, Any]] = []
     text_inside_ui: Dict[str, List[Dict[str, Any]]] = {a.get("id", ""): [] for a in atoms}
     region_texts: Dict[str, List[Dict[str, Any]]] = {r["id"]: [] for r in regions}
     lines: List[List[Dict[str, Any]]] = []
     paragraphs: List[List[List[Dict[str, Any]]]] = []
     independent_text_blocks: List[Dict[str, Any]] = []
+
+    log.append(f"legacy_text_pipeline={str(legacy_text_pipeline).lower()}")
 
     if parallel_ocr:
         full_page_boxes = _run_full_page_ocr(image_path)
@@ -503,6 +516,17 @@ def run_atoms_v2_pipeline(
             img_w, img_h = 1200, 800
         full_page_boxes = _filter_ocr_noise(full_page_boxes, img_w, img_h)
         log.append(f"full_page_ocr_after_noise={len(full_page_boxes)}")
+        raw_ocr_boxes = [
+            {
+                "id": f"ocr_{i + 1}",
+                "source": "ocr",
+                "bbox": [float(b["x"]), float(b["y"]), float(b["x"]) + float(b["w"]), float(b["y"]) + float(b["h"])],
+                "text": (b.get("text") or "").strip(),
+                "confidence": float(b.get("confidence", 0)),
+            }
+            for i, b in enumerate(full_page_boxes)
+        ]
+        log.append(f"raw_ocr_boxes={len(raw_ocr_boxes)}")
         text_inside_ui = _merge_ocr_with_atoms(full_page_boxes, atoms)
         region_texts = _assign_full_page_ocr_to_regions(full_page_boxes, regions)
         if legacy_text_pipeline and full_page_boxes:
@@ -539,6 +563,7 @@ def run_atoms_v2_pipeline(
             regions,
             atoms,
             f"atoms_v2_{path.stem}.png",
+            raw_ocr_boxes=raw_ocr_boxes,
             lines=lines,
             independent_text_blocks=independent_text_blocks,
         )
@@ -552,6 +577,7 @@ def run_atoms_v2_pipeline(
         "atoms": atoms,
         "regions": regions,
         "atom_to_region": atom_to_region,
+        "raw_ocr_boxes": raw_ocr_boxes,
         "text_blocks": text_blocks,
         "independent_text_blocks": independent_text_blocks,
         "lines": lines,

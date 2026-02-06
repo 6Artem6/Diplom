@@ -13,6 +13,13 @@ from .bpg_construction import BPGConstructionService
 from .bpg_storage import BPGStorage
 from .bpg_query import BPGQueryService
 from .visual_layout_detector import VisualLayoutDetector, RawLayoutBox
+from .ui_structure_layers import (
+    UICVLayer,
+    UIOCRLayer,
+    UIMergeLayer,
+    UISemanticLayer,
+    UITreeBuilder,
+)
 
 __all__ = [
     "PreprocessingService",
@@ -24,4 +31,9 @@ __all__ = [
     "BPGQueryService",
     "VisualLayoutDetector",
     "RawLayoutBox",
+    "UICVLayer",
+    "UIOCRLayer",
+    "UIMergeLayer",
+    "UISemanticLayer",
+    "UITreeBuilder",
 ]

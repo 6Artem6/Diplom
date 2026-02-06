@@ -1,12 +1,13 @@
 """
-Inference для обученной модели Detectron2 (Faster R-CNN R50 FPN).
-Только inference: без обучения, без валидации, без регистрации датасетов.
+Detectron2 inference: только детекция визуальных UI-компонентов.
 
-Использование:
-  python inference_kvvb.py --image path/to/image.png
-  python inference_kvvb.py --image path/to/image.png --weights output_kvvb/model_final.pth
+Роль: «сырая карта UI» — bounding box + визуальный тип + confidence.
+- Не OCR: текст не распознаётся и не извлекается.
+- Не семантика: элементы не классифицируются по текстовому содержимому.
+- Если элемент визуально кнопка с надписью внутри — возвращается только бокс кнопки.
 
-Структура допускает вынос в FastAPI: импорт predict(image_path) -> list[dict].
+Выход: список элементов {class, bbox: [x1,y1,x2,y2], score}.
+Текст и семантика добавляются позже (OCR + layout-модель).
 """
 
 from __future__ import annotations
@@ -65,14 +66,15 @@ def _get_predictor(weights_path: str) -> Any:
 
 def predict(image_path: str, weights_path: str | None = None) -> List[dict[str, Any]]:
     """
-    Inference по одному изображению. Возвращает список предсказаний.
+    Сырая карта UI: только геометрия и визуальный тип. Без текста и семантики.
 
     Args:
         image_path: путь к изображению
         weights_path: путь к model_final.pth; если None — output_kvvb/model_final.pth
 
     Returns:
-        [{"class": "<class_name>", "bbox": [x1, y1, x2, y2], "score": float}, ...]
+        Список элементов: [{"class": "<class_name>", "bbox": [x1, y1, x2, y2], "score": float}, ...].
+        class — имя класса датасета (визуальный тип); bbox — в пикселях; score — confidence.
     """
     if weights_path is None:
         weights_path = os.path.join(DEFAULT_WEIGHTS_DIR, DEFAULT_WEIGHTS_FILE)

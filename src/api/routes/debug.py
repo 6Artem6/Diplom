@@ -362,18 +362,25 @@ async def debug_improved_full_pipeline(
 
 
 class AtomsV2PipelineResponse(BaseModel):
-    """Результат пайплайна atoms_v2: CV (atoms) + параллельный OCR, merge & conflict resolution, legacy grouping."""
+    """
+    Результат пайплайна atoms_v2.
+
+    Контракт: parallel_ocr=true → raw_ocr_boxes; legacy_text_pipeline=true → lines, paragraphs, independent_text_blocks;
+    legacy_text_pipeline=false → только raw_ocr_boxes (нет строк/абзацев/зелёных боксов).
+    Detectron2 никогда не создаёт текст. OCR никогда не создаёт UI-типы.
+    """
     unified_ui: List[Any] = Field(default_factory=list, description="Дерево UI: card, form, navbar, panel с children")
-    atoms: List[Any] = Field(default_factory=list, description="Атомарные элементы от Detectron2")
+    atoms: List[Any] = Field(default_factory=list, description="Сырая карта UI от Detectron2 (id, source, type, bbox, confidence)")
     regions: List[Any] = Field(default_factory=list, description="CV visual regions")
+    raw_ocr_boxes: List[Any] = Field(default_factory=list, description="Сырой выход OCR-слоя при parallel_ocr=true: [{id, source, bbox, text, confidence}]")
     text_blocks: List[Any] = Field(default_factory=list, description="Текстовые блоки по регионам")
-    independent_text_blocks: List[Any] = Field(default_factory=list, description="Независимые текстовые блоки (paragraph, label) из legacy grouping")
-    lines: List[Any] = Field(default_factory=list, description="Строки текста (legacy grouping)")
-    paragraphs: List[Any] = Field(default_factory=list, description="Абзацы (legacy grouping)")
+    independent_text_blocks: List[Any] = Field(default_factory=list, description="Только при legacy_text_pipeline=true")
+    lines: List[Any] = Field(default_factory=list, description="Только при legacy_text_pipeline=true")
+    paragraphs: List[Any] = Field(default_factory=list, description="Только при legacy_text_pipeline=true")
     text_inside_ui: Dict[str, Any] = Field(default_factory=dict, description="atom_id -> [{text, bbox, confidence}] — текст внутри UI-элементов")
-    log: List[str] = Field(default_factory=list, description="Шаги пайплайна")
+    log: List[str] = Field(default_factory=list, description="Шаги пайплайна (raw_ocr_boxes=<n>, legacy_text_pipeline=<bool>)")
     debug_image_path: str | None = Field(default=None, description="Путь к сохранённому отладочному изображению")
-    message: str = "Atoms_v2: CV atoms + parallel OCR, merge, legacy grouping."
+    message: str = "Atoms_v2: CV atoms + raw OCR layer + merge, legacy grouping optional."
 
 
 @router.post("/atoms-v2-pipeline", response_model=AtomsV2PipelineResponse)
@@ -398,6 +405,7 @@ async def debug_atoms_v2_pipeline(
             unified_ui=out.get("unified_ui", []),
             atoms=out.get("atoms", []),
             regions=out.get("regions", []),
+            raw_ocr_boxes=out.get("raw_ocr_boxes", []),
             text_blocks=out.get("text_blocks", []),
             independent_text_blocks=out.get("independent_text_blocks", []),
             lines=out.get("lines", []),

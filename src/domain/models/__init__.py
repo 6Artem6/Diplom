@@ -30,6 +30,20 @@ from .bpg_edges import (
 from .provenance import Provenance, Confidence, InferenceMethod
 from .view import View
 from .embedded_manifestation import EmbeddedManifestation
+from .ui_structure import (
+    BboxXYWH,
+    BboxXYXY,
+    OCRBox,
+    RawOCRBox,
+    RawUICVAtom,
+    TextSemanticAnnotation,
+    TextSemanticRole,
+    TextUILink,
+    TextUILinkType,
+    UINode,
+    UIAtom,
+    UIAtomType,
+)
 
 __all__ = [
     # Nodes
@@ -57,4 +71,17 @@ __all__ = [
     "View",
     # Embedded Manifestation
     "EmbeddedManifestation",
+    # UI Structure Recovery
+    "BboxXYXY",
+    "BboxXYWH",
+    "RawOCRBox",
+    "RawUICVAtom",
+    "UIAtom",
+    "UIAtomType",
+    "OCRBox",
+    "TextUILink",
+    "TextUILinkType",
+    "TextSemanticRole",
+    "TextSemanticAnnotation",
+    "UINode",
 ]

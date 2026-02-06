@@ -1671,12 +1671,13 @@ def save_debug_image_atoms_v2(
     regions: List[Dict[str, Any]],
     atoms: List[Dict[str, Any]],
     output_filename: str,
+    raw_ocr_boxes: Optional[List[Dict[str, Any]]] = None,
     lines: Optional[List[List[Dict[str, Any]]]] = None,
     independent_text_blocks: Optional[List[Dict[str, Any]]] = None,
 ) -> Optional[str]:
-    """Draw regions (dashed), atoms (solid + type), OCR lines (solid + text), independent_text_blocks (solid + type + text).
-    Saves to DEBUG_OUTPUT_DIR. regions/atoms use bbox [x1,y1,x2,y2]. Lines: list of lines, each line = list of {x,y,w,h,text}.
-    independent_text_blocks: list of {type, text, bbox [x1,y1,x2,y2]}."""
+    """Draw regions (dashed), atoms (solid + type), raw_ocr_boxes (solid + OCR: text (conf)), lines, independent_text_blocks.
+    raw_ocr_boxes: сырой выход OCR-слоя [{id, source, bbox [x1,y1,x2,y2], text, confidence}]. Рисуются всегда при parallel_ocr=true.
+    lines/independent_text_blocks: только при legacy_text_pipeline=true."""
     try:
         from PIL import Image, ImageDraw, ImageFont
     except ImportError:
@@ -1709,6 +1710,7 @@ def save_debug_image_atoms_v2(
             "button": (0, 200, 0),
             "input": (0, 150, 255),
             "title": (200, 100, 0),
+            "text_block": (255, 0, 0),
             "text": (255, 0, 0),
         }
         for a in atoms:
@@ -1716,13 +1718,26 @@ def save_debug_image_atoms_v2(
             if len(bbox) < 4:
                 continue
             x1, y1, x2, y2 = int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3])
-            t = a.get("type", "text")
+            t = a.get("type", "text_block")
             color = type_colors.get(t, (128, 128, 128))
             draw.rectangle([x1, y1, x2, y2], outline=color, width=2)
             label = f"{t}"
             draw.text((x1, max(0, y1 - 14)), label, fill=color, font=font)
-        # 3) OCR lines — рамка + текст (оранжевый)
-        color_ocr_line = (255, 140, 0)
+        # 3) Сырой OCR-слой: RawOCRBox — оранжевый, подпись OCR: "text" (confidence)
+        color_raw_ocr = (255, 140, 0)
+        if raw_ocr_boxes:
+            for box in raw_ocr_boxes:
+                bbox = box.get("bbox", [0, 0, 0, 0])
+                if len(bbox) < 4:
+                    continue
+                x1, y1, x2, y2 = int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3])
+                draw.rectangle([x1, y1, x2, y2], outline=color_raw_ocr, width=2)
+                text = (box.get("text") or "").strip()[:50]
+                conf = box.get("confidence", 0)
+                label = f'OCR: "{text}" ({conf:.2f})' if text else f"OCR ({conf:.2f})"
+                draw.text((x1, max(0, y1 - 12)), label, fill=color_raw_ocr, font=font_small)
+        # 4) OCR lines (legacy) — рамка + текст
+        color_ocr_line = (255, 165, 0)
         if lines:
             for line in lines:
                 for box in line:
@@ -1734,7 +1749,7 @@ def save_debug_image_atoms_v2(
                     text = (box.get("text") or "").strip()[:50]
                     if text:
                         draw.text((x, max(0, y - 12)), text, fill=color_ocr_line, font=font_small)
-        # 4) Независимые текстовые блоки (paragraph/label) — рамка + тип + текст (зелёный)
+        # 5) Независимые текстовые блоки (legacy paragraph/label) — рамка + тип + текст (зелёный)
         color_independent = (0, 180, 80)
         if independent_text_blocks:
             for blk in independent_text_blocks:
