@@ -1,0 +1,108 @@
+<!--
+Цель страницы:
+Проверка детекции кнопок: короткие, длинные в одну/две строки, с иконкой, только иконка, в виде ссылки, disabled.
+Расположение: navbar, центр, карточки, футер.
+Ожидаемое поведение:
+- текст привязывается к bbox кнопки (label), а не наоборот;
+- длинные кнопки = один button;
+- кнопка-ссылка и icon-only не путаются с link.
+-->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1440, initial-scale=1">
+  <title>Кнопки — сложные случаи</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .btn-link-style { color: #0d6efd; text-decoration: none; background: none; border: none; padding: 0; }
+    .btn-link-style:hover { text-decoration: underline; }
+    .btn-long-one-line { min-width: 280px; }
+    .btn-long-two-lines { min-width: 200px; white-space: normal; text-align: center; line-height: 1.3; }
+  </style>
+</head>
+<body class="bg-light">
+  <!-- Navbar: короткие + иконка -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">Brand</a>
+      <div class="d-flex gap-2">
+        <button class="btn btn-outline-light btn-sm">OK</button>
+        <button class="btn btn-outline-light btn-sm">Save</button>
+        <button class="btn btn-outline-light btn-sm" title="Settings">⚙</button>
+        <button class="btn btn-primary btn-sm">Sign in</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <h1 class="mb-4">Кнопки — все варианты</h1>
+
+    <!-- Центр: короткие, длинные одна строка, две строки -->
+    <section class="card mb-4">
+      <div class="card-body">
+        <h2 class="h5 mb-3">По центру страницы</h2>
+        <div class="d-flex flex-wrap gap-3 align-items-center">
+          <button class="btn btn-primary">OK</button>
+          <button class="btn btn-secondary">Save</button>
+          <button class="btn btn-success btn-long-one-line">Submit this form and continue to the next step</button>
+          <button class="btn btn-info btn-long-two-lines">Download full report for your region</button>
+          <button class="btn btn-warning">🔔 Notifications</button>
+          <button class="btn btn-outline-secondary" title="Menu">☰</button>
+          <button class="btn btn-link-style">Looks like a link but is a button</button>
+          <button class="btn btn-primary" disabled>Disabled</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Карточки с кнопками -->
+    <section class="row g-3 mb-4">
+      <div class="col-md-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h3 class="card-title h6">Card A</h3>
+            <p class="card-text small">Short text.</p>
+            <button class="btn btn-sm btn-primary">OK</button>
+            <button class="btn btn-sm btn-outline-primary btn-long-one-line">Accept and proceed to checkout</button>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h3 class="card-title h6">Card B</h3>
+            <p class="card-text small">Another card.</p>
+            <button class="btn btn-sm btn-success">Save</button>
+            <button class="btn btn-sm btn-outline-secondary">Cancel</button>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h3 class="card-title h6">Card C</h3>
+            <p class="card-text small">Icon only below.</p>
+            <button class="btn btn-sm btn-outline-dark" title="Edit">✏</button>
+            <button class="btn btn-sm btn-outline-danger" title="Delete">🗑</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Футер с кнопками -->
+  <footer class="bg-dark text-light py-4 mt-5">
+    <div class="container">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span class="small">© 2024 Test</span>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-light btn-sm">OK</button>
+          <button class="btn btn-outline-light btn-sm">Save</button>
+          <button class="btn btn-light btn-sm btn-long-one-line">Contact support and get help</button>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

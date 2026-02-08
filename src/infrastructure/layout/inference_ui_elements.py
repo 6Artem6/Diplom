@@ -11,8 +11,13 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import threading
 from pathlib import Path
-from typing import Any, List
+from typing import Any, Dict, List
+
+# Кэш предикторов по пути к весам: загрузка модели один раз на путь
+_predictor_cache: Dict[str, Any] = {}
+_predictor_cache_lock = threading.Lock()
 
 # Классы датасета UI-Elements-Detection-Dataset (Yash Jain), порядок id 0..15
 THING_CLASSES: tuple[str, ...] = (
@@ -33,19 +38,39 @@ THING_CLASSES: tuple[str, ...] = (
     "image",
     "text",
 )
+# Классы датасета из build_coco_dataset (output_ui_detectron2_generated), алфавит, id 0..5
+THING_CLASSES_GENERATED: tuple[str, ...] = (
+    "button",
+    "checkbox",
+    "input",
+    "link",
+    "radio",
+    "textarea",
+)
 NUM_CLASSES = len(THING_CLASSES)
+NUM_CLASSES_GENERATED = len(THING_CLASSES_GENERATED)
 
-# Пути к весам: сначала env, затем /app/models (Docker), затем локальный output_ui_detectron2
+# Пути к весам: одна переменная ATOMS_V2_UI_ELEMENTS_WEIGHTS (путь к model_final.pth или к папке).
+# Поддерживаются: output_ui_detectron2 (Yash Jain) и output_ui_detectron2_generated (собственный датасет).
 DEFAULT_WEIGHTS_ENV = "ATOMS_V2_UI_ELEMENTS_WEIGHTS"
 DEFAULT_WEIGHTS_DIR_DOCKER = "/app/models/output_ui_detectron2"
+DEFAULT_WEIGHTS_DIR_GENERATED = "output_ui_detectron2_generated"
 DEFAULT_WEIGHTS_FILE = "model_final.pth"
 SCORE_THRESH_TEST = 0.5
 
 
+def _is_generated_weights(weights_path: str) -> bool:
+    """Определяет, что веса от сгенерированного датасета (6 классов)."""
+    return "output_ui_detectron2_generated" in weights_path or "generated" in Path(weights_path).parent.name
+
+
 def _build_cfg(weights_path: str) -> Any:
-    """Конфиг Faster R-CNN, NUM_CLASSES=16, без регистрации датасетов."""
+    """Конфиг Faster R-CNN. NUM_CLASSES=6 для generated, 16 для Yash Jain."""
     from detectron2.config import get_cfg
     from detectron2 import model_zoo
+
+    use_generated = _is_generated_weights(weights_path)
+    num_classes = NUM_CLASSES_GENERATED if use_generated else NUM_CLASSES
 
     cfg = get_cfg()
     cfg.merge_from_file(
@@ -53,34 +78,56 @@ def _build_cfg(weights_path: str) -> Any:
     )
     cfg.MODEL.WEIGHTS = weights_path
     cfg.MODEL.DEVICE = "cpu"
-    cfg.MODEL.ROI_HEADS.NUM_CLASSES = NUM_CLASSES
+    cfg.MODEL.ROI_HEADS.NUM_CLASSES = num_classes
     cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = SCORE_THRESH_TEST
     return cfg
 
 
 def _get_predictor(weights_path: str) -> Any:
+    """Возвращает предиктор; загружает модель один раз на путь (кэш по resolved path)."""
+    with _predictor_cache_lock:
+        if weights_path in _predictor_cache:
+            return _predictor_cache[weights_path]
     from detectron2.engine import DefaultPredictor
     cfg = _build_cfg(weights_path)
-    return DefaultPredictor(cfg)
+    predictor = DefaultPredictor(cfg)
+    with _predictor_cache_lock:
+        _predictor_cache[weights_path] = predictor
+    return predictor
 
 
 def _resolve_weights_path(weights_path: str | None) -> str | None:
-    """Возвращает путь к model_final.pth: env → /app/models → ./output_ui_detectron2."""
-    if weights_path and Path(weights_path).exists():
-        return weights_path
+    """
+    Возвращает путь к model_final.pth.
+    Порядок: аргумент → ATOMS_V2_UI_ELEMENTS_WEIGHTS → Docker generated → Docker original
+             → локально output_ui_detectron2_generated → output_ui_detectron2 → корень проекта.
+    """
+    def _norm(p: str) -> Path:
+        path = Path(p)
+        return path if path.suffix else path / DEFAULT_WEIGHTS_FILE
+
+    if weights_path:
+        norm = _norm(weights_path)
+        if norm.exists():
+            return str(norm)
+
     env_path = os.environ.get(DEFAULT_WEIGHTS_ENV, "").strip()
-    if env_path and Path(env_path).exists():
-        return env_path
-    docker_path = os.path.join(DEFAULT_WEIGHTS_DIR_DOCKER, DEFAULT_WEIGHTS_FILE)
-    if Path(docker_path).exists():
-        return docker_path
-    local_path = Path(__file__).resolve().parents[2] / "output_ui_detectron2" / DEFAULT_WEIGHTS_FILE
-    if local_path.exists():
-        return str(local_path)
-    root = Path(__file__).resolve().parents[3]
-    local_root = root / "output_ui_detectron2" / DEFAULT_WEIGHTS_FILE
-    if local_root.exists():
-        return str(local_root)
+    if env_path:
+        norm = _norm(env_path)
+        if norm.exists():
+            return str(norm)
+
+    for dir_name in (DEFAULT_WEIGHTS_DIR_GENERATED, "output_ui_detectron2"):
+        docker_path = Path(f"/app/models/{dir_name}") / DEFAULT_WEIGHTS_FILE
+        if docker_path.exists():
+            return str(docker_path)
+        local_path = Path(__file__).resolve().parents[2] / dir_name / DEFAULT_WEIGHTS_FILE
+        if local_path.exists():
+            return str(local_path)
+        root = Path(__file__).resolve().parents[3]
+        root_path = root / dir_name / DEFAULT_WEIGHTS_FILE
+        if root_path.exists():
+            return str(root_path)
     return None
 
 
@@ -92,12 +139,16 @@ def predict_raw(image_path: str, weights_path: str | None = None) -> List[dict[s
     resolved = _resolve_weights_path(weights_path)
     if not resolved:
         raise FileNotFoundError(
-            "UI-Elements weights not found. Set ATOMS_V2_UI_ELEMENTS_WEIGHTS or place model_final.pth in output_ui_detectron2/"
+            "UI-Elements weights not found. Set ATOMS_V2_UI_ELEMENTS_WEIGHTS (e.g. models/output_ui_detectron2_generated/model_final.pth)"
         )
     if not Path(image_path).exists():
         raise FileNotFoundError(f"Image not found: {image_path}")
 
     predictor = _get_predictor(resolved)
+    use_generated = _is_generated_weights(resolved)
+    thing_classes = THING_CLASSES_GENERATED if use_generated else THING_CLASSES
+    n_classes = len(thing_classes)
+
     try:
         import cv2
         im = cv2.imread(image_path)
@@ -119,7 +170,7 @@ def predict_raw(image_path: str, weights_path: str | None = None) -> List[dict[s
     result: List[dict[str, Any]] = []
     for k in range(len(pred_classes)):
         cls_idx = int(pred_classes[k])
-        class_name = THING_CLASSES[cls_idx] if 0 <= cls_idx < NUM_CLASSES else f"class_{cls_idx}"
+        class_name = thing_classes[cls_idx] if 0 <= cls_idx < n_classes else f"class_{cls_idx}"
         box = pred_boxes[k].tensor[0]
         x1, y1, x2, y2 = float(box[0]), float(box[1]), float(box[2]), float(box[3])
         score = float(scores[k])

@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1440, initial-scale=1">
+  <title>UI Dataset Generator</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .ui-xs { padding: 0.15rem 0.4rem; font-size: 0.7rem; }
+    .ui-s { padding: 0.25rem 0.5rem; font-size: 0.875rem; }
+    .ui-m { padding: 0.375rem 0.75rem; font-size: 1rem; }
+    .ui-l { padding: 0.5rem 1rem; font-size: 1.125rem; }
+    .ui-xl { padding: 0.75rem 1.5rem; font-size: 1.25rem; }
+    .ui-wide { min-width: 280px; }
+    .ui-ghost { background: transparent; border-color: transparent; }
+    .ui-ghost:hover { background: rgba(0,0,0,0.05); }
+    .ui-borderless { border: none; background: transparent; }
+    .ui-rounded { border-radius: 1.5rem; }
+    .ui-square { border-radius: 0; }
+    .ui-low-contrast { color: #6c757d; border-color: #dee2e6; }
+    .ui-input-underline { border: none; border-bottom: 1px solid #212529; border-radius: 0; background: transparent; }
+    .ui-link-underline { text-decoration: underline; }
+    .ui-link-no-underline { text-decoration: none; }
+    [data-ui-type] { box-sizing: border-box; }
+  </style>
+</head>
+<body class="bg-light">
+  <div id="root" class="min-vh-100"></div>
+  <script>
+(function() {
+  'use strict';
+
+  var UI_TYPES = ['button', 'link', 'input', 'textarea', 'checkbox', 'radio'];
+  var SIZES = ['xs', 's', 'm', 'l', 'xl'];
+  var STYLES = ['filled', 'outline', 'ghost', 'borderless', 'underline', 'rounded', 'square', 'disabled', 'low-contrast'];
+
+  function getVariantFromUrl() {
+    var params = new URLSearchParams(window.location.search);
+    return params.get('variant') || 'buttons_small';
+  }
+
+  function getThemeFromUrl() {
+    var params = new URLSearchParams(window.location.search);
+    return params.get('theme') || 'default';
+  }
+
+  function applyTheme(theme) {
+    var id = 'theme-css';
+    var existing = document.getElementById(id);
+    if (existing) existing.remove();
+    var link = document.createElement('link');
+    link.id = id;
+    link.rel = 'stylesheet';
+    link.href = 'themes/theme-' + theme + '.css';
+    document.head.appendChild(link);
+    document.documentElement.setAttribute('data-theme', theme);
+  }
+
+  function addDataAttrs(el, type, id) {
+    el.setAttribute('data-ui-type', type);
+    el.setAttribute('data-ui-id', id);
+    return el;
+  }
+
+  function sizeClass(size) {
+    if (!size) return 'ui-m';
+    return 'ui-' + size;
+  }
+
+  function styleClass(type, style) {
+    if (!style) return '';
+    var c = [];
+    if (style === 'ghost') c.push('ui-ghost');
+    if (style === 'borderless') c.push('ui-borderless');
+    if (style === 'rounded') c.push('ui-rounded');
+    if (style === 'square') c.push('ui-square');
+    if (style === 'disabled' && type === 'button') c.push('disabled');
+    if (style === 'low-contrast') c.push('ui-low-contrast');
+    if (style === 'underline' && type === 'input') c.push('ui-input-underline');
+    if (style === 'underline' && type === 'link') c.push('ui-link-underline');
+    if (style === 'no-underline' && type === 'link') c.push('ui-link-no-underline');
+    return c.join(' ');
+  }
+
+  function createButton(spec) {
+    var el = document.createElement('button');
+    el.type = 'button';
+    el.className = 'btn ' + (spec.style === 'outline' ? 'btn-outline-primary' : 'btn-primary') + ' ' + sizeClass(spec.size) + ' ' + styleClass('button', spec.style);
+    if (spec.style === 'disabled') el.disabled = true;
+    el.textContent = spec.text || 'Button';
+    if (spec.wide) el.classList.add('ui-wide');
+    return addDataAttrs(el, 'button', spec.id);
+  }
+
+  function createLink(spec) {
+    var el = document.createElement('a');
+    el.href = '#';
+    el.className = 'btn btn-link ' + sizeClass(spec.size) + ' ' + styleClass('link', spec.style);
+    el.textContent = spec.text || 'Link';
+    if (spec.wide) el.classList.add('ui-wide');
+    return addDataAttrs(el, 'link', spec.id);
+  }
+
+  function createInput(spec) {
+    var wrap = document.createElement('div');
+    wrap.className = 'mb-2';
+    if (spec.label) {
+      var lbl = document.createElement('label');
+      lbl.className = 'form-label ' + sizeClass(spec.size);
+      lbl.textContent = spec.label;
+      lbl.setAttribute('for', spec.id + '_input');
+      wrap.appendChild(lbl);
+    }
+    var el = document.createElement('input');
+    el.type = spec.inputType || 'text';
+    el.id = spec.id + '_input';
+    el.placeholder = spec.placeholder || '';
+    el.className = 'form-control ' + sizeClass(spec.size) + ' ' + styleClass('input', spec.style);
+    if (spec.style === 'disabled') el.disabled = true;
+    wrap.appendChild(el);
+    addDataAttrs(el, 'input', spec.id);
+    return wrap;
+  }
+
+  function createTextarea(spec) {
+    var wrap = document.createElement('div');
+    wrap.className = 'mb-2';
+    if (spec.label) {
+      var lbl = document.createElement('label');
+      lbl.className = 'form-label ' + sizeClass(spec.size);
+      lbl.textContent = spec.label;
+      lbl.setAttribute('for', spec.id + '_ta');
+      wrap.appendChild(lbl);
+    }
+    var el = document.createElement('textarea');
+    el.id = spec.id + '_ta';
+    el.rows = spec.rows || 3;
+    el.placeholder = spec.placeholder || '';
+    el.className = 'form-control ' + sizeClass(spec.size);
+    if (spec.style === 'disabled') el.disabled = true;
+    wrap.appendChild(el);
+    addDataAttrs(el, 'textarea', spec.id);
+    return wrap;
+  }
+
+  function createCheckbox(spec) {
+    var wrap = document.createElement('div');
+    wrap.className = 'form-check mb-2';
+    var el = document.createElement('input');
+    el.type = 'checkbox';
+    el.id = spec.id + '_cb';
+    el.className = 'form-check-input';
+    if (spec.checked) el.checked = true;
+    if (spec.style === 'disabled') el.disabled = true;
+    addDataAttrs(el, 'checkbox', spec.id);
+    var lbl = document.createElement('label');
+    lbl.className = 'form-check-label ' + sizeClass(spec.size);
+    lbl.setAttribute('for', spec.id + '_cb');
+    lbl.textContent = spec.label || 'Checkbox';
+    wrap.appendChild(el);
+    wrap.appendChild(lbl);
+    return wrap;
+  }
+
+  function createRadio(spec) {
+    var wrap = document.createElement('div');
+    wrap.className = 'form-check mb-2';
+    var el = document.createElement('input');
+    el.type = 'radio';
+    el.name = spec.name || 'radio_grp';
+    el.id = spec.id + '_rad';
+    el.className = 'form-check-input';
+    if (spec.checked) el.checked = true;
+    if (spec.style === 'disabled') el.disabled = true;
+    addDataAttrs(el, 'radio', spec.id);
+    var lbl = document.createElement('label');
+    lbl.className = 'form-check-label ' + sizeClass(spec.size);
+    lbl.setAttribute('for', spec.id + '_rad');
+    lbl.textContent = spec.label || 'Option';
+    wrap.appendChild(el);
+    wrap.appendChild(lbl);
+    return wrap;
+  }
+
+  function createElement(spec) {
+    switch (spec.type) {
+      case 'button': return createButton(spec);
+      case 'link': return createLink(spec);
+      case 'input': return createInput(spec);
+      case 'textarea': return createTextarea(spec);
+      case 'checkbox': return createCheckbox(spec);
+      case 'radio': return createRadio(spec);
+      default: return createButton(spec);
+    }
+  }
+
+  function renderSection(section) {
+    var div = document.createElement('div');
+    div.className = section.className || 'container py-3';
+    var title = section.title;
+    if (title) {
+      var h = document.createElement('h2');
+      h.className = 'h5 mb-3';
+      h.textContent = title;
+      div.appendChild(h);
+    }
+    var row = document.createElement('div');
+    row.className = section.rowClass || 'd-flex flex-wrap gap-2 align-items-center';
+    section.elements.forEach(function(spec) {
+      var node = createElement(spec);
+      row.appendChild(node);
+    });
+    div.appendChild(row);
+    return div;
+  }
+
+  function render(variantKey) {
+    var config = VARIANTS[variantKey];
+    if (!config) {
+      document.getElementById('root').innerHTML = '<div class="container py-5"><p class="text-danger">Unknown variant: ' + variantKey + '</p><p>Available: ' + Object.keys(VARIANTS).join(', ') + '</p></div>';
+      return;
+    }
+    var root = document.getElementById('root');
+    root.innerHTML = '';
+    var title = document.createElement('h1');
+    title.className = 'h4 mb-4 py-3 container';
+    title.textContent = config.title || variantKey;
+    root.appendChild(title);
+    (config.sections || []).forEach(function(section) {
+      root.appendChild(renderSection(section));
+    });
+  }
+
+  var VARIANTS = {
+    buttons_small: {
+      title: 'Buttons — small (XS/S/M)',
+      sections: [
+        { title: 'Top', className: 'container py-2', rowClass: 'd-flex flex-wrap gap-2', elements: [
+          { type: 'button', id: 'btn_1', size: 'xs', style: 'filled', text: 'OK' },
+          { type: 'button', id: 'btn_2', size: 'xs', style: 'outline', text: '×' },
+          { type: 'button', id: 'btn_3', size: 's', style: 'filled', text: 'Save' },
+          { type: 'button', id: 'btn_4', size: 's', style: 'outline', text: 'Cancel' },
+          { type: 'button', id: 'btn_5', size: 'm', style: 'filled', text: 'Submit' },
+        ]},
+        { title: 'Center', className: 'container py-3', rowClass: 'd-flex flex-wrap gap-3', elements: [
+          { type: 'button', id: 'btn_6', size: 'm', style: 'ghost', text: 'Ghost' },
+          { type: 'button', id: 'btn_7', size: 'm', style: 'rounded', text: 'Rounded' },
+          { type: 'button', id: 'btn_8', size: 's', style: 'disabled', text: 'Disabled' },
+        ]},
+      ]
+    },
+    buttons_wide: {
+      title: 'Buttons — wide / long text',
+      sections: [
+        { title: 'Wide buttons', className: 'container py-3', rowClass: 'd-flex flex-column gap-2', elements: [
+          { type: 'button', id: 'btn_w1', size: 'm', style: 'filled', wide: true, text: 'Submit this form and continue to the next step' },
+          { type: 'button', id: 'btn_w2', size: 'm', style: 'outline', wide: true, text: 'Download full report for your region' },
+          { type: 'button', id: 'btn_w3', size: 'l', style: 'filled', wide: true, text: 'Contact support and get help' },
+        ]},
+      ]
+    },
+    buttons_mixed_styles: {
+      title: 'Buttons — mixed styles',
+      sections: [
+        { title: 'Styles', className: 'container py-3', rowClass: 'd-flex flex-wrap gap-2', elements: [
+          { type: 'button', id: 'btn_st1', size: 'm', style: 'filled', text: 'Filled' },
+          { type: 'button', id: 'btn_st2', size: 'm', style: 'outline', text: 'Outline' },
+          { type: 'button', id: 'btn_st3', size: 'm', style: 'ghost', text: 'Ghost' },
+          { type: 'button', id: 'btn_st4', size: 'm', style: 'borderless', text: 'Borderless' },
+          { type: 'button', id: 'btn_st5', size: 'm', style: 'rounded', text: 'Rounded' },
+          { type: 'button', id: 'btn_st6', size: 'm', style: 'low-contrast', text: 'Low contrast' },
+        ]},
+      ]
+    },
+    links_standalone: {
+      title: 'Links — standalone',
+      sections: [
+        { title: 'Links', className: 'container py-3', rowClass: 'd-flex flex-wrap gap-3', elements: [
+          { type: 'link', id: 'link_1', size: 's', style: 'underline', text: 'Documentation' },
+          { type: 'link', id: 'link_2', size: 'm', style: 'no-underline', text: 'API reference' },
+          { type: 'link', id: 'link_3', size: 'm', text: 'Changelog' },
+          { type: 'link', id: 'link_4', size: 'l', wide: true, text: 'View all products in the catalog' },
+        ]},
+      ]
+    },
+    links_mixed: {
+      title: 'Links — mixed sizes and styles',
+      sections: [
+        { title: 'Mixed', className: 'container py-3', rowClass: 'd-flex flex-wrap gap-2', elements: [
+          { type: 'link', id: 'link_m1', size: 'xs', text: 'Here' },
+          { type: 'link', id: 'link_m2', size: 's', text: 'Sign in' },
+          { type: 'link', id: 'link_m3', size: 'm', style: 'underline', text: 'Privacy and security settings' },
+          { type: 'link', id: 'link_m4', size: 'l', style: 'no-underline', text: 'Contact support and get help' },
+        ]},
+      ]
+    },
+    inputs_placeholders: {
+      title: 'Inputs — with and without placeholder',
+      sections: [
+        { title: 'Inputs', className: 'container py-3', rowClass: 'd-flex flex-wrap gap-3 align-items-end', elements: [
+          { type: 'input', id: 'inp_1', size: 'm', placeholder: 'you@example.com', label: 'Email' },
+          { type: 'input', id: 'inp_2', size: 'm', label: 'Name (no placeholder)' },
+          { type: 'input', id: 'inp_3', size: 'm', placeholder: 'Search...' },
+        ]},
+      ]
+    },
+    inputs_dense: {
+      title: 'Inputs — dense / small',
+      sections: [
+        { title: 'Dense', className: 'container py-3', rowClass: 'd-flex flex-wrap gap-2 align-items-end', elements: [
+          { type: 'input', id: 'inp_d1', size: 'xs', placeholder: 'XS', label: 'XS' },
+          { type: 'input', id: 'inp_d2', size: 's', placeholder: 'S', label: 'S' },
+          { type: 'input', id: 'inp_d3', size: 'm', placeholder: 'M', label: 'M' },
+          { type: 'input', id: 'inp_d4', size: 'l', placeholder: 'L', label: 'L' },
+        ]},
+      ]
+    },
+    inputs_with_labels: {
+      title: 'Inputs — label above and left',
+      sections: [
+        { title: 'Label above', className: 'container py-3', rowClass: 'd-flex flex-column gap-3', elements: [
+          { type: 'input', id: 'inp_l1', size: 'm', label: 'Login', placeholder: 'Enter login' },
+          { type: 'input', id: 'inp_l2', size: 'm', label: 'Password', inputType: 'password' },
+        ]},
+        { title: 'More inputs', className: 'container py-3', rowClass: 'd-flex flex-wrap gap-3 align-items-end', elements: [
+          { type: 'input', id: 'inp_l3', size: 'm', label: 'Email', placeholder: 'email@example.com' },
+          { type: 'input', id: 'inp_l4', size: 's', label: 'Phone', placeholder: '+7' },
+        ]},
+      ]
+    },
+    textareas_small: {
+      title: 'Textareas — small',
+      sections: [
+        { title: 'Textareas', className: 'container py-3', rowClass: 'd-flex flex-wrap gap-3', elements: [
+          { type: 'textarea', id: 'ta_1', size: 'm', rows: 2, placeholder: 'Short comment', label: 'Comment' },
+          { type: 'textarea', id: 'ta_2', size: 's', rows: 2, placeholder: 'XS' },
+        ]},
+      ]
+    },
+    textareas_large: {
+      title: 'Textareas — large',
+      sections: [
+        { title: 'Large', className: 'container py-3', rowClass: 'd-flex flex-wrap gap-3', elements: [
+          { type: 'textarea', id: 'ta_3', size: 'm', rows: 5, placeholder: 'Your message...', label: 'Message' },
+          { type: 'textarea', id: 'ta_4', size: 'l', rows: 4, placeholder: 'Long text area' },
+        ]},
+      ]
+    },
+    checkboxes_radios: {
+      title: 'Checkboxes and radios',
+      sections: [
+        { title: 'Checkboxes', className: 'container py-3', rowClass: 'd-flex flex-wrap gap-3', elements: [
+          { type: 'checkbox', id: 'chk_1', size: 'm', label: 'Accept terms' },
+          { type: 'checkbox', id: 'chk_2', size: 's', label: 'Subscribe', checked: true },
+          { type: 'checkbox', id: 'chk_3', size: 'm', style: 'disabled', label: 'Disabled' },
+        ]},
+        { title: 'Radios', className: 'container py-3', rowClass: 'd-flex flex-wrap gap-3', elements: [
+          { type: 'radio', id: 'rad_1', name: 'grp1', size: 'm', label: 'Option A', checked: true },
+          { type: 'radio', id: 'rad_2', name: 'grp1', size: 'm', label: 'Option B' },
+          { type: 'radio', id: 'rad_3', name: 'grp1', size: 'm', label: 'Option C' },
+        ]},
+      ]
+    },
+    forms_dense: {
+      title: 'Forms — dense mix',
+      sections: [
+        { title: 'Form', className: 'container py-3', rowClass: 'd-flex flex-column gap-2', elements: [
+          { type: 'input', id: 'f_inp_1', size: 's', label: 'Email', placeholder: 'email@example.com' },
+          { type: 'input', id: 'f_inp_2', size: 's', label: 'Password', inputType: 'password' },
+          { type: 'textarea', id: 'f_ta_1', size: 's', rows: 2, placeholder: 'Comment' },
+          { type: 'checkbox', id: 'f_chk_1', size: 's', label: 'Remember' },
+          { type: 'button', id: 'f_btn_1', size: 's', style: 'filled', text: 'Submit' },
+        ]},
+      ]
+    },
+    full_mixed: {
+      title: 'Full mixed — all types',
+      sections: [
+        { title: 'Top bar', className: 'container py-2', rowClass: 'd-flex flex-wrap gap-2 align-items-center', elements: [
+          { type: 'link', id: 'fm_link_1', size: 's', text: 'Home' },
+          { type: 'link', id: 'fm_link_2', size: 's', text: 'Products' },
+          { type: 'button', id: 'fm_btn_1', size: 's', style: 'filled', text: 'Sign in' },
+        ]},
+        { title: 'Center', className: 'container py-3', rowClass: 'd-flex flex-wrap gap-3 align-items-end', elements: [
+          { type: 'input', id: 'fm_inp_1', size: 'm', placeholder: 'Search', label: 'Search' },
+          { type: 'button', id: 'fm_btn_2', size: 'm', style: 'outline', text: 'Search' },
+          { type: 'link', id: 'fm_link_3', size: 'm', text: 'Advanced' },
+        ]},
+        { title: 'Form block', className: 'container py-3', rowClass: 'd-flex flex-wrap gap-3', elements: [
+          { type: 'input', id: 'fm_inp_2', size: 'm', label: 'Email', placeholder: 'you@example.com' },
+          { type: 'textarea', id: 'fm_ta_1', size: 'm', rows: 2, placeholder: 'Message', label: 'Message' },
+          { type: 'checkbox', id: 'fm_chk_1', size: 'm', label: 'Subscribe' },
+          { type: 'radio', id: 'fm_rad_1', name: 'fm_grp', size: 'm', label: 'A', checked: true },
+          { type: 'radio', id: 'fm_rad_2', name: 'fm_grp', size: 'm', label: 'B' },
+          { type: 'button', id: 'fm_btn_3', size: 'm', style: 'filled', text: 'Send' },
+        ]},
+      ]
+    },
+    cards_with_controls: {
+      title: 'Cards with controls',
+      sections: [
+        { title: 'Card 1', className: 'container py-2', rowClass: 'card card-body d-flex flex-wrap gap-2', elements: [
+          { type: 'button', id: 'c_btn_1', size: 's', style: 'filled', text: 'OK' },
+          { type: 'button', id: 'c_btn_2', size: 's', style: 'outline', text: 'Cancel' },
+        ]},
+        { title: 'Card 2', className: 'container py-2', rowClass: 'card card-body d-flex flex-wrap gap-2', elements: [
+          { type: 'input', id: 'c_inp_1', size: 's', placeholder: 'Name', label: 'Name' },
+          { type: 'link', id: 'c_link_1', size: 's', text: 'Help' },
+        ]},
+        { title: 'Card 3', className: 'container py-2', rowClass: 'card card-body d-flex flex-wrap gap-2', elements: [
+          { type: 'checkbox', id: 'c_chk_1', size: 's', label: 'Option 1' },
+          { type: 'radio', id: 'c_rad_1', name: 'c_grp', size: 's', label: 'Yes', checked: true },
+          { type: 'radio', id: 'c_rad_2', name: 'c_grp', size: 's', label: 'No' },
+        ]},
+      ]
+    }
+  };
+
+  window.UI_DATASET_VARIANTS = Object.keys(VARIANTS);
+  window.UI_DATASET_THEMES = ['default', 'dark', 'high_contrast', 'low_contrast', 'outline', 'ghost', 'rounded', 'square'];
+  var theme = getThemeFromUrl();
+  applyTheme(theme);
+  var variant = getVariantFromUrl();
+  render(variant);
+})();
+  </script>
+</body>
+</html>

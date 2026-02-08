@@ -1,0 +1,46 @@
+/* Low contrast: grays, muted text and borders */
+body.bg-light,
+body {
+  background-color: #f0f0f0 !important;
+  color: #6c757d !important;
+}
+#root .h4, #root .h5, #root .h6, #root h1, #root h2 {
+  color: #5a6268 !important;
+}
+.card {
+  background-color: #f8f9fa !important;
+  border-color: #dee2e6 !important;
+  color: #6c757d !important;
+}
+.card-body {
+  background-color: #f8f9fa !important;
+  color: #6c757d !important;
+}
+.btn-primary {
+  background-color: #adb5bd !important;
+  border-color: #adb5bd !important;
+  color: #495057 !important;
+}
+.btn-outline-primary {
+  border-color: #adb5bd !important;
+  color: #6c757d !important;
+  background-color: transparent !important;
+}
+.btn-outline-primary:hover {
+  background-color: rgba(173, 181, 189, 0.3) !important;
+  color: #495057 !important;
+}
+.btn-link {
+  color: #6c757d !important;
+}
+.form-control, .form-select {
+  background-color: #fff !important;
+  border-color: #dee2e6 !important;
+  color: #6c757d !important;
+}
+.form-control::placeholder {
+  color: #adb5bd !important;
+}
+.form-label, .form-check-label {
+  color: #6c757d !important;
+}

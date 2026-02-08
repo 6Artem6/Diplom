@@ -1,0 +1,44 @@
+/* High contrast: black/white, strong borders */
+body.bg-light,
+body {
+  background-color: #fff !important;
+  color: #000 !important;
+}
+#root .h4, #root .h5, #root .h6, #root h1, #root h2 {
+  color: #000 !important;
+}
+.card {
+  background-color: #fff !important;
+  border: 2px solid #000 !important;
+  color: #000 !important;
+}
+.card-body {
+  background-color: #fff !important;
+  border: none !important;
+}
+.btn-primary {
+  background-color: #000 !important;
+  border: 2px solid #000 !important;
+  color: #fff !important;
+}
+.btn-outline-primary {
+  border: 2px solid #000 !important;
+  color: #000 !important;
+  background-color: transparent !important;
+}
+.btn-outline-primary:hover {
+  background-color: #000 !important;
+  color: #fff !important;
+}
+.btn-link {
+  color: #000 !important;
+  text-decoration: underline !important;
+}
+.form-control, .form-select {
+  border: 2px solid #000 !important;
+  background-color: #fff !important;
+  color: #000 !important;
+}
+.form-label, .form-check-label {
+  color: #000 !important;
+}

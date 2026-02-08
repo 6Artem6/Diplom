@@ -1,0 +1,102 @@
+<!--
+Цель страницы:
+Проверка различения ссылок и обычного текста: inline-ссылки в абзацах, короткие слова как ссылка, длинные ссылки, без подчёркивания, в списках и карточках.
+Ожидаемое поведение:
+- inline-ссылки внутри paragraph → inline_link_candidate или пониженный confidence;
+- короткие слова, похожие на ссылку (но не ссылка) → не link;
+- длинные ссылки (2–3 слова) = link.
+-->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1440, initial-scale=1">
+  <title>Ссылки vs текст</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .link-no-underline { text-decoration: none; }
+    .looks-like-link { color: #0d6efd; font-weight: 600; }
+  </style>
+</head>
+<body class="bg-light">
+  <nav class="navbar navbar-dark bg-dark mb-4">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">Links vs Text</a>
+      <a class="nav-link text-light" href="#section1">Section 1</a>
+      <a class="nav-link text-light" href="#section2">Section 2</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <h1 class="mb-4">Ссылки и обычный текст</h1>
+
+    <!-- Inline-ссылки внутри абзацев -->
+    <section class="card mb-4" id="section1">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Inline-ссылки в абзацах</h2>
+        <p class="mb-2">Read the <a href="/docs">documentation</a> for more details. You can also check the <a href="/api">API reference</a> and the <a href="/changelog">changelog</a>.</p>
+        <p class="mb-2">Click <a href="/login">here</a> to sign in. Terms are in the <a href="/terms">Terms of Service</a>.</p>
+        <p>Short word that <span class="looks-like-link">looks</span> like a link but is not. Another <span class="looks-like-link">click</span> and <span class="looks-like-link">here</span> — all plain text.</p>
+      </div>
+    </section>
+
+    <!-- Длинные ссылки, без подчёркивания -->
+    <section class="card mb-4">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Длинные ссылки и без подчёркивания</h2>
+        <p class="mb-2"><a href="/products" class="link-no-underline">View all products in the catalog</a></p>
+        <p class="mb-2"><a href="/settings">Privacy and security settings</a></p>
+        <p><a href="/help" class="link-no-underline">Contact support and get help</a></p>
+      </div>
+    </section>
+
+    <!-- Ссылки в списках -->
+    <section class="card mb-4">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Ссылки в списках</h2>
+        <ul class="list-unstyled">
+          <li><a href="/a">First item</a></li>
+          <li><a href="/b">Second item with longer text</a></li>
+          <li><a href="/c">Third</a></li>
+        </ul>
+        <ol>
+          <li>Plain text item.</li>
+          <li><a href="/step2">Go to step two</a></li>
+          <li><a href="/step3">Final step</a></li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- Ссылки в карточках -->
+    <section class="row g-3" id="section2">
+      <div class="col-md-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h3 class="card-title h6"><a href="/card1">Card title link</a></h3>
+            <p class="card-text small">Description with <a href="/inline">inline link</a> inside.</p>
+            <a href="/card1-more" class="btn btn-sm btn-primary">Read more</a>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h3 class="card-title h6">Plain title</h3>
+            <p class="card-text small">No links here. Just text.</p>
+            <a href="/card2" class="card-link">Link at bottom</a>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h3 class="card-title h6">Multiple links</h3>
+            <p class="card-text small"><a href="/1">One</a>, <a href="/2">two</a>, <a href="/3">three</a>.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

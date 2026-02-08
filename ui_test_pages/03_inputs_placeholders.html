@@ -1,0 +1,135 @@
+<!--
+Цель страницы:
+Проверка детекции input/textarea/select: с placeholder и без, label сверху/слева, в карточках, с иконкой.
+Пустые карточки и блоки с пустым пространством — не должны порождать synthetic input.
+Ожидаемое поведение:
+- input не появляется «из пустоты» в пустых блоках;
+- placeholder не ломает привязку label ↔ bbox;
+- input с label сверху/слева = один input.
+-->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1440, initial-scale=1">
+  <title>Input-поля и формы</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .input-with-icon { padding-left: 2.5rem; }
+    .icon-in-input { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: #6c757d; }
+  </style>
+</head>
+<body class="bg-light">
+  <nav class="navbar navbar-dark bg-dark mb-4">
+    <div class="container-fluid">
+      <span class="navbar-brand">Inputs</span>
+    </div>
+  </nav>
+
+  <div class="container">
+    <h1 class="mb-4">Формы и input-поля</h1>
+
+    <!-- Placeholder vs без -->
+    <section class="card mb-4">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Placeholder и без</h2>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Email (label above)</label>
+            <input type="email" class="form-control" placeholder="you@example.com">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Name (no placeholder)</label>
+            <input type="text" class="form-control">
+          </div>
+          <div class="col-md-6">
+            <input type="text" class="form-control" placeholder="No visible label, placeholder only">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Label слева -->
+    <section class="card mb-4">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Label слева</h2>
+        <div class="row align-items-center mb-2">
+          <div class="col-auto"><label class="col-form-label">Login</label></div>
+          <div class="col"><input type="text" class="form-control" placeholder="Enter login"></div>
+        </div>
+        <div class="row align-items-center">
+          <div class="col-auto"><label class="col-form-label">Password</label></div>
+          <div class="col"><input type="password" class="form-control"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Input с иконкой, textarea, select -->
+    <section class="card mb-4">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Иконка, textarea, select</h2>
+        <div class="mb-3 position-relative">
+          <span class="icon-in-input">🔍</span>
+          <input type="search" class="form-control input-with-icon" placeholder="Search">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Comment</label>
+          <textarea class="form-control" rows="3" placeholder="Your message"></textarea>
+        </div>
+        <div>
+          <label class="form-label">Country</label>
+          <select class="form-select">
+            <option>Select country</option>
+            <option>Russia</option>
+            <option>USA</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Input внутри карточек -->
+    <section class="row g-3 mb-4">
+      <div class="col-md-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h3 class="card-title h6">Card with input</h3>
+            <label class="form-label small">Email</label>
+            <input type="email" class="form-control form-control-sm" placeholder="email@example.com">
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h3 class="card-title h6">Another card with input</h3>
+            <input type="text" class="form-control form-control-sm" placeholder="Name">
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <!-- Пустая карточка без input -->
+        <div class="card h-100">
+          <div class="card-body">
+            <h3 class="card-title h6">Empty card (no input)</h3>
+            <p class="card-text small text-muted">No form elements here.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Пустые блоки layout -->
+    <section class="card mb-4">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Layout с пустым пространством</h2>
+        <div class="row">
+          <div class="col-4 border rounded p-3">Left column, some text.</div>
+          <div class="col-4 border rounded p-3 bg-white" style="min-height: 120px;"></div>
+          <div class="col-4 border rounded p-3">Right column, text.</div>
+        </div>
+        <p class="mt-2 small text-muted">Middle column is intentionally empty — no input should be detected there.</p>
+      </div>
+    </section>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

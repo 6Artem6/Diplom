@@ -1,0 +1,8 @@
+/* Square: no border-radius */
+body .btn,
+body .form-control,
+body .form-select,
+body .card,
+body .card-body {
+  border-radius: 0 !important;
+}

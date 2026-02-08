@@ -1,0 +1,50 @@
+/* Dark mode: dark background, light text, dark buttons */
+body.bg-light,
+body {
+  background-color: #1a1d21 !important;
+  color: #e4e6eb !important;
+}
+#root .h4, #root .h5, #root .h6, #root h1, #root h2 {
+  color: #e4e6eb !important;
+}
+.card {
+  background-color: #242628 !important;
+  border-color: #3e4248 !important;
+  color: #e4e6eb !important;
+}
+.card-body {
+  background-color: #242628 !important;
+  color: #e4e6eb !important;
+}
+.btn-primary {
+  background-color: #0d6efd !important;
+  border-color: #0d6efd !important;
+  color: #fff !important;
+}
+.btn-outline-primary {
+  border-color: #0d6efd !important;
+  color: #0d6efd !important;
+  background-color: transparent !important;
+}
+.btn-outline-primary:hover {
+  background-color: rgba(13, 110, 253, 0.2) !important;
+  color: #fff !important;
+}
+.btn-secondary, .btn-outline-secondary {
+  border-color: #6c757d !important;
+  color: #adb5bd !important;
+}
+.btn-link {
+  color: #58a6ff !important;
+}
+.form-control, .form-select {
+  background-color: #2d3139 !important;
+  border-color: #3e4248 !important;
+  color: #e4e6eb !important;
+}
+.form-control::placeholder {
+  color: #8b9199 !important;
+}
+.form-label, .form-check-label {
+  color: #c4c8cc !important;
+}

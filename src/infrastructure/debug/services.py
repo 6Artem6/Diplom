@@ -1705,10 +1705,23 @@ def save_debug_image_atoms_v2(
             if len(bbox) >= 4:
                 x1, y1, x2, y2 = int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3])
                 _dashed_rect(draw, x1, y1, x2, y2, COLOR_PARENT_REGIONS)
-        # 2) Atoms — сплошная рамка + тип
-        type_colors: Dict[str, Tuple[int, int, int]] = {
+        # 2) Atoms — цвет по ui_role, пунктир для weak_*, подпись atom.type / ui_role
+        ui_role_colors: Dict[str, Tuple[int, int, int]] = {
+            "button": (0, 200, 0),
+            "weak_button": (100, 220, 100),
+            "input": (0, 150, 255),
+            "weak_input": (100, 180, 255),
+            "link": (0, 100, 255),
+            "weak_link": (100, 150, 255),
+            "control_group": (180, 180, 0),
+            "pagination": (200, 100, 0),
+            "form": (0, 180, 120),
+            "noise": (128, 128, 128),
+        }
+        type_colors_fallback: Dict[str, Tuple[int, int, int]] = {
             "button": (0, 200, 0),
             "input": (0, 150, 255),
+            "weak_input": (100, 180, 255),
             "title": (200, 100, 0),
             "text_block": (255, 0, 0),
             "text": (255, 0, 0),
@@ -1719,10 +1732,15 @@ def save_debug_image_atoms_v2(
                 continue
             x1, y1, x2, y2 = int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3])
             t = a.get("type", "text_block")
-            color = type_colors.get(t, (128, 128, 128))
-            draw.rectangle([x1, y1, x2, y2], outline=color, width=2)
-            label = f"{t}"
-            draw.text((x1, max(0, y1 - 14)), label, fill=color, font=font)
+            ui_role = a.get("ui_role") or ""
+            color = ui_role_colors.get(ui_role) or type_colors_fallback.get(t, (128, 128, 128))
+            is_weak = ui_role in ("weak_button", "weak_link", "weak_input")
+            if is_weak:
+                _dashed_rect(draw, x1, y1, x2, y2, color)
+            else:
+                draw.rectangle([x1, y1, x2, y2], outline=color, width=2)
+            label = f"{t} / {ui_role}" if ui_role else f"{t}"
+            draw.text((x1, max(0, y1 - 14)), label[:60], fill=color, font=font)
         # 3) Сырой OCR-слой: RawOCRBox — оранжевый, подпись OCR: "text" (confidence)
         color_raw_ocr = (255, 140, 0)
         if raw_ocr_boxes:

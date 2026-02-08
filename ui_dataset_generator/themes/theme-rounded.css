@@ -1,0 +1,18 @@
+/* Rounded: large border-radius everywhere */
+body .btn,
+body .form-control,
+body .form-select,
+body .card {
+  border-radius: 1.5rem !important;
+}
+body .card .card-body {
+  border-radius: 1.5rem !important;
+}
+body .btn.ui-xs { border-radius: 0.75rem !important; }
+body .btn.ui-s { border-radius: 1rem !important; }
+body .btn.ui-m { border-radius: 1.25rem !important; }
+body .btn.ui-l { border-radius: 1.5rem !important; }
+body .btn.ui-xl { border-radius: 2rem !important; }
+body textarea.form-control {
+  border-radius: 1.25rem !important;
+}

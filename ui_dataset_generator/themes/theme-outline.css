@@ -1,0 +1,26 @@
+/* Outline-only: buttons as outline, no fill by default */
+.btn-primary {
+  background-color: transparent !important;
+  border: 1px solid #0d6efd !important;
+  color: #0d6efd !important;
+}
+.btn-primary:hover:not(:disabled) {
+  background-color: rgba(13, 110, 253, 0.1) !important;
+}
+.btn-primary:disabled {
+  border-color: #adb5bd !important;
+  color: #6c757d !important;
+}
+.btn-secondary {
+  background-color: transparent !important;
+  border: 1px solid #6c757d !important;
+  color: #6c757d !important;
+}
+.btn-success, .btn-info, .btn-warning, .btn-danger {
+  background-color: transparent !important;
+  border-width: 1px !important;
+}
+.form-control, .form-select {
+  background-color: transparent !important;
+  border: 1px solid #212529 !important;
+}

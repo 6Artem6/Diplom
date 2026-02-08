@@ -1,0 +1,110 @@
+<!--
+Цель страницы:
+Краевые случаи: очень мелкий/крупный текст, кнопка почти на весь экран, элементы вплотную и с большим padding, один и тот же текст в разных типах UI.
+Ожидаемое поведение:
+- устойчивость к масштабу текста и размеру элементов;
+- не путать соседние элементы при малом отступе;
+- один текст в button/link/label — различать по типу элемента.
+-->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1440, initial-scale=1">
+  <title>Краевые случаи</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .text-tiny { font-size: 0.65rem; }
+    .text-huge { font-size: 2.5rem; }
+    .btn-full-width { width: 100%; max-width: 1200px; margin: 0 auto; display: block; }
+    .tight-group .btn { margin: 2px; }
+    .tight-group .form-control { margin: 2px; }
+    .wide-padding { padding: 3rem; }
+    .same-text { font-weight: 600; }
+  </style>
+</head>
+<body class="bg-light">
+  <nav class="navbar navbar-dark bg-dark mb-4">
+    <div class="container-fluid">
+      <span class="navbar-brand">Edge cases</span>
+    </div>
+  </nav>
+
+  <div class="container">
+    <h1 class="mb-4">Краевые случаи</h1>
+
+    <!-- Очень мелкий и очень крупный текст -->
+    <section class="card mb-4">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Масштаб текста</h2>
+        <p class="text-tiny mb-1">This is very small text. Button below: <button class="btn btn-sm btn-primary text-tiny">Submit</button> and link: <a href="#" class="text-tiny">link</a>.</p>
+        <p class="text-huge mb-1">Large heading text.</p>
+        <button class="btn btn-lg btn-success text-huge">Big button</button>
+        <a href="#" class="text-huge ms-2">Big link</a>
+      </div>
+    </section>
+
+    <!-- Кнопка почти на весь экран -->
+    <section class="card mb-4">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Широкая кнопка</h2>
+        <button class="btn btn-primary btn-full-width py-3">Submit this form and continue to the next step — full width button</button>
+      </div>
+    </section>
+
+    <!-- Элементы вплотную -->
+    <section class="card mb-4">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Элементы вплотную</h2>
+        <div class="tight-group d-flex flex-wrap align-items-center">
+          <button class="btn btn-primary btn-sm">OK</button>
+          <button class="btn btn-secondary btn-sm">Cancel</button>
+          <input type="text" class="form-control form-control-sm" style="width: 100px;" placeholder="X">
+          <button class="btn btn-outline-primary btn-sm">Save</button>
+          <a href="#" class="btn btn-link btn-sm">Link</a>
+          <button class="btn btn-warning btn-sm">Delete</button>
+        </div>
+        <p class="small mt-2 text-muted">Minimal gap between buttons and input — check bbox separation.</p>
+      </div>
+    </section>
+
+    <!-- Большой padding -->
+    <section class="card mb-4">
+      <div class="card-body wide-padding">
+        <h2 class="h5 mb-3">Большой padding</h2>
+        <p class="mb-2">Content with lots of padding around. Single button in the middle of empty space.</p>
+        <button class="btn btn-primary">Only button</button>
+      </div>
+    </section>
+
+    <!-- Одинаковый текст в разных типах UI -->
+    <section class="card mb-4">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Один текст — разный UI</h2>
+        <p class="mb-2">Same word "Submit" in different elements — must be distinguished by element type, not only by text.</p>
+        <div class="d-flex flex-wrap gap-3 align-items-center">
+          <button class="btn btn-primary same-text">Submit</button>
+          <a href="#" class="same-text">Submit</a>
+          <label class="form-label same-text mb-0">Submit</label>
+          <span class="badge bg-secondary same-text">Submit</span>
+          <input type="button" class="btn btn-outline-primary same-text" value="Submit">
+        </div>
+      </div>
+    </section>
+
+    <!-- Смесь: мелкий + вплотную + один текст -->
+    <section class="card mb-4">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Комбо</h2>
+        <div class="tight-group">
+          <button class="btn btn-sm text-tiny">OK</button>
+          <button class="btn btn-sm text-tiny">OK</button>
+          <a href="#" class="text-tiny">OK</a>
+          <span class="text-tiny">OK (plain)</span>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

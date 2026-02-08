@@ -13,8 +13,10 @@ services:
     volumes:
       - ./src:/app/src
       - ./data:/app/data  # For screenshots
+      - ./datasets:/app/datasets  # For datasets
       - ./debug:/app/debug  # For visualization PNGs
       - ./models:/app/models      # All ML models cache (persistent)
+      - ./scripts:/app/scripts  # For scripts
     environment:
       - HUGGINGFACE_HUB_TOKEN=${HUGGINGFACE_HUB_TOKEN}
       - HF_TOKEN=${HF_TOKEN}

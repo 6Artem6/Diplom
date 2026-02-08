@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1440, initial-scale=1">
+  <title>CatBoost UI Dataset — Bootstrap variants</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .ui-xs { padding: 0.15rem 0.4rem; font-size: 0.7rem; }
+    .ui-s { padding: 0.25rem 0.5rem; font-size: 0.875rem; }
+    .ui-m { padding: 0.375rem 0.75rem; font-size: 1rem; }
+    .ui-l { padding: 0.5rem 1rem; font-size: 1.125rem; }
+    .ui-xl { padding: 0.75rem 1.5rem; font-size: 1.25rem; }
+    .ui-wide { min-width: 280px; }
+    .ui-ghost { background: transparent; border-color: transparent; }
+    .ui-ghost:hover { background: rgba(0,0,0,0.05); }
+    .ui-borderless { border: none; background: transparent; }
+    .ui-rounded { border-radius: 1.5rem; }
+    .ui-square { border-radius: 0; }
+    .ui-low-contrast { color: #6c757d; border-color: #dee2e6; }
+    .ui-input-underline { border: none; border-bottom: 1px solid #212529; border-radius: 0; background: transparent; }
+    .ui-link-underline { text-decoration: underline; }
+    .ui-link-no-underline { text-decoration: none; }
+    .container-narrow { max-width: 480px; margin-left: auto; margin-right: auto; }
+    .container-wide { max-width: 960px; margin-left: auto; margin-right: auto; }
+    [data-ui-type] { box-sizing: border-box; }
+    button.btn-hover-sim { box-shadow: 0 2px 8px rgba(0,0,0,0.2); transform: translateY(-1px); }
+    .ui-btn-with-text.btn-hover-sim { box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+    input.form-filled-sim { font-weight: 500; }
+    .ui-icon-only { width: 2.25rem; height: 2.25rem; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+    .ui-icon-only.ui-s { width: 1.75rem; height: 1.75rem; font-size: 0.9rem; }
+    .ui-icon-only.ui-xs { width: 1.5rem; height: 1.5rem; font-size: 0.75rem; }
+    .ui-btn-with-text { display: inline-flex; align-items: center; gap: 0.5rem; flex-wrap: nowrap; }
+  </style>
+</head>
+<body class="bg-light">
+  <div id="root" class="min-vh-100"></div>
+  <script>
+(function() {
+  'use strict';
+  function getParam(name, def) {
+    var p = new URLSearchParams(window.location.search);
+    return p.get(name) || def;
+  }
+  function getVariantFromUrl() { return getParam('variant', 'buttons_small'); }
+  function getThemeFromUrl() { return getParam('theme', 'default'); }
+  function getLayoutFromUrl() { return getParam('layout', 'normal'); }
+  function getFormFilledFromUrl() { return getParam('form_filled', '0') === '1'; }
+  function getButtonHoverFromUrl() { return getParam('button_hover', '0') === '1'; }
+
+  function applyTheme(theme) {
+    var id = 'theme-css';
+    var existing = document.getElementById(id);
+    if (existing) existing.remove();
+    var fileTheme = (theme === 'light') ? 'default' : theme.replace(/_/g, '-');
+    var link = document.createElement('link');
+    link.id = id;
+    link.rel = 'stylesheet';
+    link.href = 'themes/theme-' + fileTheme + '.css';
+    document.head.appendChild(link);
+    document.documentElement.setAttribute('data-theme', theme);
+  }
+
+  function addDataAttrs(el, type, id) {
+    el.setAttribute('data-ui-type', type);
+    el.setAttribute('data-ui-id', id);
+    return el;
+  }
+  function sizeClass(size) { return size ? 'ui-' + size : 'ui-m'; }
+  function styleClass(type, style) {
+    if (!style) return '';
+    var c = [];
+    if (style === 'ghost') c.push('ui-ghost');
+    if (style === 'borderless') c.push('ui-borderless');
+    if (style === 'rounded') c.push('ui-rounded');
+    if (style === 'square') c.push('ui-square');
+    if (style === 'disabled' && type === 'button') c.push('disabled');
+    if (style === 'low-contrast') c.push('ui-low-contrast');
+    if (style === 'underline' && type === 'input') c.push('ui-input-underline');
+    if (style === 'underline' && type === 'link') c.push('ui-link-underline');
+    if (style === 'no-underline' && type === 'link') c.push('ui-link-no-underline');
+    return c.join(' ');
+  }
+
+  function createButton(spec) {
+    var el = document.createElement('button');
+    el.type = 'button';
+    el.className = 'btn ' + (spec.style === 'outline' ? 'btn-outline-primary' : 'btn-primary') + ' ' + sizeClass(spec.size) + ' ' + styleClass('button', spec.style);
+    if (spec.style === 'disabled') el.disabled = true;
+    if (spec.iconOnly) {
+      el.textContent = spec.icon || '\u22EE';
+      el.classList.add('ui-icon-only');
+      if (spec.ariaLabel) el.setAttribute('aria-label', spec.ariaLabel);
+    } else {
+      el.textContent = spec.text || 'Button';
+    }
+    if (spec.wide) el.classList.add('ui-wide');
+    return addDataAttrs(el, 'button', spec.id);
+  }
+  function createLink(spec) {
+    var el = document.createElement('a');
+    el.href = '#';
+    el.className = 'btn btn-link ' + sizeClass(spec.size) + ' ' + styleClass('link', spec.style);
+    el.textContent = spec.text || 'Link';
+    if (spec.wide) el.classList.add('ui-wide');
+    return addDataAttrs(el, 'link', spec.id);
+  }
+  function createInput(spec) {
+    var wrap = document.createElement('div');
+    wrap.className = 'mb-2';
+    if (spec.label) {
+      var lbl = document.createElement('label');
+      lbl.className = 'form-label ' + sizeClass(spec.size);
+      lbl.textContent = spec.label;
+      lbl.setAttribute('for', spec.id + '_input');
+      wrap.appendChild(lbl);
+    }
+    var el = document.createElement('input');
+    el.type = spec.inputType || 'text';
+    el.id = spec.id + '_input';
+    el.placeholder = spec.placeholder || '';
+    el.className = 'form-control ' + sizeClass(spec.size) + ' ' + styleClass('input', spec.style);
+    if (spec.style === 'disabled') el.disabled = true;
+    wrap.appendChild(el);
+    addDataAttrs(el, 'input', spec.id);
+    return wrap;
+  }
+  function createTextarea(spec) {
+    var wrap = document.createElement('div');
+    wrap.className = 'mb-2';
+    if (spec.label) {
+      var lbl = document.createElement('label');
+      lbl.className = 'form-label ' + sizeClass(spec.size);
+      lbl.textContent = spec.label;
+      lbl.setAttribute('for', spec.id + '_ta');
+      wrap.appendChild(lbl);
+    }
+    var el = document.createElement('textarea');
+    el.id = spec.id + '_ta';
+    el.rows = spec.rows || 3;
+    el.placeholder = spec.placeholder || '';
+    el.className = 'form-control ' + sizeClass(spec.size);
+    if (spec.style === 'disabled') el.disabled = true;
+    wrap.appendChild(el);
+    addDataAttrs(el, 'textarea', spec.id);
+    return wrap;
+  }
+  function createCheckbox(spec) {
+    var wrap = document.createElement('div');
+    wrap.className = 'form-check mb-2';
+    var el = document.createElement('input');
+    el.type = 'checkbox';
+    el.id = spec.id + '_cb';
+    el.className = 'form-check-input';
+    if (spec.checked) el.checked = true;
+    if (spec.style === 'disabled') el.disabled = true;
+    addDataAttrs(el, 'checkbox', spec.id);
+    var lbl = document.createElement('label');
+    lbl.className = 'form-check-label ' + sizeClass(spec.size);
+    lbl.setAttribute('for', spec.id + '_cb');
+    lbl.textContent = spec.label || 'Checkbox';
+    wrap.appendChild(el);
+    wrap.appendChild(lbl);
+    return wrap;
+  }
+  function createRadio(spec) {
+    var wrap = document.createElement('div');
+    wrap.className = 'form-check mb-2';
+    var el = document.createElement('input');
+    el.type = 'radio';
+    el.name = spec.name || 'radio_grp';
+    el.id = spec.id + '_rad';
+    el.className = 'form-check-input';
+    if (spec.checked) el.checked = true;
+    if (spec.style === 'disabled') el.disabled = true;
+    addDataAttrs(el, 'radio', spec.id);
+    var lbl = document.createElement('label');
+    lbl.className = 'form-check-label ' + sizeClass(spec.size);
+    lbl.setAttribute('for', spec.id + '_rad');
+    lbl.textContent = spec.label || 'Option';
+    wrap.appendChild(el);
+    wrap.appendChild(lbl);
+    return wrap;
+  }
+  function createButtonWithText(spec) {
+    var wrap = document.createElement('div');
+    wrap.className = 'ui-btn-with-text d-inline-flex align-items-center gap-2';
+    addDataAttrs(wrap, 'button', spec.id);
+    var span = document.createElement('span');
+    span.textContent = spec.text || 'Label';
+    span.className = sizeClass(spec.size);
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn btn-primary ' + sizeClass(spec.size);
+    btn.textContent = spec.buttonText || 'Go';
+    wrap.appendChild(span);
+    wrap.appendChild(btn);
+    return wrap;
+  }
+
+  function createElement(spec) {
+    switch (spec.type) {
+      case 'button': return createButton(spec);
+      case 'buttonWithText': return createButtonWithText(spec);
+      case 'link': return createLink(spec);
+      case 'input': return createInput(spec);
+      case 'textarea': return createTextarea(spec);
+      case 'checkbox': return createCheckbox(spec);
+      case 'radio': return createRadio(spec);
+      default: return createButton(spec);
+    }
+  }
+
+  function containerClass(layout) {
+    if (layout === 'narrow') return 'container-narrow container py-3';
+    if (layout === 'wide') return 'container-wide container py-3';
+    return 'container py-3';
+  }
+
+  function renderSection(section, layout) {
+    var div = document.createElement('div');
+    var baseClass = section.className || containerClass(layout);
+    if (layout === 'narrow') baseClass = baseClass.replace(/\bcontainer(?:-narrow|-wide)?\s*(?:container\s*)?/g, 'container-narrow container ');
+    else if (layout === 'wide') baseClass = baseClass.replace(/\bcontainer(?:-narrow|-wide)?\s*(?:container\s*)?/g, 'container-wide container ');
+    div.className = baseClass.trim();
+    var title = section.title;
+    if (title) {
+      var h = document.createElement('h2');
+      h.className = 'h5 mb-3';
+      h.textContent = title;
+      div.appendChild(h);
+    }
+    var row = document.createElement('div');
+    row.className = section.rowClass || 'd-flex flex-wrap gap-2 align-items-center';
+    section.elements.forEach(function(spec) { row.appendChild(createElement(spec)); });
+    div.appendChild(row);
+    return div;
+  }
+
+  function applyFormFilled() {
+    document.querySelectorAll('input[data-ui-type="input"], input[data-ui-type="text"], textarea[data-ui-type="textarea"]').forEach(function(el) {
+      if (el.type === 'password') el.value = '••••••••';
+      else if (el.type === 'email') el.value = 'user@example.com';
+      else if (el.placeholder) el.value = el.placeholder;
+      else el.value = 'Sample text';
+      el.classList.add('form-filled-sim');
+    });
+  }
+  function applyButtonHover() {
+    var first = document.querySelector('[data-ui-type="button"]');
+    if (first) first.classList.add('btn-hover-sim');
+  }
+
+  function render(variantKey, layout) {
+    var config = VARIANTS[variantKey];
+    if (!config) {
+      document.getElementById('root').innerHTML = '<div class="container py-5"><p class="text-danger">Unknown variant: ' + variantKey + '</p></div>';
+      return;
+    }
+    var root = document.getElementById('root');
+    root.innerHTML = '';
+    var title = document.createElement('h1');
+    title.className = 'h4 mb-4 py-3 container';
+    title.textContent = config.title || variantKey;
+    root.appendChild(title);
+    (config.sections || []).forEach(function(section) { root.appendChild(renderSection(section, layout)); });
+    if (getFormFilledFromUrl()) applyFormFilled();
+    if (getButtonHoverFromUrl()) applyButtonHover();
+  }
+
+  var VARIANTS = {
+    buttons_small: {
+      title: 'Buttons — small',
+      sections: [
+        { className: 'container py-2', rowClass: 'd-flex flex-wrap gap-2', elements: [
+          { type: 'button', id: 'btn_1', size: 'xs', style: 'filled', text: 'OK' },
+          { type: 'button', id: 'btn_2', size: 'xs', style: 'outline', text: 'Cancel' },
+          { type: 'button', id: 'btn_3', size: 's', style: 'filled', text: 'Save' },
+          { type: 'button', id: 'btn_4', size: 'm', style: 'filled', text: 'Submit' },
+        ]},
+      ]
+    },
+    buttons_wide: {
+      title: 'Buttons — wide',
+      sections: [
+        { className: 'container py-3', rowClass: 'd-flex flex-column gap-2', elements: [
+          { type: 'button', id: 'bw1', size: 'm', style: 'filled', wide: true, text: 'Submit and continue' },
+          { type: 'button', id: 'bw2', size: 'm', style: 'outline', wide: true, text: 'Download report' },
+        ]},
+      ]
+    },
+    buttons_mixed: {
+      title: 'Buttons — mixed styles',
+      sections: [
+        { className: 'container py-3', rowClass: 'd-flex flex-wrap gap-2', elements: [
+          { type: 'button', id: 'bm1', size: 'm', style: 'filled', text: 'Filled' },
+          { type: 'button', id: 'bm2', size: 'm', style: 'outline', text: 'Outline' },
+          { type: 'button', id: 'bm3', size: 'm', style: 'ghost', text: 'Ghost' },
+          { type: 'button', id: 'bm4', size: 'm', style: 'rounded', text: 'Rounded' },
+        ]},
+      ]
+    },
+    links_standalone: {
+      title: 'Links',
+      sections: [
+        { className: 'container py-3', rowClass: 'd-flex flex-wrap gap-3', elements: [
+          { type: 'link', id: 'l1', size: 's', style: 'underline', text: 'Documentation' },
+          { type: 'link', id: 'l2', size: 'm', text: 'API' },
+          { type: 'link', id: 'l3', size: 'l', text: 'Changelog' },
+        ]},
+      ]
+    },
+    inputs_placeholders: {
+      title: 'Inputs — placeholders',
+      sections: [
+        { className: 'container py-3', rowClass: 'd-flex flex-wrap gap-3 align-items-end', elements: [
+          { type: 'input', id: 'i1', size: 'm', placeholder: 'you@example.com', label: 'Email' },
+          { type: 'input', id: 'i2', size: 'm', label: 'Name' },
+          { type: 'input', id: 'i3', size: 'm', placeholder: 'Search...' },
+        ]},
+      ]
+    },
+    inputs_dense: {
+      title: 'Inputs — dense',
+      sections: [
+        { className: 'container py-3', rowClass: 'd-flex flex-wrap gap-2 align-items-end', elements: [
+          { type: 'input', id: 'id1', size: 'xs', placeholder: 'XS', label: 'XS' },
+          { type: 'input', id: 'id2', size: 's', placeholder: 'S', label: 'S' },
+          { type: 'input', id: 'id3', size: 'm', placeholder: 'M', label: 'M' },
+        ]},
+      ]
+    },
+    inputs_with_labels: {
+      title: 'Inputs — labels',
+      sections: [
+        { className: 'container py-3', rowClass: 'd-flex flex-column gap-3', elements: [
+          { type: 'input', id: 'il1', size: 'm', label: 'Login', placeholder: 'Enter login' },
+          { type: 'input', id: 'il2', size: 'm', label: 'Password', inputType: 'password' },
+        ]},
+      ]
+    },
+    login_form: {
+      title: 'Login form',
+      sections: [
+        { className: 'container-narrow container py-4', rowClass: 'd-flex flex-column gap-3', elements: [
+          { type: 'input', id: 'lf1', size: 'm', label: 'Email', placeholder: 'email@example.com' },
+          { type: 'input', id: 'lf2', size: 'm', label: 'Password', inputType: 'password' },
+          { type: 'checkbox', id: 'lf3', size: 's', label: 'Remember me' },
+          { type: 'button', id: 'lf4', size: 'm', style: 'filled', text: 'Sign in' },
+        ]},
+      ]
+    },
+    signup_form: {
+      title: 'Sign up',
+      sections: [
+        { className: 'container-narrow container py-4', rowClass: 'd-flex flex-column gap-2', elements: [
+          { type: 'input', id: 'sf1', size: 'm', label: 'Name', placeholder: 'Your name' },
+          { type: 'input', id: 'sf2', size: 'm', label: 'Email', placeholder: 'you@example.com' },
+          { type: 'input', id: 'sf3', size: 'm', label: 'Password', inputType: 'password' },
+          { type: 'button', id: 'sf4', size: 'm', style: 'filled', wide: true, text: 'Create account' },
+        ]},
+      ]
+    },
+    search_bar: {
+      title: 'Search',
+      sections: [
+        { className: 'container py-3', rowClass: 'd-flex gap-2 align-items-center', elements: [
+          { type: 'input', id: 'sb1', size: 'm', placeholder: 'Search...' },
+          { type: 'button', id: 'sb2', size: 'm', style: 'outline', text: 'Search' },
+        ]},
+      ]
+    },
+    filter_bar: {
+      title: 'Filters',
+      sections: [
+        { className: 'container py-3', rowClass: 'd-flex flex-wrap gap-2 align-items-end', elements: [
+          { type: 'input', id: 'fb1', size: 's', placeholder: 'From', label: 'From' },
+          { type: 'input', id: 'fb2', size: 's', placeholder: 'To', label: 'To' },
+          { type: 'button', id: 'fb3', size: 's', style: 'filled', text: 'Apply' },
+          { type: 'button', id: 'fb4', size: 's', style: 'outline', text: 'Reset' },
+        ]},
+      ]
+    },
+    toolbar: {
+      title: 'Toolbar',
+      sections: [
+        { className: 'container py-2', rowClass: 'd-flex flex-wrap gap-2', elements: [
+          { type: 'button', id: 'tb1', size: 's', style: 'filled', text: 'Save' },
+          { type: 'button', id: 'tb2', size: 's', style: 'outline', text: 'Cancel' },
+          { type: 'link', id: 'tb3', size: 's', text: 'Help' },
+        ]},
+      ]
+    },
+    contact_form: {
+      title: 'Contact',
+      sections: [
+        { className: 'container-wide container py-4', rowClass: 'd-flex flex-column gap-3', elements: [
+          { type: 'input', id: 'cf1', size: 'm', label: 'Email', placeholder: 'you@example.com' },
+          { type: 'textarea', id: 'cf2', size: 'm', rows: 4, placeholder: 'Message', label: 'Message' },
+          { type: 'button', id: 'cf3', size: 'm', style: 'filled', text: 'Send' },
+        ]},
+      ]
+    },
+    textareas_small: {
+      title: 'Textareas',
+      sections: [
+        { className: 'container py-3', rowClass: 'd-flex flex-wrap gap-3', elements: [
+          { type: 'textarea', id: 'ta1', size: 'm', rows: 2, placeholder: 'Comment', label: 'Comment' },
+          { type: 'textarea', id: 'ta2', size: 's', rows: 2, placeholder: 'Short' },
+        ]},
+      ]
+    },
+    full_mixed: {
+      title: 'Full mixed',
+      sections: [
+        { className: 'container py-2', rowClass: 'd-flex flex-wrap gap-2', elements: [
+          { type: 'link', id: 'fm1', size: 's', text: 'Home' },
+          { type: 'button', id: 'fm2', size: 's', style: 'filled', text: 'Sign in' },
+        ]},
+        { className: 'container py-3', rowClass: 'd-flex flex-wrap gap-3 align-items-end', elements: [
+          { type: 'input', id: 'fm3', size: 'm', placeholder: 'Search', label: 'Search' },
+          { type: 'button', id: 'fm4', size: 'm', style: 'outline', text: 'Search' },
+        ]},
+        { className: 'container py-3', rowClass: 'd-flex flex-wrap gap-3', elements: [
+          { type: 'input', id: 'fm5', size: 'm', label: 'Email', placeholder: 'you@example.com' },
+          { type: 'textarea', id: 'fm6', size: 'm', rows: 2, placeholder: 'Message' },
+          { type: 'button', id: 'fm7', size: 'm', style: 'filled', text: 'Send' },
+        ]},
+      ]
+    },
+    cards_with_controls: {
+      title: 'Cards',
+      sections: [
+        { className: 'container py-2', rowClass: 'card card-body d-flex flex-wrap gap-2', elements: [
+          { type: 'button', id: 'c1', size: 's', style: 'filled', text: 'OK' },
+          { type: 'button', id: 'c2', size: 's', style: 'outline', text: 'Cancel' },
+        ]},
+        { className: 'container py-2', rowClass: 'card card-body d-flex flex-wrap gap-2', elements: [
+          { type: 'input', id: 'c3', size: 's', placeholder: 'Name', label: 'Name' },
+          { type: 'link', id: 'c4', size: 's', text: 'Help' },
+        ]},
+      ]
+    },
+    buttons_only_large: {
+      title: 'Buttons only — large',
+      sections: [
+        { className: 'container py-4', rowClass: 'd-flex flex-wrap gap-3', elements: [
+          { type: 'button', id: 'bl1', size: 'l', style: 'filled', text: 'Continue' },
+          { type: 'button', id: 'bl2', size: 'l', style: 'outline', text: 'Back' },
+        ]},
+      ]
+    },
+    inputs_only_no_label: {
+      title: 'Inputs — no labels',
+      sections: [
+        { className: 'container py-3', rowClass: 'd-flex flex-wrap gap-2', elements: [
+          { type: 'input', id: 'in1', size: 'm', placeholder: 'Username' },
+          { type: 'input', id: 'in2', size: 'm', placeholder: 'Password', inputType: 'password' },
+        ]},
+      ]
+    },
+    single_button: {
+      title: 'Single button',
+      sections: [
+        { className: 'container py-4', rowClass: 'd-flex justify-content-center', elements: [
+          { type: 'button', id: 'sbt1', size: 'm', style: 'filled', text: 'Submit' },
+        ]},
+      ]
+    },
+    single_input: {
+      title: 'Single input',
+      sections: [
+        { className: 'container-narrow container py-4', rowClass: 'd-flex flex-column', elements: [
+          { type: 'input', id: 'si1', size: 'm', label: 'Search', placeholder: 'Type here...' },
+        ]},
+      ]
+    },
+    buttons_icon_only: {
+      title: 'Buttons — icon only',
+      sections: [
+        { className: 'container py-3', rowClass: 'd-flex flex-wrap gap-2 align-items-center', elements: [
+          { type: 'button', id: 'io1', size: 'm', style: 'filled', iconOnly: true, icon: '\u22EE', ariaLabel: 'More' },
+          { type: 'button', id: 'io2', size: 'm', style: 'outline', iconOnly: true, icon: '\u2715', ariaLabel: 'Close' },
+          { type: 'button', id: 'io3', size: 's', style: 'filled', iconOnly: true, icon: '+', ariaLabel: 'Add' },
+          { type: 'button', id: 'io4', size: 's', style: 'outline', iconOnly: true, icon: '\u270E', ariaLabel: 'Edit' },
+          { type: 'button', id: 'io5', size: 'm', style: 'filled', iconOnly: true, icon: '\u2630', ariaLabel: 'Menu' },
+        ]},
+      ]
+    },
+    inputs_no_label: {
+      title: 'Inputs — no label',
+      sections: [
+        { className: 'container py-3', rowClass: 'd-flex flex-wrap gap-3 align-items-end', elements: [
+          { type: 'input', id: 'nl1', size: 'm', placeholder: 'Email' },
+          { type: 'input', id: 'nl2', size: 'm', placeholder: 'Password', inputType: 'password' },
+          { type: 'input', id: 'nl3', size: 's', placeholder: 'Code' },
+        ]},
+      ]
+    },
+    inputs_no_label_messy: {
+      title: 'Inputs — no label, messy',
+      sections: [
+        { className: 'container py-2', rowClass: 'd-flex flex-wrap gap-1 align-items-end', elements: [
+          { type: 'input', id: 'nm1', size: 'xs', placeholder: 'A' },
+          { type: 'input', id: 'nm2', size: 'm', placeholder: 'Search...' },
+          { type: 'input', id: 'nm3', size: 's', placeholder: 'X' },
+          { type: 'input', id: 'nm4', size: 'l', placeholder: 'Long placeholder' },
+          { type: 'input', id: 'nm5', size: 'm', placeholder: '' },
+        ]},
+      ]
+    },
+    cards_buttons_only: {
+      title: 'Cards — buttons only',
+      sections: [
+        { className: 'container py-2', rowClass: 'card card-body d-flex flex-wrap gap-2', elements: [
+          { type: 'button', id: 'cb1', size: 's', style: 'filled', text: 'Save' },
+          { type: 'button', id: 'cb2', size: 's', style: 'outline', text: 'Cancel' },
+        ]},
+        { className: 'container py-2', rowClass: 'card card-body d-flex flex-wrap gap-2', elements: [
+          { type: 'button', id: 'cb3', size: 'm', style: 'filled', text: 'Submit' },
+        ]},
+        { className: 'container py-2', rowClass: 'card card-body d-flex gap-2', elements: [
+          { type: 'button', id: 'cb4', size: 's', style: 'outline', text: 'Edit' },
+          { type: 'button', id: 'cb5', size: 's', style: 'outline', text: 'Delete' },
+        ]},
+      ]
+    },
+    button_with_text_row: {
+      title: 'Button + text in one bbox',
+      sections: [
+        { className: 'container py-3', rowClass: 'd-flex flex-wrap gap-3 align-items-center', elements: [
+          { type: 'buttonWithText', id: 'bwt1', size: 'm', text: 'Save changes', buttonText: 'Save' },
+          { type: 'buttonWithText', id: 'bwt2', size: 's', text: 'Export', buttonText: 'CSV' },
+          { type: 'buttonWithText', id: 'bwt3', size: 'm', text: 'Send notification', buttonText: 'Send' },
+        ]},
+      ]
+    }
+  };
+
+  window.UI_DATASET_VARIANTS = Object.keys(VARIANTS);
+  window.UI_DATASET_THEMES = ['default', 'dark', 'high-contrast', 'low-contrast', 'outline', 'ghost', 'rounded', 'square'];
+  window.UI_DATASET_LAYOUTS = ['normal', 'narrow', 'wide'];
+  window.UI_DATASET_FORM_FILLED = ['0', '1'];
+  window.UI_DATASET_BUTTON_HOVER = ['0', '1'];
+
+  var theme = getThemeFromUrl();
+  applyTheme(theme);
+  var variant = getVariantFromUrl();
+  var layout = getLayoutFromUrl();
+  render(variant, layout);
+})();
+  </script>
+</body>
+</html>
