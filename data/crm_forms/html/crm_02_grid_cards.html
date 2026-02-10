@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CRM — Редактирование контакта</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, sans-serif; font-size: 14px; background: #f5f6fa; color: #1a1a1a; }
+    .header { display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; background: #34495e; color: #fff; }
+    .header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+    .header-actions { display: flex; gap: 10px; }
+    .btn { padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; border: 1px solid transparent; min-height: 36px; }
+    .btn-primary { background: #27ae60; color: #fff; }
+    .btn-outline { background: transparent; color: #ecf0f1; border: 1px solid #95a5a6; }
+    .main { max-width: 1100px; margin: 24px auto; padding: 0 24px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+    .card { background: #fff; border: 2px solid #dfe6e9; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); padding: 20px; }
+    .card-title { margin: 0 0 16px; font-size: 15px; font-weight: 600; color: #2c3e50; }
+    .input-text { width: 100%; min-width: 150px; min-height: 28px; max-height: 80px; padding: 8px 12px; border-radius: 6px; font-size: 14px; }
+    .input-text.border-gray { border: 1px solid #bdc3c7; background: #fff; }
+    .input-text.border-blue { border: 2px solid #2980b9; background: #fff; }
+    .input-text.bg-yellow { border: 1px solid #f1c40f; background: #fef9e7; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; margin-bottom: 4px; font-size: 13px; color: #2c3e50; }
+    .form-actions { margin-top: 16px; display: flex; gap: 8px; }
+    /* Темы: карточка и поля различаются — форма распознаётся по контрасту */
+    body.theme-borders { background: #e0e0e0; }
+    body.theme-borders .card { background: #f0f0f0; border: 2px solid #5a6a7a !important; }
+    body.theme-borders .input-text { background: #fff !important; border: 2px solid #2c3e50 !important; }
+    body.theme-dark { background: #0d1117; color: #eee; }
+    body.theme-dark .card { background: #1a2332; border: 1px solid #2d3a4d !important; }
+    body.theme-dark .input-text { background: #252d3a !important; border: 1px solid #4a5568 !important; color: #eee; }
+    body.theme-dark .form-group label { color: #cbd5e0; }
+    body.theme-green { background: #f0f7f0; }
+    body.theme-green .card { background: #e8f5e9; border: 1px solid #a5d6a7 !important; }
+    body.theme-green .input-text { background: #fff !important; border: 1px solid #81c784 !important; }
+    body.theme-green .header { background: #1b5e20; }
+    body.theme-green .btn-primary { background: #2e7d32; border-color: #1b5e20; }
+    body.theme-green .input-text:focus { border-color: #2e7d32; }
+  </style>
+</head>
+<body>
+  <script>(function(){ var p = new URLSearchParams(location.search); var t = p.get('theme'); if (t) document.body.classList.add('theme-' + t); })();</script>
+  <header class="header">
+    <h1>Редактирование контакта</h1>
+    <div class="header-actions">
+      <button type="button" class="btn btn-outline">Cancel</button>
+      <button type="button" class="btn btn-primary">Save</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="grid">
+      <div class="card" data-form="contact">
+        <h2 class="card-title">Контакт</h2>
+        <div class="form-group">
+          <label for="c1-name">ФИО</label>
+          <input type="text" id="c1-name" class="input-text border-gray" placeholder="Фамилия Имя" data-input-type="text">
+        </div>
+        <div class="form-group">
+          <label for="c1-email">Email</label>
+          <input type="email" id="c1-email" class="input-text border-blue" placeholder="user@company.com" data-input-type="email">
+        </div>
+        <div class="form-group">
+          <label for="c1-phone">Телефон</label>
+          <input type="tel" id="c1-phone" class="input-text bg-yellow" data-input-type="tel">
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline">Reset</button>
+        </div>
+      </div>
+
+      <div class="card" data-form="company">
+        <h2 class="card-title">Компания</h2>
+        <div class="form-group">
+          <label for="c2-company">Название</label>
+          <input type="text" id="c2-company" class="input-text border-gray" placeholder="ООО «Компания»" data-input-type="text">
+        </div>
+        <div class="form-group">
+          <label for="c2-inn">ИНН</label>
+          <input type="text" id="c2-inn" class="input-text border-gray" data-input-type="text">
+        </div>
+        <div class="form-group">
+          <label for="c2-notes">Заметки</label>
+          <textarea id="c2-notes" class="input-text border-gray" rows="2" placeholder="Внутренние заметки" data-input-type="textarea"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 20px;" data-form="address">
+      <h2 class="card-title">Адрес доставки</h2>
+      <div class="grid" style="grid-template-columns: 1fr 1fr 1fr;">
+        <div class="form-group">
+          <label for="a-city">Город</label>
+          <input type="text" id="a-city" class="input-text border-gray" placeholder="Москва" data-input-type="text">
+        </div>
+        <div class="form-group">
+          <label for="a-street">Улица</label>
+          <input type="text" id="a-street" class="input-text border-gray" data-input-type="text">
+        </div>
+        <div class="form-group">
+          <label for="a-building">Дом</label>
+          <input type="text" id="a-building" class="input-text border-gray" data-input-type="text">
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

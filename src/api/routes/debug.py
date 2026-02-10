@@ -7,10 +7,11 @@ No global flags; all parameters from request. Logs inputs and saves debug images
 from __future__ import annotations
 
 import logging
+import os
 import tempfile
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import json
 from fastapi import APIRouter, File, Form, Query, UploadFile, HTTPException
@@ -381,6 +382,10 @@ class AtomsV2PipelineResponse(BaseModel):
     text_inside_ui: Dict[str, Any] = Field(default_factory=dict, description="atom_id -> [{text, bbox, confidence}] — текст внутри UI-элементов")
     log: List[str] = Field(default_factory=list, description="Шаги пайплайна (raw_ocr_boxes=<n>, legacy_text_pipeline=<bool>)")
     debug_image_path: str | None = Field(default=None, description="Путь к сохранённому отладочному изображению")
+    experimental_v2_debug_directory: str | None = Field(default=None, description="Каталог с визуализациями experimental v2 (level0–level5), если запрошен experimental_v2_debug_dir")
+    experimental_v2_debug_files: List[str] = Field(default_factory=list, description="Имена файлов в experimental_v2_debug_directory")
+    form_container_first_debug_directory: str | None = Field(default=None, description="Каталог с визуализациями Form Container First (container_bbox.png, rows.png, slots.png, slot_assignments.png), если запрошен form_container_first_debug_dir")
+    form_container_first_debug_files: List[str] = Field(default_factory=list, description="Имена файлов в form_container_first_debug_directory")
     message: str = "Atoms_v2: CV atoms + raw OCR layer + merge, legacy grouping optional."
 
 
@@ -389,19 +394,62 @@ async def debug_atoms_v2_pipeline(
     image: UploadFile = File(..., description="Screenshot image"),
     parallel_ocr: bool = Query(True, description="Полностраничный OCR независимо от Detectron2"),
     legacy_text_pipeline: bool = Query(True, description="Группировка в строки/абзацы, фильтр шума"),
+    use_experimental_multilevel_v2: bool = Query(False, description="Дополнительно запустить experimental_multilevel_v2 (Level 0–5); атомы v2 добавляются в atoms"),
+    experimental_v2_debug_dir: Optional[str] = Query(None, description="Подкаталог для визуализаций v2 (level0–level5). Имя под $TMP/experimental_v2/"),
+    use_form_container_first: bool = Query(False, description="Дополнительно запустить Form Container First (FormContainerDetector → FormInnerLayout → Slots → FieldLocator → FormGraph); атомы добавляются в atoms"),
+    form_container_first_debug_dir: Optional[str] = Query(None, description="Подкаталог для визуализаций Form Container First (container_bbox.png, rows.png, slots.png, slot_assignments.png). Имя под $TMP/form_container_first/"),
 ):
     """
-    Режим atoms_v2: Detectron2 — атомы; параллельный полностраничный OCR (текст не подавляется UI);
-    merge & conflict resolution; legacy grouping (строки/абзацы). improved-full-pipeline не вызывается.
+    Режим atoms_v2: Detectron2 — атомы; OCR; merge & grouping.
 
-    parallel_ocr=True: OCR по всему изображению независимо от Detectron2 (текст внутри input/button тоже извлекается).
-    legacy_text_pipeline=True: группировка в строки/абзацы, фильтр шума.
+    **Experimental v2:** use_experimental_multilevel_v2 / experimental_v2_debug_dir → level0–level5 PNG.
+    **Form Container First (ТЗ):** use_form_container_first / form_container_first_debug_dir → контейнер формы, строки, слоты, назначения; все уровни только внутри FormContainer.bbox.
     """
-    logger.info("debug/atoms-v2-pipeline: filename=%s parallel_ocr=%s legacy_text_pipeline=%s", image.filename, parallel_ocr, legacy_text_pipeline)
+    logger.info(
+        "debug/atoms-v2-pipeline: filename=%s parallel_ocr=%s legacy_text_pipeline=%s use_experimental_v2=%s experimental_v2_debug_dir=%s use_form_container_first=%s form_container_first_debug_dir=%s",
+        image.filename, parallel_ocr, legacy_text_pipeline, use_experimental_multilevel_v2, experimental_v2_debug_dir,
+        use_form_container_first, form_container_first_debug_dir,
+    )
     path = _save_upload_and_get_path(image)
+    # База для отладочных артефактов: монтированная debug (DEBUG_OUTPUT_DIR=/app/debug) или /tmp
+    _debug_base = os.environ.get("DEBUG_OUTPUT_DIR", "").strip()
+    if not _debug_base or not os.path.isdir(_debug_base):
+        _debug_base = tempfile.gettempdir()
+    debug_base = Path(_debug_base)
+
+    exp_v2_dir: Optional[str] = None
+    if use_experimental_multilevel_v2 and experimental_v2_debug_dir:
+        base = debug_base / "experimental_v2"
+        base.mkdir(parents=True, exist_ok=True)
+        exp_v2_dir = str(base / (experimental_v2_debug_dir.strip() or uuid.uuid4().hex[:8]))
+    elif use_experimental_multilevel_v2:
+        exp_v2_dir = None
+
+    fcf_dir: Optional[str] = None
+    if use_form_container_first and form_container_first_debug_dir:
+        base = debug_base / "form_container_first"
+        base.mkdir(parents=True, exist_ok=True)
+        fcf_dir = str(base / (form_container_first_debug_dir.strip() or uuid.uuid4().hex[:8]))
+    elif use_form_container_first:
+        fcf_dir = None
+
     try:
         from src.infrastructure.atoms_v2 import run_atoms_v2_pipeline
-        out = run_atoms_v2_pipeline(path, parallel_ocr=parallel_ocr, legacy_text_pipeline=legacy_text_pipeline)
+        out = run_atoms_v2_pipeline(
+            path,
+            parallel_ocr=parallel_ocr,
+            legacy_text_pipeline=legacy_text_pipeline,
+            use_experimental_multilevel_v2=use_experimental_multilevel_v2,
+            experimental_v2_debug_dir=exp_v2_dir,
+            use_form_container_first=use_form_container_first,
+            form_container_first_debug_dir=fcf_dir,
+        )
+        exp_v2_files: List[str] = []
+        if exp_v2_dir and os.path.isdir(exp_v2_dir):
+            exp_v2_files = sorted(os.listdir(exp_v2_dir))
+        fcf_files: List[str] = []
+        if fcf_dir and os.path.isdir(fcf_dir):
+            fcf_files = sorted(os.listdir(fcf_dir))
         return AtomsV2PipelineResponse(
             unified_ui=out.get("unified_ui", []),
             atoms=out.get("atoms", []),
@@ -415,6 +463,10 @@ async def debug_atoms_v2_pipeline(
             text_inside_ui=out.get("text_inside_ui", {}),
             log=out.get("log", []),
             debug_image_path=out.get("debug_image_path"),
+            experimental_v2_debug_directory=exp_v2_dir,
+            experimental_v2_debug_files=exp_v2_files,
+            form_container_first_debug_directory=fcf_dir,
+            form_container_first_debug_files=fcf_files,
         )
     finally:
         try:

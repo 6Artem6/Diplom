@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Сетка 2 колонки</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; font-size: 14px; background: #f0f2f5; color: #1a1a1a; }
+    .card { max-width: 560px; margin: 24px auto; padding: 20px; background: #fff; border: 1px solid #dfe6e9; border-radius: 8px; }
+    .card-title { margin: 0 0 16px; font-size: 16px; font-weight: 600; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 20px; }
+    .form-cell { display: flex; flex-direction: column; }
+    .label { margin-bottom: 6px; font-size: 13px; color: #2c3e50; }
+    .input-text { width: 100%; padding: 8px 12px; border: 1px solid #bdc3c7; border-radius: 6px; font-size: 14px; background: #fff; min-height: 36px; }
+    .btn { padding: 8px 16px; border-radius: 6px; font-size: 14px; background: #3498db; color: #fff; border: none; margin-top: 12px; grid-column: span 2; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2 class="card-title">Форма 2×2</h2>
+    <div class="grid">
+      <div class="form-cell">
+        <label class="label">Имя</label>
+        <input type="text" class="input-text" placeholder="Имя">
+      </div>
+      <div class="form-cell">
+        <label class="label">Фамилия</label>
+        <input type="text" class="input-text" placeholder="Фамилия">
+      </div>
+      <div class="form-cell">
+        <label class="label">Email</label>
+        <input type="text" class="input-text" placeholder="email@example.com">
+      </div>
+      <div class="form-cell">
+        <label class="label">Телефон</label>
+        <input type="text" class="input-text" placeholder="+7 …">
+      </div>
+      <button type="button" class="btn">Сохранить</button>
+    </div>
+  </div>
+</body>
+</html>

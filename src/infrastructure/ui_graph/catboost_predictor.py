@@ -1,9 +1,9 @@
 """
 Применение обученной CatBoost-модели (ui_atom_catboost.cbm) для предсказания ролей атомов.
 
-После extract_features: нормализация признаков как при обучении, predict, присвоение ui_role
-и semantic_lock по pred_conf (>= 0.6 → label + semantic_lock=True, иначе weak_* + semantic_lock=False).
-Не заменяет rule-based классификатор — вызывается опционально после run_ui_graph_pipeline.
+v3: Запрещено использовать для назначения ролей. semantic_validation — единственный слой, назначающий роли.
+Этот модуль (apply_catboost_roles) не вызывается в v3 pipeline; оставлен для legacy/обучения.
+CatBoost в v3 используется только в catboost_priors как soft-prior (interactive_score, role_probs).
 """
 
 from __future__ import annotations

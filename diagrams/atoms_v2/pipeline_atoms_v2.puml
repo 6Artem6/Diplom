@@ -1,0 +1,102 @@
+@startuml pipeline_atoms_v2
+!theme plain
+title Пайплайн atoms_v2: детекция UI-элементов (CRM/ERP)
+
+skinparam defaultFontSize 11
+skinparam rectangle {
+  roundCorner 4
+  shadowing false
+}
+
+' === Ввод ===
+rectangle "Скриншот" as IMG #E8F4FD
+
+' === Детекция ===
+package "Детекция (DL + CV)" #F0F8FF {
+  rectangle "Detectron2\natoms (button, link, layout)\ninput от DL не добавляется" as DET #E6F7FF
+  rectangle "CV: визуальные регионы\n(карточки, секции)" as REG #E6F7FF
+}
+
+' === OCR ===
+package "OCR и связь" #E8F5E9 {
+  rectangle "OCR full-page\nили per-region" as OCR #C8E6C9
+  rectangle "_link_ocr_to_atoms\n_assign_full_page_ocr_to_regions" as LINK #C8E6C9
+}
+
+' === Очистка ===
+package "Очистка и постобработка" #FFF8E1 {
+  rectangle "filter_dl_input_atoms\n(удаление input от DL)" as FILTER #FFECB3
+  rectangle "run_postprocess\n(synthetic button/input)" as POST #FFECB3
+}
+
+' === Форма и поля (Visual First) ===
+package "Форма и поля (input/textarea)" #F3E5F5 {
+  rectangle "FormStructureDetection\ndetect_form_regions" as FORM_DET #E1BEE7
+  rectangle "VisualFieldScanner\n(границы внутри card)" as VISUAL #E1BEE7
+  rectangle "FormSchemaInference\n(только фильтр: button_row, flow_end)" as SCHEMA #E1BEE7
+  rectangle "Normalize\ndedup, выравнивание" as NORM #E1BEE7
+  rectangle "InputCandidateRecovery\n(если 0 полей: Phase B, Canny/OCR)" as RECOVERY #E1BEE7
+}
+
+' === Семантика ===
+package "Семантика и граф" #E8EAF6 {
+  rectangle "input_probe_prepass_v3" as PROBE #C5CAE9
+  rectangle "CatBoost priors\n+ group_atoms" as PRIORS #C5CAE9
+  rectangle "run_semantic_validation\n(semantic_role, semantic_lock)" as SEMVAL #C5CAE9
+  rectangle "input_bbox_refinement\ninput_bbox_prepass" as REFINE #C5CAE9
+  rectangle "run_ui_graph_pipeline_v3\ndedup (image_id, atom_id)" as UIGRAPH #C5CAE9
+}
+
+' === Выход ===
+rectangle "atoms\nunified_ui\ntext_ui_links\ndebug_image" as OUT #E0F2F1
+
+' === Потоки ===
+IMG --> DET
+IMG --> REG
+DET --> OCR
+REG --> OCR
+OCR --> LINK
+LINK --> FILTER
+FILTER --> POST
+POST --> FORM_DET
+FORM_DET --> VISUAL
+VISUAL --> SCHEMA
+SCHEMA --> NORM
+NORM --> RECOVERY : только если 0 полей из visual_first
+RECOVERY --> PROBE
+PROBE --> PRIORS
+PRIORS --> SEMVAL
+SEMVAL --> REFINE
+REFINE --> UIGRAPH
+UIGRAPH --> OUT
+
+note right of VISUAL
+  Источник bbox — только физические
+  границы (контуры, Canny внутри card).
+  Без OCR как основы геометрии.
+end note
+
+note right of SCHEMA
+  Schema как фильтр: не создаёт bbox.
+  Отбрасываем кандидатов в button_row,
+  после flow_end, на кнопке.
+end note
+
+note right of NORM
+  Dedup по IoU, выравнивание ширины.
+  Не генерация из схемы.
+end note
+
+note right of RECOVERY
+  Fallback: только при
+  len(layout_inferred_atoms)==0
+  или нет form_regions.
+end note
+
+note right of SEMVAL
+  Единственный слой, назначающий
+  semantic_role и semantic_lock.
+  Input vs button scoring.
+end note
+
+@enduml

@@ -1,9 +1,8 @@
 """
 UI-граф: структурный слой между CV и финальной семантикой.
 
-Граф агрегирует контекст (atoms, OCR, regions) и даёт признаки для классификации ролей.
-Не создаёт bbox, не меняет CV, не заменяет модели.
-ui_role ≠ atom.type: atom.type — CV-гипотеза, ui_role — итоговая семантика.
+v3: semantic_validation — единственный источник ролей. ui_graph только структура (read-only семантика).
+Граф агрегирует контекст (atoms, OCR, regions). Не назначает ui_role в v3 — только копирует semantic_role.
 """
 
 from src.infrastructure.ui_graph.graph import (
@@ -15,11 +14,12 @@ from src.infrastructure.ui_graph.graph import (
 )
 from src.infrastructure.ui_graph.build import (
     build_ui_graph,
-    extract_features,
+    run_ui_graph_pipeline_v3,
+    run_ui_graph_pipeline,
     classify_roles,
     apply_roles_to_atoms,
-    run_ui_graph_pipeline,
 )
+from src.infrastructure.ui_graph.features import extract_features
 from src.infrastructure.ui_graph.roles import UIRole
 
 __all__ = [
@@ -31,7 +31,8 @@ __all__ = [
     "UIRole",
     "build_ui_graph",
     "extract_features",
+    "run_ui_graph_pipeline_v3",
+    "run_ui_graph_pipeline",
     "classify_roles",
     "apply_roles_to_atoms",
-    "run_ui_graph_pipeline",
 ]

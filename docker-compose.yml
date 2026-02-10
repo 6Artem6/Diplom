@@ -18,6 +18,7 @@ services:
       - ./models:/app/models      # All ML models cache (persistent)
       - ./scripts:/app/scripts  # For scripts
     environment:
+      - DEBUG_OUTPUT_DIR=/app/debug  # experimental_v2 и form_container_first пишут сюда (монтировано ./debug)
       - HUGGINGFACE_HUB_TOKEN=${HUGGINGFACE_HUB_TOKEN}
       - HF_TOKEN=${HF_TOKEN}
       - CHROMA_PERSIST_DIR=/app/data/chroma

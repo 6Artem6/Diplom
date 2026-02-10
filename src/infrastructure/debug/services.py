@@ -25,6 +25,11 @@ DISABLE_PADDLEOCR = os.environ.get("DISABLE_PADDLEOCR", "0") == "1"
 # Optional: when DISABLE_PADDLEOCR=1, call this URL (standalone PaddleOCR service) for OCR. Empty = skip.
 PADDLE_OCR_SERVICE_URL = os.environ.get("PADDLE_OCR_SERVICE_URL", "").strip()
 
+# Языки OCR: английский + русский для корректного распознавания текста на страницах.
+# Tesseract: "eng+rus"; PaddleOCR: "en,ru" (comma-separated). Можно переопределить через env.
+OCR_LANGS_TESSERACT = os.environ.get("OCR_LANGS_TESSERACT", "eng+rus")
+OCR_LANGS_PADDLE = os.environ.get("OCR_LANGS_PADDLE", "en,ru")
+
 DEBUG_OUTPUT_DIR = os.environ.get("DEBUG_OUTPUT_DIR", "debug/output")
 MAX_BLOCK_SCREEN_RATIO = 0.8  # block ≥ 80% screen → invalid
 
@@ -172,7 +177,7 @@ def _create_paddle_ocr() -> Any:
     if DISABLE_PADDLEOCR:
         return None
     from paddleocr import PaddleOCR
-    return PaddleOCR(use_angle_cls=False, show_log=False, use_gpu=False)
+    return PaddleOCR(lang=OCR_LANGS_PADDLE, use_angle_cls=False, show_log=False, use_gpu=False)
 
 
 def _run_text_detect_on_image(img: Any, image_path: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -458,8 +463,8 @@ def run_ocr_roi(
     if pil_norm is None:
         return {"text": "", "confidence": 0.0}
     try:
-        text_norm = pytesseract.image_to_string(pil_norm, config="--psm 7").strip()
-        data_norm = pytesseract.image_to_data(pil_norm, config="--psm 7", output_type=pytesseract.Output.DICT)
+        text_norm = pytesseract.image_to_string(pil_norm, lang=OCR_LANGS_TESSERACT, config="--psm 7").strip()
+        data_norm = pytesseract.image_to_data(pil_norm, lang=OCR_LANGS_TESSERACT, config="--psm 7", output_type=pytesseract.Output.DICT)
         confs = [c for c in data_norm.get("conf", []) if c != -1]
         conf_norm = float(sum(confs) / len(confs)) / 100.0 if confs else 0.0
     except Exception:
@@ -470,8 +475,8 @@ def run_ocr_roi(
     if pil_inv is None:
         return {"text": text_norm, "confidence": conf_norm}
     try:
-        text_inv = pytesseract.image_to_string(pil_inv, config="--psm 7").strip()
-        data_inv = pytesseract.image_to_data(pil_inv, config="--psm 7", output_type=pytesseract.Output.DICT)
+        text_inv = pytesseract.image_to_string(pil_inv, lang=OCR_LANGS_TESSERACT, config="--psm 7").strip()
+        data_inv = pytesseract.image_to_data(pil_inv, lang=OCR_LANGS_TESSERACT, config="--psm 7", output_type=pytesseract.Output.DICT)
         confs_inv = [c for c in data_inv.get("conf", []) if c != -1]
         conf_inv = float(sum(confs_inv) / len(confs_inv)) / 100.0 if confs_inv else 0.0
     except Exception:
@@ -546,8 +551,8 @@ def run_ocr_boxes(image_path: str, boxes: List[Dict[str, Any]]) -> List[Dict[str
         crop = img[y1:y2, x1:x2]
         pil_crop = Image.fromarray(crop)
         try:
-            text = pytesseract.image_to_string(pil_crop, config="--psm 7").strip()
-            data = pytesseract.image_to_data(pil_crop, config="--psm 7", output_type=pytesseract.Output.DICT)
+            text = pytesseract.image_to_string(pil_crop, lang=OCR_LANGS_TESSERACT, config="--psm 7").strip()
+            data = pytesseract.image_to_data(pil_crop, lang=OCR_LANGS_TESSERACT, config="--psm 7", output_type=pytesseract.Output.DICT)
             confs = [c for c in data.get("conf", []) if c != -1]
             conf = float(sum(confs) / len(confs)) / 100.0 if confs else 0.0
         except Exception as e:
@@ -602,8 +607,8 @@ def run_ocr_boxes_with_adaptive(
 
         def _run_ocr(pil_img: Any) -> Tuple[str, float]:
             try:
-                t = pytesseract.image_to_string(pil_img, config="--psm 7").strip()
-                data = pytesseract.image_to_data(pil_img, config="--psm 7", output_type=pytesseract.Output.DICT)
+                t = pytesseract.image_to_string(pil_img, lang=OCR_LANGS_TESSERACT, config="--psm 7").strip()
+                data = pytesseract.image_to_data(pil_img, lang=OCR_LANGS_TESSERACT, config="--psm 7", output_type=pytesseract.Output.DICT)
                 confs = [c for c in data.get("conf", []) if c != -1]
                 c = float(sum(confs) / len(confs)) / 100.0 if confs else 0.0
                 return t, c

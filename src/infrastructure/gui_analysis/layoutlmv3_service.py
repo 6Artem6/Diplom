@@ -17,6 +17,9 @@ from src.domain.models.gui_block import GUIBlock
 
 logger = logging.getLogger(__name__)
 
+# Языки OCR: английский + русский (можно переопределить через OCR_LANGS_TESSERACT)
+OCR_LANGS_TESSERACT = os.environ.get("OCR_LANGS_TESSERACT", "eng+rus")
+
 BACKEND_NAME = "layoutlmv3"
 MIN_BBOX_W = 2
 MIN_BBOX_H = 2
@@ -43,7 +46,7 @@ def _ocr_words_bbox(
         if not path.exists():
             return []
         img = Image.open(path).convert("RGB")
-        data = pytesseract.image_to_data(img, output_type=pytesseract.Output.DICT, config=f"--psm {psm}")
+        data = pytesseract.image_to_data(img, lang=OCR_LANGS_TESSERACT, output_type=pytesseract.Output.DICT, config=f"--psm {psm}")
         out: List[Tuple[str, int, int, int, int]] = []
         for i, t in enumerate(data.get("text", []) or []):
             t = (t or "").strip()

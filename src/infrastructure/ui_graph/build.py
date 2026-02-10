@@ -1,9 +1,11 @@
 """
 Сборка UI-графа и применение ролей к атомам.
 
-cv → atoms → regions → ocr → ui_graph.build() → extract_features() → classify_roles() → apply_roles_to_atoms() → final_atoms.
-bbox не меняется. UI-граф не дропает atom при semantic_lock (semantic_valid или saved_by_anchor).
-Дроп только если: ui_role == noise AND not semantic_lock AND atom.type == layout AND confidence < threshold.
+v3: semantic_validation — ЕДИНСТВЕННЫЙ слой, назначающий семантические роли.
+ui_graph (v3) работает только с atoms_for_interaction (semantic_lock); не назначает ui_role, не повышает интерактивность.
+
+Legacy: run_ui_graph_pipeline — classify_roles + apply_roles_to_atoms (не использовать в v3).
+v3: run_ui_graph_pipeline_v3 — только структура; ui_role = semantic_role (read-only).
 """
 
 from __future__ import annotations
@@ -209,6 +211,36 @@ def _check_semantic_visibility_invariant(
     return log_lines
 
 
+def run_ui_graph_pipeline_v3(
+    atoms: List[Dict[str, Any]],
+    raw_ocr_boxes: List[Dict[str, Any]],
+    regions: List[Dict[str, Any]],
+) -> Tuple[List[Dict[str, Any]], UIGraph, Dict[str, Dict[str, float]], List[str], Dict[str, int], Dict[str, Tuple[UIRole, float]]]:
+    """
+    v3: Работает ТОЛЬКО с atoms_for_interaction (все атомы должны иметь semantic_lock=True).
+    Не назначает роли, не повышает интерактивность. ui_role = semantic_role (read-only).
+    Строит граф для структуры (row/column/alignment); control_group только из >=2 semantic_lock с одной semantic_role.
+    """
+    assert all(a.get("semantic_lock") for a in atoms), "v3: ui_graph accepts only atoms with semantic_lock"
+    log_lines: List[str] = ["ui_graph_v3: read-only semantics, %s atoms" % len(atoms)]
+    stats: Dict[str, int] = {"v3_read_only": 1}
+    graph = build_ui_graph(atoms, raw_ocr_boxes, regions)
+    features_by_atom = extract_features(graph)
+    role_predictions: Dict[str, Tuple[UIRole, float]] = {}
+    for a in atoms:
+        aid = a.get("id", "")
+        sr = (a.get("semantic_role") or a.get("type") or "").strip().lower()
+        a["ui_role"] = sr
+        a["ui_role_confidence"] = 1.0 if a.get("semantic_valid") else 0.6
+        try:
+            role_predictions[aid] = (UIRole(sr), a["ui_role_confidence"])
+        except ValueError:
+            role_predictions[aid] = (UIRole.NOISE, 0.0)
+    for line in log_lines:
+        logger.debug("ui_graph: %s", line)
+    return atoms, graph, features_by_atom, log_lines, stats, role_predictions
+
+
 def run_ui_graph_pipeline(
     atoms: List[Dict[str, Any]],
     raw_ocr_boxes: List[Dict[str, Any]],
@@ -216,9 +248,8 @@ def run_ui_graph_pipeline(
     classifier: Optional[Any] = None,
 ) -> Tuple[List[Dict[str, Any]], UIGraph, Dict[str, Dict[str, float]], List[str], Dict[str, int], Dict[str, Tuple[UIRole, float]]]:
     """
-    Полный проход: build → extract_features → classify → apply_roles_to_atoms.
-    Возвращает (final_atoms, graph, features_by_atom, log_lines, stats, role_predictions).
-    Если len(final_atoms) == 0 — ошибка логики: fallback — вернуть atoms с confidence *= 0.9, ui_role = None.
+    Legacy: build → extract_features → classify → apply_roles_to_atoms.
+    В v3 pipeline не вызывать: использовать run_ui_graph_pipeline_v3 с atoms_for_interaction.
     """
     graph = build_ui_graph(atoms, raw_ocr_boxes, regions)
     features_by_atom = extract_features(graph)

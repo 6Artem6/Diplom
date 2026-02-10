@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Одиночное поле — светлая тема</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; font-size: 14px; background: #f0f2f5; color: #1a1a1a; }
+    .card { max-width: 480px; margin: 24px auto; padding: 20px; background: #fff; border: 1px solid #dfe6e9; border-radius: 8px; }
+    .card-title { margin: 0 0 16px; font-size: 16px; font-weight: 600; }
+    .form-row { margin-bottom: 14px; }
+    .label { display: block; margin-bottom: 6px; font-size: 13px; color: #2c3e50; }
+    .input-text { width: 100%; padding: 8px 12px; border: 1px solid #bdc3c7; border-radius: 6px; font-size: 14px; background: #fff; min-height: 36px; }
+    .btn { padding: 8px 16px; border-radius: 6px; font-size: 14px; border: 1px solid #2980b9; background: #3498db; color: #fff; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2 class="card-title">Контакт</h2>
+    <div class="form-row">
+      <label class="label" for="name">Имя</label>
+      <input type="text" id="name" class="input-text" placeholder="Введите имя">
+    </div>
+    <button type="button" class="btn">Сохранить</button>
+  </div>
+</body>
+</html>

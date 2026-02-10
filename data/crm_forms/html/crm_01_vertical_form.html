@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CRM — Новая заявка</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, sans-serif; font-size: 14px; background: #f0f2f5; color: #1a1a1a; }
+    .header { display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; background: #2c3e50; color: #fff; }
+    .header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+    .header-actions { display: flex; gap: 10px; }
+    .btn { padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; border: 1px solid transparent; min-height: 36px; }
+    .btn-primary { background: #3498db; color: #fff; border-color: #2980b9; }
+    .btn-outline { background: transparent; color: #2c3e50; border: 1px solid #95a5a6; }
+    .main { max-width: 900px; margin: 24px auto; padding: 0 24px; }
+    .card { background: #fff; border: 1px solid #dfe6e9; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 24px; overflow: hidden; }
+    .card-title { margin: 0 0 16px; padding: 16px 20px 0; font-size: 16px; font-weight: 600; }
+    .card-body { padding: 0 20px 20px; }
+    .form-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .form-row.vertical { flex-direction: column; align-items: stretch; }
+    .label { min-width: 120px; font-size: 13px; color: #2c3e50; }
+    .input-text { min-width: 150px; min-height: 24px; max-height: 80px; padding: 8px 12px; border: 1px solid #bdc3c7; border-radius: 6px; font-size: 14px; background: #fff; }
+    .input-text:focus { outline: none; border-color: #3498db; }
+    .input-text.gray { background: #ecf0f1; border-color: #95a5a6; }
+    .input-text.blue { background: #ebf5fb; border: 1px solid #3498db; }
+    textarea.input-text { min-height: 60px; resize: vertical; }
+    /* Темы: форма и поля различаются по цвету для распознавания */
+    body.theme-borders { background: #e0e0e0; }
+    body.theme-borders .card { background: #f0f0f0; border: 2px solid #5a6a7a; }
+    body.theme-borders .input-text { background: #fff; border: 2px solid #2c3e50; }
+    body.theme-dark { background: #0d1117; color: #eee; }
+    body.theme-dark .card { background: #1a2332; border: 1px solid #2d3a4d; }
+    body.theme-dark .input-text { background: #252d3a; border: 1px solid #4a5568; color: #eee; }
+    body.theme-dark .label { color: #cbd5e0; }
+    body.theme-green { background: #f0f7f0; }
+    body.theme-green .card { background: #e8f5e9; border: 1px solid #a5d6a7; }
+    body.theme-green .input-text { background: #fff; border: 1px solid #81c784; }
+    body.theme-green .input-text:focus { border-color: #2e7d32; }
+    body.theme-green .header { background: #1b5e20; }
+    body.theme-green .btn-primary { background: #2e7d32; border-color: #1b5e20; }
+  </style>
+</head>
+<body>
+  <script>
+    (function(){ var p = new URLSearchParams(location.search); var t = p.get('theme'); if (t) document.body.classList.add('theme-' + t); })();
+  </script>
+  <header class="header">
+    <h1>Новая заявка</h1>
+    <div class="header-actions">
+      <button type="button" class="btn btn-outline">Cancel</button>
+      <button type="button" class="btn btn-primary">Save</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="card" data-form="lead">
+      <h2 class="card-title">Данные заявки</h2>
+      <div class="card-body">
+        <div class="form-row">
+          <label class="label" for="f1-name">Имя</label>
+          <input type="text" id="f1-name" class="input-text" placeholder="Введите имя" data-input-type="text" minlength="1">
+        </div>
+        <div class="form-row">
+          <label class="label" for="f1-email">Email</label>
+          <input type="email" id="f1-email" class="input-text gray" placeholder="email@example.com" data-input-type="email">
+        </div>
+        <div class="form-row">
+          <label class="label" for="f1-phone">Телефон</label>
+          <input type="tel" id="f1-phone" class="input-text blue" placeholder="+7 (999) 000-00-00" data-input-type="tel">
+        </div>
+        <div class="form-row vertical">
+          <label class="label" for="f1-comment">Комментарий</label>
+          <textarea id="f1-comment" class="input-text" rows="3" placeholder="Текст заявки" data-input-type="textarea"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" data-form="source">
+      <h2 class="card-title">Источник</h2>
+      <div class="card-body">
+        <div class="form-row">
+          <label class="label" for="f2-source">Источник</label>
+          <input type="text" id="f2-source" class="input-text" data-input-type="text">
+        </div>
+        <div class="form-row">
+          <label class="label" for="f2-ref">Реферал</label>
+          <input type="text" id="f2-ref" class="input-text gray" placeholder="Не указан" data-input-type="text">
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

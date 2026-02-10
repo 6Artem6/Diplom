@@ -14,9 +14,13 @@ Architecture:
 
 from __future__ import annotations
 
-from typing import List, Tuple, Dict, Any, Optional
-from pathlib import Path
 import logging
+import os
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+# Языки OCR: английский + русский (можно переопределить через OCR_LANGS_TESSERACT)
+OCR_LANGS_TESSERACT = os.environ.get("OCR_LANGS_TESSERACT", "eng+rus")
 
 from PIL import Image
 
@@ -94,7 +98,7 @@ def _ocr_words_bbox(image_path: str, psm: int = 11) -> List[Tuple[str, int, int,
     img_prep_pil = Image.fromarray(img_prep)
     try:
         data = pytesseract.image_to_data(
-            img_prep_pil, output_type=pytesseract.Output.DICT, config=f"--psm {psm}"
+            img_prep_pil, lang=OCR_LANGS_TESSERACT, output_type=pytesseract.Output.DICT, config=f"--psm {psm}"
         )
     except Exception as e:  # pragma: no cover
         logger.warning("FlowLayout: pytesseract.image_to_data failed for %s: %s", image_path, e)
@@ -186,7 +190,7 @@ def _ocr_fallback_light_words(image_path: str, words: List[Word]) -> List[Word]:
         res = preprocess_crop(crop, dilation_px=2, upscale_factor=2.0, invert_if_dark=True)
         try:
             crop_pil = Image.fromarray(res.image)
-            fallback_text = (pytesseract.image_to_string(crop_pil, config="--psm 7") or "").strip()
+            fallback_text = (pytesseract.image_to_string(crop_pil, lang=OCR_LANGS_TESSERACT, config="--psm 7") or "").strip()
         except Exception:
             fallback_text = ""
         new_text = fallback_text.replace("\n", " ").strip() if fallback_text else ""

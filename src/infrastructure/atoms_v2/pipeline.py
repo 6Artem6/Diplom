@@ -35,6 +35,11 @@ KVVB_CLASS_TO_ATOM_TYPE: Dict[str, str] = {
     "contactsAddress": "text_block",
 }
 
+# Input от Detectron2 не используется: фантомы не отфильтровать. Источник input — только InputCandidateRecovery (OCR + Phase B).
+DETECTRON2_INPUT_IGNORED_TYPES = frozenset({"input"})
+# Централизованный чёрный список: атомы с этими типами от DL никогда не попадают в atoms/recovery/semantic_validation.
+DL_INPUT_BLACKLIST = frozenset({"input"})
+
 # UI-Elements (Yash Jain / output_ui_detectron2): классы уже в нужном виде (link, button, input, ...).
 # Маппинг только для совместимости с _build_logical_ui (select→dropdown, textarea→input).
 UI_ELEMENTS_CLASS_TO_ATOM_TYPE: Dict[str, str] = {
@@ -65,9 +70,28 @@ REAL_WEIGHTS_ENV = "ATOMS_V2_REAL_WEIGHTS"
 SYNTHETIC_WEIGHTS_ENV = "ATOMS_V2_SYNTHETIC_WEIGHTS"
 REGION_CONTAINMENT_MARGIN = 2
 
-# *_candidate — только для debug overlay; не участвуют в semantic, text_ui_links, atom_to_region, unified_ui
+def filter_dl_input_atoms(atoms: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], int]:
+    """
+    Централизованный фильтр: удаляет атомы с type из DL_INPUT_BLACKLIST и source == 'detectron2'.
+    Input от DL не участвует в recovery/semantic_validation. Возвращает (filtered_atoms, count_removed).
+    """
+    kept: List[Dict[str, Any]] = []
+    removed = 0
+    for a in atoms:
+        if a.get("source") == "detectron2" and (a.get("type") or "") in DL_INPUT_BLACKLIST:
+            removed += 1
+            if removed == 1:
+                logger.debug("dl_input_suppressed: atom id=%s type=%s bbox=%s", a.get("id"), a.get("type"), a.get("bbox"))
+            continue
+        kept.append(a)
+    return kept, removed
+
+
+# v3: в UI участвуют только атомы с semantic_lock (назначенная роль в semantic_validation)
 def _atoms_participating_in_ui(atoms: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Атомы, участвующие в UI: исключены *_candidate, type=layout и semantic_valid=False (layout не участвует в merge, не родитель, не OCR)."""
+    """Атомы, участвующие в UI: v3 — только semantic_lock; иначе исключены *_candidate, layout, semantic_valid=False."""
+    if any(a.get("semantic_lock") is not None for a in atoms[:3]):
+        return [a for a in atoms if a.get("semantic_lock")]
     return [
         a for a in atoms
         if not (a.get("type") or "").endswith("_candidate")
@@ -118,10 +142,13 @@ def _run_dual_detectron2_atoms(image_path: str) -> Tuple[List[Dict[str, Any]], L
             raw_real = ui_elements_predict(image_path, weights_path=real_weights)
             for i, a in enumerate(raw_real):
                 t = a.get("type", "unknown")
+                mapped = UI_ELEMENTS_CLASS_TO_ATOM_TYPE.get(t, t)
+                if mapped in DETECTRON2_INPUT_IGNORED_TYPES:
+                    continue
                 atoms_real.append({
                     "id": a.get("id", f"real_{i + 1}"),
                     "source": "real",
-                    "type": UI_ELEMENTS_CLASS_TO_ATOM_TYPE.get(t, t),
+                    "type": mapped,
                     "bbox": list(a.get("bbox", [0, 0, 0, 0])),
                     "confidence": float(a.get("confidence", 0)),
                 })
@@ -133,10 +160,13 @@ def _run_dual_detectron2_atoms(image_path: str) -> Tuple[List[Dict[str, Any]], L
             raw_syn = ui_elements_predict(image_path, weights_path=synthetic_weights)
             for i, a in enumerate(raw_syn):
                 t = a.get("type", "unknown")
+                mapped = UI_ELEMENTS_CLASS_TO_ATOM_TYPE.get(t, t)
+                if mapped in DETECTRON2_INPUT_IGNORED_TYPES:
+                    continue
                 atoms_synthetic.append({
                     "id": a.get("id", f"syn_{i + 1}"),
                     "source": "synthetic",
-                    "type": UI_ELEMENTS_CLASS_TO_ATOM_TYPE.get(t, t),
+                    "type": mapped,
                     "bbox": list(a.get("bbox", [0, 0, 0, 0])),
                     "confidence": float(a.get("confidence", 0)),
                 })
@@ -177,11 +207,16 @@ def _run_detectron2_atoms(image_path: str) -> List[Dict[str, Any]]:
             atoms = ui_elements_predict(image_path, weights_path=None)
             if not atoms:
                 return []
-            # Приводим type к единому виду для пайплайна (link_type, _build_logical_ui)
+            # Приводим type к единому виду; input от Detectron2 не добавляем (источник input — только InputCandidateRecovery)
+            out: List[Dict[str, Any]] = []
             for a in atoms:
                 raw_type = a.get("type", "unknown")
-                a["type"] = UI_ELEMENTS_CLASS_TO_ATOM_TYPE.get(raw_type, raw_type)
-            return atoms
+                t = UI_ELEMENTS_CLASS_TO_ATOM_TYPE.get(raw_type, raw_type)
+                if t in DETECTRON2_INPUT_IGNORED_TYPES:
+                    continue
+                a["type"] = t
+                out.append(a)
+            return out
         except FileNotFoundError as e:
             logger.warning("atoms_v2: %s", e)
             return []
@@ -206,6 +241,8 @@ def _run_detectron2_atoms(image_path: str) -> List[Dict[str, Any]]:
     for i, r in enumerate(raw):
         cls_name = r.get("class", "")
         atom_type = KVVB_CLASS_TO_ATOM_TYPE.get(cls_name, "text_block")
+        if atom_type in DETECTRON2_INPUT_IGNORED_TYPES:
+            continue
         bbox = r.get("bbox", [0, 0, 0, 0])
         if len(bbox) < 4:
             bbox = [0.0, 0.0, 0.0, 0.0]
@@ -859,19 +896,17 @@ def run_atoms_v2_pipeline(
     parallel_ocr: bool = True,
     legacy_text_pipeline: bool = True,
     stop_after_postprocess: bool = False,
+    use_experimental_multilevel_v2: bool = False,
+    experimental_v2_debug_dir: Optional[str] = None,
+    use_form_container_first: bool = False,
+    form_container_first_debug_dir: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Пайплайн atoms_v2: Detectron2 (atoms) + CV regions; OCR; merge & conflict resolution; legacy grouping.
 
-    Если stop_after_postprocess=True, возвращает только atoms, raw_ocr_boxes, regions (для экспорта det2).
-
-    Порядок при use_dual + parallel_ocr:
-      raw_ocr_boxes → filter_synthetic_atoms_by_ocr (с regions, включает _filter_synthetic_without_cv_region)
-      → merge + stabilize_atoms → _filter_buttons_by_dominant_color → run_postprocess
-      → atoms_for_ui, text_ui_links (только внутри одного CV региона), unified_ui → debug image.
-
-    parallel_ocr=True: полностраничный OCR; текст внутри input/button извлекается.
-    legacy_text_pipeline=True: группировка в строки и абзацы.
+    use_form_container_first: если True, после multilevel запускается run_form_container_first_inference
+    (FormContainerDetector → FormInnerLayout → SlotDetector → FieldLocator → FormGraph). Все уровни только внутри FormContainer.bbox.
+    form_container_first_debug_dir: каталог для container_bbox.png, rows.png, slots.png, slot_assignments.png.
     """
     log: List[str] = []
     path = Path(image_path)
@@ -977,6 +1012,12 @@ def run_atoms_v2_pipeline(
     text_blocks = _merge_text_blocks(region_texts, regions)
     log.append(f"text_blocks={len(text_blocks)}")
 
+    # Централизованное подавление input от Detectron2: не участвуют в recovery/semantic_validation
+    atoms, dl_input_killed = filter_dl_input_atoms(atoms)
+    if dl_input_killed:
+        log.append("dl_input_suppressed: %d" % dl_input_killed)
+        logger.info("dl_input_suppressed: %d (DL input atoms removed, source=detectron2)", dl_input_killed)
+
     # Post-processing: стабилизация атомов (фильтр ложных link, synthetic button/input из OCR)
     from src.infrastructure.atoms_v2.postprocess import run_postprocess
     atoms, text_ui_links = run_postprocess(
@@ -991,9 +1032,141 @@ def run_atoms_v2_pipeline(
     if stop_after_postprocess:
         return {"atoms": atoms, "raw_ocr_boxes": raw_ocr_boxes, "regions": regions, "log": log}
 
+    # Тема экрана (по среднему luminance): для тёмной темы повышаем доверие к input внутри form
+    dark_theme = False
+    try:
+        import cv2
+        img = cv2.imread(str(path))
+        if img is not None:
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            dark_theme = float(gray.mean()) < 128.0
+    except Exception:
+        pass
+
+    # FormStructureDetection: FORM-FIRST — ищем формы до input
+    form_regions: Optional[List[Dict[str, Any]]] = None
+    try:
+        from src.infrastructure.atoms_v2.form_structure_detection import detect_form_regions
+        form_regions = detect_form_regions(regions, atoms, raw_ocr_boxes)
+        log.append("form_structure_detection: %d form_regions" % len(form_regions))
+    except Exception as form_e:
+        log.append("form_structure_detection skipped: %s" % form_e)
+        form_regions = None
+
+    # Многоуровневое ориентирование: Macro → Meso → Micro → SchemaValidator; затем fallback
+    layout_inferred_atoms: List[Dict[str, Any]] = []
+    if form_regions is not None and len(form_regions) > 0:
+        try:
+            from src.infrastructure.atoms_v2.multilevel_field_inference import run_multilevel_field_inference
+            layout_inferred_atoms, ml_log = run_multilevel_field_inference(
+                form_regions, atoms, raw_ocr_boxes, regions or [],
+                image_path=str(path), dark_theme=dark_theme,
+            )
+            log.extend(ml_log)
+            if layout_inferred_atoms:
+                atoms = atoms + layout_inferred_atoms
+                log.append("multilevel_field: added %d atoms (source=multilevel)" % len(layout_inferred_atoms))
+        except Exception as ml_e:
+            log.append("multilevel_field skipped: %s" % ml_e)
+        if not layout_inferred_atoms:
+            try:
+                from src.infrastructure.atoms_v2.visual_first_field_inference import run_visual_first_field_inference
+                layout_inferred_atoms, vf_log = run_visual_first_field_inference(
+                    form_regions, atoms, raw_ocr_boxes,
+                    image_path=str(path), dark_theme=dark_theme,
+                )
+                log.extend(vf_log)
+                if layout_inferred_atoms:
+                    atoms = atoms + layout_inferred_atoms
+                    log.append("visual_first_field: added %d atoms (fallback)" % len(layout_inferred_atoms))
+            except Exception as vf_e:
+                log.append("visual_first_field skipped: %s" % vf_e)
+        if not layout_inferred_atoms:
+            try:
+                from src.infrastructure.atoms_v2.card_field_layout_inference import run_card_field_layout_inference
+                layout_inferred_atoms, layout_log = run_card_field_layout_inference(
+                    form_regions, atoms, raw_ocr_boxes, regions
+                )
+                log.extend(layout_log)
+                if layout_inferred_atoms:
+                    atoms = atoms + layout_inferred_atoms
+                    log.append("card_field_layout_inference: added %d atoms (fallback)" % len(layout_inferred_atoms))
+            except Exception as layout_e:
+                log.append("card_field_layout_inference skipped: %s" % layout_e)
+
+    # InputCandidateRecovery: только если внутри card найдено 0 полей (Phase B, Canny, OCR seeds)
+    if not form_regions or len(layout_inferred_atoms) == 0:
+        try:
+            from src.infrastructure.atoms_v2.input_candidate_recovery import run_input_candidate_recovery
+            screen_size = None
+            if regions:
+                rbboxes = [r.get("bbox", [0, 0, 0, 0]) for r in regions if len((r.get("bbox") or [])) >= 4]
+                if rbboxes:
+                    screen_size = (max(b[2] for b in rbboxes), max(b[3] for b in rbboxes))
+            atoms, recovery_log = run_input_candidate_recovery(
+                atoms, raw_ocr_boxes, regions, screen_size, image_path=str(path),
+                form_regions=form_regions, dark_theme=dark_theme,
+            )
+            log.extend(recovery_log)
+        except Exception as rec_e:
+            log.append("input_candidate_recovery skipped: %s" % rec_e)
+    else:
+        log.append("input_candidate_recovery: skip (layout inferred %d fields, use as primary)" % len(layout_inferred_atoms))
+
+    # Experimental multilevel v2 (side-path): от вершины к листьям, без изменения baseline
+    if use_experimental_multilevel_v2:
+        try:
+            from src.infrastructure.atoms_v2.experimental_v2 import run_experimental_multilevel_v2
+            existing_ids = {a.get("id", "") for a in atoms if a.get("id")}
+            exp_v2_atoms, exp_v2_log, _ = run_experimental_multilevel_v2(
+                str(path),
+                raw_ocr_boxes=raw_ocr_boxes,
+                dark_theme=dark_theme,
+                debug_output_dir=experimental_v2_debug_dir,
+                existing_atom_ids=existing_ids,
+            )
+            log.extend(exp_v2_log)
+            if exp_v2_atoms:
+                atoms = atoms + exp_v2_atoms
+                log.append("experimental_multilevel_v2: added %d atoms (side-path)" % len(exp_v2_atoms))
+        except Exception as exp_e:
+            log.append("experimental_multilevel_v2 skipped: %s" % exp_e)
+
+    # Form Container First (ТЗ): FormContainerDetector → FormInnerLayout → SlotDetector → FieldLocator → FormGraph
+    if use_form_container_first:
+        try:
+            from src.infrastructure.atoms_v2.experimental_v2.run_form_container_first_inference import run_form_container_first_inference
+            existing_ids = {a.get("id", "") for a in atoms if a.get("id")}
+            detectron_regions = None
+            if regions:
+                detectron_regions = [{"bbox": r.get("bbox")} for r in regions if len((r.get("bbox") or [])) >= 4]
+            fcf_atoms, fcf_log, _ = run_form_container_first_inference(
+                str(path),
+                raw_ocr_boxes=raw_ocr_boxes,
+                dark_theme=dark_theme,
+                debug_output_dir=form_container_first_debug_dir,
+                existing_atom_ids=existing_ids,
+                detectron_regions=detectron_regions,
+            )
+            log.extend(fcf_log)
+            if fcf_atoms:
+                atoms = atoms + fcf_atoms
+                log.append("form_container_first: added %d atoms (side-path)" % len(fcf_atoms))
+        except Exception as fcf_e:
+            log.append("form_container_first skipped: %s" % fcf_e)
+
+    # v3: input_probe_prepass_v3 — подготовка OCR до semantic_validation без назначения ролей
+    try:
+        from src.infrastructure.atoms_v2.input_probe_prepass_v3 import input_probe_prepass_v3
+        input_probe_prepass_v3(atoms, raw_ocr_boxes)
+        log.append("input_probe_prepass_v3 applied (probe_ocr_text/len for input candidates)")
+    except Exception as probe_e:
+        log.append("input_probe_prepass_v3 skipped: %s" % probe_e)
+
     # --- Интеграция CatBoost v2 как soft-prior (атомы не удаляются до semantic_validation) ---
     # 1. postprocess (выше)
-    # 2. build_ui_graph(all atoms) → extract_features
+    # 2. input_probe_prepass_v3 (выше) — probe_ocr_text/len для кандидатов input
+    # 3. build_ui_graph(all atoms) → extract_features
     # 3. run_catboost_priors → atom["priors"]["interactive_score"], atom["priors"]["role_probs"]; не фильтрует, ui_role не назначает
     # 4. group_atoms → atom_groups (row_bucket, area_bucket, aspect)
     # 5. semantic_validation(atom_groups) — rule-based + ML priors; propagation ролей в группе
@@ -1015,7 +1188,7 @@ def run_atoms_v2_pipeline(
     except Exception as priors_e:
         logger.debug("atoms_v2: catboost_priors/group_atoms skipped: %s", priors_e)
 
-    # Семантическая валидация: rule-based + ML priors; группы передаются как контекст (propagation)
+    # Семантическая валидация (v3): единственный слой, назначающий semantic_role и semantic_lock
     from src.infrastructure.atoms_v2.semantic_validation import run_semantic_validation
     semantic_log, semantic_stats = run_semantic_validation(
         atoms, raw_ocr_boxes, regions, require_effect=True, atom_groups=atom_groups,
@@ -1028,41 +1201,72 @@ def run_atoms_v2_pipeline(
     for a in atoms:
         if a.get("id") in saved_by_anchor_ids:
             a["saved_by_anchor"] = True
-    for a in atoms:
-        a["semantic_lock"] = bool(a.get("semantic_valid", False) or a.get("saved_by_anchor", False))
 
-    # Input bbox prepass: только для атомов, уже признанных input/weak_input (после semantic_validation)
+    # v3: atoms_for_interaction — только semantic_lock; layout/text/noise не участвуют в ui_graph
+    atoms_for_interaction = [a for a in atoms if a.get("semantic_lock")]
+    log.append("atoms_v3: atoms_for_interaction=%s (semantic_lock)" % len(atoms_for_interaction))
+
+    # Уточнение границ input (label cut, snap to edges, width normalize) — как у кнопок
+    try:
+        from src.infrastructure.atoms_v2.input_bbox_refinement import refine_input_bbox_like_button
+        input_types = ("input", "weak_input")
+        input_atoms = [a for a in atoms if (a.get("type") or "").lower() in input_types and a.get("bbox") and len(a.get("bbox", [])) >= 4]
+        other_bboxes = [a.get("bbox") for a in input_atoms if a.get("bbox") and len(a.get("bbox", [])) >= 4]
+        refined_count = 0
+        for a in input_atoms:
+            bbox = a.get("bbox")
+            if not bbox or len(bbox) < 4:
+                continue
+            others = [b for b in other_bboxes if b != bbox]
+            try:
+                import cv2
+                img = cv2.imread(str(path))
+                img_shape = img.shape[:2] if img is not None else None
+            except Exception:
+                img_shape = None
+            new_bbox = refine_input_bbox_like_button(
+                list(bbox),
+                image_path=str(path),
+                raw_ocr_boxes=raw_ocr_boxes,
+                other_field_bboxes_in_card=others,
+                img_shape=img_shape,
+            )
+            if new_bbox != bbox:
+                a["bbox"] = new_bbox
+                refined_count += 1
+        if refined_count:
+            log.append("input_bbox_refinement: %d input bboxes refined (label cut, edges, width)" % refined_count)
+    except Exception as ref_e:
+        logger.debug("atoms_v2: input_bbox_refinement skipped: %s", ref_e)
+
+    # Input bbox prepass: только для атомов с interactive_valid и type in (input, weak_input)
     try:
         from src.infrastructure.ui_graph.catboost_priors import input_bbox_prepass
         input_bbox_prepass(atoms, raw_ocr_boxes)
     except Exception as prepass_e:
         logger.debug("atoms_v2: input_bbox_prepass skipped: %s", prepass_e)
 
-    # UI-граф: структурный слой CV ≠ semantics; semantic_lock запрещает дроп; fallback при len(final)==0
+    # UI-граф v3: только структура; работает ТОЛЬКО с atoms_for_interaction; не назначает роли
     try:
-        from src.infrastructure.ui_graph import run_ui_graph_pipeline
+        from src.infrastructure.ui_graph.build import run_ui_graph_pipeline_v3
         from src.infrastructure.ui_graph.debug import debug_per_atom_log, debug_stats, debug_graph_summary
-        final_atoms, ui_graph, features_by_atom, ui_log, ui_stats, role_predictions = run_ui_graph_pipeline(
-            atoms, raw_ocr_boxes, regions,
-        )
-        log.extend(debug_graph_summary(ui_graph))
+        if not atoms_for_interaction:
+            final_atoms, ui_graph, features_by_atom, ui_log, ui_stats, role_predictions = [], None, {}, ["ui_graph_v3: no atoms_for_interaction"], {}, {}
+        else:
+            final_atoms, ui_graph, features_by_atom, ui_log, ui_stats, role_predictions = run_ui_graph_pipeline_v3(
+                atoms_for_interaction, raw_ocr_boxes, regions,
+            )
         log.extend(ui_log)
-        log.extend(debug_per_atom_log(ui_graph, role_predictions, features_by_atom))
+        if ui_graph is not None:
+            log.extend(debug_graph_summary(ui_graph))
+            log.extend(debug_per_atom_log(ui_graph, role_predictions, features_by_atom))
         ds = debug_stats(atoms, final_atoms, role_predictions)
         log.append(
-            "ui_graph stats: before=%s after=%s overrides=%s blocked=%s attempted_drop_but_locked=%s weak_roles=%s semantic_promoted=%s"
-            % (
-                ds["before_count"],
-                ds["after_count"],
-                ds.get("override_counts", {}),
-                ui_stats.get("blocked_by_semantic_lock", 0),
-                ui_stats.get("attempted_drop_but_locked", 0),
-                ui_stats.get("weak_roles_assigned", 0),
-                ui_stats.get("semantic_promoted_from_layout", 0),
-            )
+            "ui_graph v3 stats: before=%s after=%s overrides=%s"
+            % (ds["before_count"], ds["after_count"], ds.get("override_counts", {}))
         )
         image_id = path.stem
-        # Final role assignment — rule-based в run_ui_graph_pipeline (classify_roles + apply_roles_to_atoms)
+        # v3: роли назначены только в semantic_validation; ui_graph только копирует semantic_role → ui_role
         for a in final_atoms:
             a["image_id"] = image_id
         try:
@@ -1088,8 +1292,14 @@ def run_atoms_v2_pipeline(
             logger.warning("atoms_v2: dataset_builder failed: %s", ds_e)
     except Exception as e:
         logger.warning("atoms_v2: ui_graph failed, using atoms as-is: %s", e)
+        # v3: при падении ui_graph всё равно выставляем ui_role = semantic_role у semantic_lock атомов
+        for a in atoms:
+            if a.get("semantic_lock"):
+                a["ui_role"] = a.get("semantic_role") or a.get("type") or ""
+                a["ui_role_confidence"] = 0.6
+        atoms = [a for a in atoms if a.get("semantic_lock")]
 
-    # Правка №4: layout_candidate, container_candidate, inline_text_candidate = debug only; не участвуют в semantic, links, region, unified_ui
+    # v3: в UI участвуют только semantic_lock атомы
     atoms_for_ui = _atoms_participating_in_ui(atoms)
     log.append(f"atoms_participating_ui={len(atoms_for_ui)}")
     atom_to_region = _assign_atoms_to_regions(atoms_for_ui, regions)

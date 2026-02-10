@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Цветные фоны (не белые)</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; font-size: 14px; background: #e8eaf0; color: #1a1a1a; }
+    .card { max-width: 480px; margin: 24px auto; padding: 20px; background: #e3f2fd; border: 1px solid #90caf9; border-radius: 8px; }
+    .card-title { margin: 0 0 16px; font-size: 16px; font-weight: 600; color: #1565c0; }
+    .form-row { margin-bottom: 14px; }
+    .label { display: block; margin-bottom: 6px; font-size: 13px; color: #0d47a1; }
+    .input-text { width: 100%; padding: 8px 12px; border: 1px solid #64b5f6; border-radius: 6px; font-size: 14px; background: #fff; min-height: 36px; }
+    .input-text.muted { background: #bbdefb; border-color: #42a5f5; }
+    .btn { padding: 8px 16px; border-radius: 6px; font-size: 14px; background: #1976d2; color: #fff; border: none; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2 class="card-title">Карточка с цветным фоном</h2>
+    <div class="form-row">
+      <label class="label">Имя</label>
+      <input type="text" class="input-text" placeholder="Введите имя">
+    </div>
+    <div class="form-row">
+      <label class="label">Email</label>
+      <input type="text" class="input-text muted" placeholder="email@example.com">
+    </div>
+    <button type="button" class="btn">Сохранить</button>
+  </div>
+</body>
+</html>

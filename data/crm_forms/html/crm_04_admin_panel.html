@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin — Добавление пользователя</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, sans-serif; font-size: 14px; background: #f8f9fa; color: #212529; }
+    .header { display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; background: #0d6efd; color: #fff; }
+    .header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+    .header-actions { display: flex; gap: 10px; }
+    .btn { padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; border: 1px solid transparent; min-height: 36px; }
+    .btn-primary { background: #0d6efd; color: #fff; }
+    .btn-secondary { background: #fff; color: #0d6efd; border: 1px solid #0d6efd; }
+    .layout { display: flex; min-height: calc(100vh - 48px); }
+    .sidebar { width: 220px; background: #212529; color: #adb5bd; padding: 20px 0; }
+    .sidebar .menu-item { display: block; padding: 10px 20px; color: #adb5bd; text-decoration: none; }
+    .sidebar .menu-item:hover { background: #343a40; color: #fff; }
+    .main { flex: 1; padding: 24px; }
+    .panel { background: #fff; border: 1px solid #dee2e6; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); margin-bottom: 24px; padding: 24px; }
+    .panel-title { margin: 0 0 20px; font-size: 16px; font-weight: 600; }
+    .input-text { min-width: 150px; min-height: 28px; max-height: 80px; padding: 8px 12px; border-radius: 6px; font-size: 14px; }
+    .input-text.light { border: 1px solid #ced4da; background: #fff; }
+    .input-text.gray { border: 1px solid #adb5bd; background: #f8f9fa; }
+    .input-text.blue { border: 2px solid #0d6efd; background: #f0f7ff; }
+    .form-row { display: flex; align-items: center; margin-bottom: 14px; gap: 12px; }
+    .form-row label { width: 140px; font-size: 13px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-group label { display: block; margin-bottom: 4px; font-size: 13px; }
+    textarea.input-text { min-height: 60px; resize: vertical; }
+    /* Темы: панель формы и поля ввода контрастируют */
+    body.theme-borders { background: #e0e0e0; }
+    body.theme-borders .panel { background: #f0f0f0; border: 2px solid #495057 !important; }
+    body.theme-borders .input-text { background: #fff !important; border: 2px solid #212529 !important; }
+    body.theme-dark { background: #0d1117; color: #eee; }
+    body.theme-dark .panel { background: #1a2332; border: 1px solid #2d3a4d !important; }
+    body.theme-dark .input-text { background: #252d3a !important; border: 1px solid #4a5568 !important; color: #eee; }
+    body.theme-dark .form-row label, body.theme-dark .form-group label { color: #cbd5e0; }
+    body.theme-green { background: #f0f7f0; }
+    body.theme-green .main { background: #f0f7f0; }
+    body.theme-green .panel { background: #e8f5e9; border: 1px solid #a5d6a7 !important; }
+    body.theme-green .input-text { background: #fff !important; border: 1px solid #81c784 !important; }
+    body.theme-green .header { background: #1b5e20; }
+    body.theme-green .btn-primary { background: #2e7d32; border-color: #1b5e20; }
+    body.theme-green .input-text:focus { border-color: #2e7d32; }
+  </style>
+</head>
+<body>
+  <script>(function(){ var p = new URLSearchParams(location.search); var t = p.get('theme'); if (t) document.body.classList.add('theme-' + t); })();</script>
+  <header class="header">
+    <h1>Добавление пользователя</h1>
+    <div class="header-actions">
+      <button type="button" class="btn btn-secondary">Cancel</button>
+      <button type="button" class="btn btn-primary">Create user</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar">
+      <a class="menu-item" href="#">Users</a>
+      <a class="menu-item" href="#">Roles</a>
+      <a class="menu-item" href="#">Settings</a>
+    </nav>
+
+    <main class="main">
+      <div class="panel" data-form="user">
+        <h2 class="panel-title">Учётная запись</h2>
+        <div class="form-row">
+          <label for="u-login">Login</label>
+          <input type="text" id="u-login" class="input-text light" placeholder="username" data-input-type="text">
+        </div>
+        <div class="form-row">
+          <label for="u-email">Email</label>
+          <input type="email" id="u-email" class="input-text gray" placeholder="user@domain.com" data-input-type="email">
+        </div>
+        <div class="form-row">
+          <label for="u-password">Password</label>
+          <input type="password" id="u-password" class="input-text blue" placeholder="••••••••" data-input-type="password">
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="panel" data-form="profile">
+          <h2 class="panel-title">Профиль</h2>
+          <div class="form-group" style="margin-bottom:14px;">
+            <label for="pr-name">Full name</label>
+            <input type="text" id="pr-name" class="input-text light" data-input-type="text">
+          </div>
+          <div class="form-group" style="margin-bottom:14px;">
+            <label for="pr-department">Department</label>
+            <input type="text" id="pr-department" class="input-text light" placeholder="Engineering" data-input-type="text">
+          </div>
+        </div>
+        <div class="panel" data-form="extra">
+          <h2 class="panel-title">Дополнительно</h2>
+          <div class="form-group" style="margin-bottom:14px;">
+            <label for="ex-phone">Phone</label>
+            <input type="tel" id="ex-phone" class="input-text light" data-input-type="tel">
+          </div>
+          <div class="form-group" style="margin-bottom:14px;">
+            <label for="ex-notes">Notes</label>
+            <textarea id="ex-notes" class="input-text light" rows="2" data-input-type="textarea"></textarea>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

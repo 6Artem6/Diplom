@@ -24,6 +24,9 @@ class UIRole(str, Enum):
     PAGINATION = "pagination"
     FORM = "form"
     NOISE = "noise"
+    CHECKBOX = "checkbox"
+    TEXTAREA = "textarea"
+    CONTAINER_CANDIDATE = "container_candidate"
 
 
 # Anchor-диапазоны: если тип + геометрия в диапазоне — никогда не noise (расширено для input без label)

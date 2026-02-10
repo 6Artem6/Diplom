@@ -39,10 +39,20 @@ INPUT_ANCHOR_TEXT_COVERAGE_MAX = 0.3  # bbox не перекрыт тексто�
 BUTTON_ANCHOR_ASPECT_MIN = 1.5
 BUTTON_ANCHOR_ASPECT_MAX = 30.0
 MIN_BUTTON_AREA_PX = 100
+# Кнопка без явных границ: текст должен быть по центру или с action-словом; иначе — label/поле
+BUTTON_ASPECT_LABEL_LIKE_MAX = 6.0  # aspect > 6 и текст слева → не кнопка
+ACTION_WORDS = frozenset({"search", "submit", "save", "login", "send", "go", "ok", "apply", "cancel", "create", "add"})
 
 CONTEXT_CONFIDENCE_FACTOR = 0.6  # anchor без context → confidence *= это
 
 LAYOUT_TYPE = "layout"
+
+# Роли, которые дают semantic_lock (участвуют в interaction graph). layout/text/noise — никогда.
+SEMANTIC_LOCK_TYPES = frozenset({
+    "button", "weak_button", "input", "weak_input", "link", "checkbox", "textarea", "container_candidate",
+})
+# Порог покрытия: bbox B считается «внутри» bbox A, если доля площади B внутри A >= этого значения
+BUTTON_ABSORB_COVERAGE_MIN = 0.5
 
 
 def _bbox_area(bbox: List[float]) -> float:
@@ -123,6 +133,85 @@ def _button_anchor_ok(bbox: List[float]) -> bool:
     if area < MIN_BUTTON_AREA_PX:
         return False
     return True
+
+
+def _has_action_word_in_bbox(bbox: List[float], raw_ocr_boxes: List[Dict[str, Any]]) -> bool:
+    """Есть ли внутри bbox OCR-текст с action-словом (Save, Cancel, Search, ...)."""
+    for ob in raw_ocr_boxes:
+        obbox = ob.get("bbox", [0, 0, 0, 0])
+        if len(obbox) < 4:
+            continue
+        if _intersection_area(obbox, bbox) / max(1e-9, _bbox_area(obbox)) < 0.3:
+            continue
+        text = (ob.get("text") or "").strip().lower()
+        if any(w in text for w in ACTION_WORDS):
+            return True
+    return False
+
+
+def _ocr_left_aligned_in_bbox(bbox: List[float], raw_ocr_boxes: List[Dict[str, Any]]) -> bool:
+    """True если OCR внутри bbox смещён влево (центр текста левее центра bbox) — признак label, не кнопки."""
+    if len(bbox) < 4:
+        return False
+    cx_bbox = (bbox[0] + bbox[2]) / 2
+    for ob in raw_ocr_boxes:
+        obbox = ob.get("bbox", [0, 0, 0, 0])
+        if len(obbox) < 4:
+            continue
+        if _intersection_area(obbox, bbox) / max(1e-9, _bbox_area(obbox)) < 0.2:
+            continue
+        cx_ocr = (obbox[0] + obbox[2]) / 2
+        if cx_ocr < cx_bbox - 20:
+            return True
+    return False
+
+
+def _ocr_centered_in_bbox(bbox: List[float], raw_ocr_boxes: List[Dict[str, Any]], tolerance: float = 0.25) -> bool:
+    """True если OCR внутри bbox центрирован по вертикали и горизонтали — признак кнопки, не input."""
+    if len(bbox) < 4:
+        return False
+    cx_bbox = (bbox[0] + bbox[2]) / 2
+    cy_bbox = (bbox[1] + bbox[3]) / 2
+    half_w = (bbox[2] - bbox[0]) / 2
+    half_h = (bbox[3] - bbox[1]) / 2
+    for ob in raw_ocr_boxes:
+        obbox = ob.get("bbox", [0, 0, 0, 0])
+        if len(obbox) < 4:
+            continue
+        if _intersection_area(obbox, bbox) / max(1e-9, _bbox_area(obbox)) < 0.2:
+            continue
+        cx_ocr = (obbox[0] + obbox[2]) / 2
+        cy_ocr = (obbox[1] + obbox[3]) / 2
+        if abs(cx_ocr - cx_bbox) <= half_w * tolerance and abs(cy_ocr - cy_bbox) <= half_h * tolerance:
+            return True
+    return False
+
+
+def _input_vs_button_score(
+    bbox: List[float],
+    raw_ocr_boxes: List[Dict[str, Any]],
+) -> Tuple[float, float]:
+    """
+    Скоринг input vs button по визуальным/текстовым признакам (без изображения).
+    Возвращает (input_score, button_score) в диапазоне 0..1.
+    Button: текст по центру, action-слово. Input: текст слева, label сверху/слева, нет action.
+    """
+    input_score = 0.0
+    button_score = 0.0
+    if len(bbox) < 4:
+        return (input_score, button_score)
+    if _ocr_centered_in_bbox(bbox, raw_ocr_boxes):
+        button_score += 0.4
+    if _ocr_left_aligned_in_bbox(bbox, raw_ocr_boxes):
+        input_score += 0.35
+    if _has_action_word_in_bbox(bbox, raw_ocr_boxes):
+        button_score += 0.35
+    if _has_aligned_label(bbox, raw_ocr_boxes):
+        input_score += 0.3
+    # Нет action-слова при наличии текста — скорее placeholder (input)
+    if not _has_action_word_in_bbox(bbox, raw_ocr_boxes) and _text_inside_atom(bbox, raw_ocr_boxes):
+        input_score += 0.15
+    return (min(1.0, input_score), min(1.0, button_score))
 
 
 def _assign_atoms_to_regions(
@@ -315,6 +404,8 @@ PRIOR_INTERACTIVE_MIN = 0.55
 # Propagation: минимум интерактивных в группе и медианная длина текста
 PROPAGATION_MIN_INTERACTIVE_IN_GROUP = 2
 PROPAGATION_MEDIAN_TEXT_LENGTH_MIN = 2
+# Icon/emoji: не резать кнопки с высоким prior (weak_input/button разрешены при prior >= порога)
+ICON_INTERACTIVE_MIN = 0.6
 
 
 def _phase1_interactive_gate(
@@ -367,6 +458,10 @@ def _phase1_interactive_gate(
             a["interactive_valid"] = interactive_score >= PRIOR_INTERACTIVE_MIN
             a["interactive_source"] = "prior" if a["interactive_valid"] else None
 
+        elif t in ("input_candidate", "textarea_candidate"):
+            a["interactive_valid"] = True
+            a["interactive_source"] = "recovery"
+
         elif t == "container_candidate":
             a["interactive_valid"] = False
 
@@ -386,9 +481,9 @@ def _validate_input_anchor_first(
     saved_by_anchor: Dict[str, List[str]],
     pruned_ids: Dict[str, List[str]],
 ) -> None:
-    """Фаза 2 — Role assignment для input. Только для interactive_valid. role_probs используются здесь."""
+    """Фаза 2 — Role assignment для input и input_candidate. Только для interactive_valid. role_probs используются здесь."""
     for a in atoms:
-        if a.get("type") != "input":
+        if a.get("type") not in ("input", "input_candidate", "textarea_candidate"):
             continue
         if not a.get("interactive_valid"):
             a["semantic_valid"] = False
@@ -397,27 +492,58 @@ def _validate_input_anchor_first(
         if len(bbox) < 4:
             a["semantic_valid"] = False
             continue
+        w = bbox[2] - bbox[0]
+        h = bbox[3] - bbox[1]
+        aspect = w / max(h, 1e-9)
+        input_score, button_score = _input_vs_button_score(bbox, raw_ocr_boxes)
+        if aspect < BUTTON_ASPECT_LABEL_LIKE_MAX and button_score > input_score and button_score >= 0.5:
+            _prune_to_layout(
+                a,
+                "input_vs_button_score: button_score=%.2f > input_score=%.2f (button-like, not input)"
+                % (button_score, input_score),
+                semantic_log,
+                pruned_ids,
+            )
+            continue
         priors = a.get("priors") or {}
         role_probs = priors.get("role_probs") or {}
         prior_input = role_probs.get("input", 0)
         interactive_score = float(priors.get("interactive_score", 0))
         high_prior = prior_input >= PRIOR_INPUT_MIN and interactive_score >= PRIOR_INTERACTIVE_MIN
         if not _input_anchor_ok(bbox, raw_ocr_boxes):
-            if high_prior:
+            probe_len = a.get("probe_ocr_len") or 0
+            prior_with_probe = (
+                interactive_score >= PRIOR_INTERACTIVE_MIN
+                and prior_input >= PRIOR_INPUT_MIN
+                and probe_len >= 1
+            )
+            phase_b_confirmed = a.get("source") == "input_candidate_recovery"
+            if high_prior or prior_with_probe or phase_b_confirmed:
                 a["type"] = "weak_input"
                 a["semantic_valid"] = True
                 a["confidence"] = CONTEXT_CONFIDENCE_FACTOR
                 saved_by_anchor.setdefault("input", []).append(a.get("id", ""))
-                semantic_log.append("weak_input (prior): %s | input no anchor, high prior" % a.get("id", ""))
+                reason = "prior/probe" if (high_prior or prior_with_probe) else "Phase B confirmed"
+                semantic_log.append(
+                    "weak_input (%s): %s | input no anchor" % (reason, a.get("id", ""))
+                )
             else:
                 _prune_to_layout(a, "input no anchor (aspect/height/text coverage)", semantic_log, pruned_ids)
             continue
-        has_label = bool(_text_inside_atom(bbox, raw_ocr_boxes)) or _has_aligned_label(bbox, raw_ocr_boxes)
+        has_label = (
+            bool(_text_inside_atom(bbox, raw_ocr_boxes))
+            or _has_aligned_label(bbox, raw_ocr_boxes)
+            or (a.get("probe_ocr_len") or 0) >= 1
+        )
         rid = atom_to_region.get(a.get("id"))
         form_context = _region_has_form_structure(rid, atoms, atom_to_region, semantic_valid_only=False)
         has_context = has_label or form_context
         if has_context:
             a["semantic_valid"] = True
+            if (a.get("type") or "") == "input_candidate":
+                a["type"] = "input"
+            elif (a.get("type") or "") == "textarea_candidate":
+                a["type"] = "textarea"
             continue
         a["type"] = "weak_input"
         a["semantic_valid"] = True
@@ -429,6 +555,7 @@ def _validate_input_anchor_first(
 
 def _validate_button_anchor_first(
     atoms: List[Dict[str, Any]],
+    raw_ocr_boxes: List[Dict[str, Any]],
     atom_to_region: Dict[str, Optional[str]],
     semantic_log: List[str],
     saved_by_anchor: Dict[str, List[str]],
@@ -445,6 +572,13 @@ def _validate_button_anchor_first(
         if len(bbox) < 4:
             a["semantic_valid"] = False
             continue
+        w = bbox[2] - bbox[0]
+        h = bbox[3] - bbox[1]
+        aspect = w / max(h, 1e-9)
+        if a.get("source") == "synthetic" and aspect > BUTTON_ASPECT_LABEL_LIKE_MAX:
+            if not _has_action_word_in_bbox(bbox, raw_ocr_boxes) or _ocr_left_aligned_in_bbox(bbox, raw_ocr_boxes):
+                _prune_to_layout(a, "synthetic button: high aspect, text left-aligned (label-like)", semantic_log, pruned_ids)
+                continue
         priors = a.get("priors") or {}
         role_probs = priors.get("role_probs") or {}
         prior_button = role_probs.get("button", 0)
@@ -607,13 +741,56 @@ def _propagate_semantic_in_groups(
                 continue
             if not a.get("interactive_valid"):
                 continue
-            if _is_icon_or_emoji_dominant(a, raw_ocr_boxes):
+            if _is_icon_or_emoji_dominant(a, raw_ocr_boxes) and (
+                (a.get("priors") or {}).get("interactive_score", 0) < ICON_INTERACTIVE_MIN
+            ):
                 continue
             old_type = a.get("type", "")
             a["type"] = dominant_type
             a["semantic_valid"] = True
             a["confidence"] = max((a.get("confidence") or 0), CONTEXT_CONFIDENCE_FACTOR)
             log.append("group_propagate: %s | %s -> %s (group %s)" % (a.get("id", ""), old_type, dominant_type, gid))
+
+
+def _set_semantic_role_and_lock(atoms: List[Dict[str, Any]]) -> None:
+    """
+    v3: semantic_validation — единственный источник ролей.
+    semantic_role = итоговый type после валидации.
+    semantic_lock = True только если роль назначена (тип из SEMANTIC_LOCK_TYPES и semantic_valid).
+    layout/text/noise всегда semantic_lock=False.
+    """
+    for a in atoms:
+        t = (a.get("type") or "").strip().lower()
+        a["semantic_role"] = t or "layout"
+        if t in SEMANTIC_LOCK_TYPES and a.get("semantic_valid"):
+            a["semantic_lock"] = True
+        else:
+            a["semantic_lock"] = False
+
+
+def _button_absorbs_link_text_inside(atoms: List[Dict[str, Any]], semantic_log: List[str]) -> None:
+    """
+    button поглощает любые link/text внутри своего bbox: у таких атомов semantic_lock=False,
+    они не попадают в atoms_for_interaction.
+    """
+    for a in atoms:
+        if (a.get("type") or "").lower() != "button" or not a.get("semantic_valid"):
+            continue
+        bbox_btn = a.get("bbox", [0, 0, 0, 0])
+        if len(bbox_btn) < 4:
+            continue
+        for other in atoms:
+            if other is a or other.get("id") == a.get("id"):
+                continue
+            t_other = (other.get("type") or "").lower()
+            if t_other not in ("link", "text_block", "title", "weak_link"):
+                continue
+            bbox_other = other.get("bbox", [0, 0, 0, 0])
+            if len(bbox_other) < 4:
+                continue
+            if _coverage_bbox_in_bbox(bbox_other, bbox_btn) >= BUTTON_ABSORB_COVERAGE_MIN:
+                other["semantic_lock"] = False
+                semantic_log.append("button_absorb: %s absorbs %s (link/text inside bbox)" % (a.get("id", ""), other.get("id", "")))
 
 
 def run_semantic_validation(
@@ -644,10 +821,13 @@ def run_semantic_validation(
 
     _phase1_interactive_gate(atoms, raw_ocr_boxes, atom_to_region, semantic_log, pruned_ids)
     _validate_input_anchor_first(atoms, raw_ocr_boxes, atom_to_region, semantic_log, saved_by_anchor, pruned_ids)
-    _validate_button_anchor_first(atoms, atom_to_region, semantic_log, saved_by_anchor, pruned_ids)
+    _validate_button_anchor_first(atoms, raw_ocr_boxes, atom_to_region, semantic_log, saved_by_anchor, pruned_ids)
     _validate_container_hard(atoms, atom_to_region, semantic_log)
     _set_layout_passive(atoms)
     _propagate_semantic_in_groups(atoms, raw_ocr_boxes, atom_groups, semantic_log)
+
+    _set_semantic_role_and_lock(atoms)
+    _button_absorbs_link_text_inside(atoms, semantic_log)
 
     after = _count_by_type(atoms)
     diff: Dict[str, int] = {}
@@ -660,15 +840,19 @@ def run_semantic_validation(
         "after": after,
         "diff": diff,
         "saved_by_anchor": saved_by_anchor,
+        "pruned_ids": pruned_ids,
     }
     n_input_saved = len(saved_by_anchor.get("input", []))
     n_button_saved = len(saved_by_anchor.get("button", []))
+    n_pruned_input = len(pruned_ids.get("input", []))
+    n_pruned_button = len(pruned_ids.get("button", []))
     log_lines: List[str] = [
         "semantic_validation before: input=%s button=%s container_candidate=%s layout=%s"
         % (before.get("input", 0), before.get("button", 0), before.get("container_candidate", 0), before.get(LAYOUT_TYPE, 0)),
         "semantic_validation after:  input=%s button=%s container_candidate=%s layout=%s"
         % (after.get("input", 0), after.get("button", 0), after.get("container_candidate", 0), after.get(LAYOUT_TYPE, 0)),
         "semantic_validation saved_by_anchor: input=%s button=%s" % (n_input_saved, n_button_saved),
+        "semantic_validation pruned (suppressed as button/layout): input=%d button=%d" % (n_pruned_input, n_pruned_button),
     ]
     log_lines.extend(semantic_log)
     if semantic_log:

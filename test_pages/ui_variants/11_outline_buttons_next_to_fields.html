@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Outline-кнопки рядом с полями</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; font-size: 14px; background: #f0f2f5; color: #1a1a1a; }
+    .card { max-width: 520px; margin: 24px auto; padding: 20px; background: #fff; border: 1px solid #dfe6e9; border-radius: 8px; }
+    .card-title { margin: 0 0 16px; font-size: 16px; font-weight: 600; }
+    .form-row { margin-bottom: 14px; }
+    .label { display: block; margin-bottom: 6px; font-size: 13px; color: #2c3e50; }
+    .input-text { width: 100%; padding: 8px 12px; border: 1px solid #bdc3c7; border-radius: 6px; font-size: 14px; background: #fff; min-height: 36px; }
+    .row-with-btn { display: flex; gap: 12px; align-items: center; }
+    .row-with-btn .input-text { flex: 1; }
+    .btn { padding: 8px 16px; border-radius: 6px; font-size: 14px; min-height: 36px; cursor: pointer; }
+    .btn-primary { background: #3498db; color: #fff; border: none; }
+    .btn-outline { background: transparent; color: #2c3e50; border: 1px solid #95a5a6; }
+    .actions { display: flex; gap: 10px; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2 class="card-title">Поля и outline-кнопки</h2>
+    <div class="form-row">
+      <label class="label">Имя</label>
+      <input type="text" class="input-text" placeholder="Введите имя">
+    </div>
+    <div class="form-row row-with-btn">
+      <label class="label" style="min-width: 60px;">Поиск</label>
+      <input type="text" class="input-text" placeholder="search…">
+      <button type="button" class="btn btn-outline">Найти</button>
+    </div>
+    <div class="form-row">
+      <label class="label">Email</label>
+      <input type="text" class="input-text" placeholder="email@example.com">
+    </div>
+    <div class="actions">
+      <button type="button" class="btn btn-outline">Отмена</button>
+      <button type="button" class="btn btn-primary">Отправить</button>
+    </div>
+  </div>
+</body>
+</html>

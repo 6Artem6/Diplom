@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ERP — Настройки</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, sans-serif; font-size: 14px; background: #ecf0f1; color: #1a1a1a; }
+    .header { display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; background: #1a252f; color: #fff; }
+    .header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+    .header-actions { display: flex; gap: 10px; }
+    .btn { padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; border: 1px solid transparent; min-height: 36px; }
+    .btn-primary { background: #e74c3c; color: #fff; }
+    .btn-outline { background: transparent; color: #bdc3c7; border: 1px solid #7f8c8d; }
+    .layout { display: flex; max-width: 1280px; margin: 0 auto; min-height: calc(100vh - 48px); }
+    .sidebar { width: 200px; background: #2c3e50; color: #ecf0f1; padding: 16px 0; }
+    .sidebar a { display: block; padding: 8px 20px; color: #bdc3c7; text-decoration: none; }
+    .sidebar a:hover { background: #34495e; color: #fff; }
+    .content { flex: 1; padding: 24px; }
+    .card { background: #fff; border: 1px solid #d5d8dc; border-radius: 8px; margin-bottom: 20px; padding: 20px; }
+    .card-title { margin: 0 0 16px; font-size: 16px; font-weight: 600; }
+    .input-text { min-width: 150px; min-height: 24px; max-height: 80px; padding: 8px 12px; border: 1px solid #bdc3c7; border-radius: 6px; font-size: 14px; background: #fff; }
+    .input-text:focus { border-color: #3498db; outline: none; }
+    .row { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; margin-bottom: 14px; }
+    .row label { min-width: 100px; font-size: 13px; }
+    .row.horizontal { align-items: center; }
+    .block { margin-bottom: 20px; }
+    textarea.input-text { min-height: 56px; resize: vertical; }
+    /* Темы: контент-область и поля различаются по цвету */
+    body.theme-borders { background: #e0e0e0; }
+    body.theme-borders .content { background: #f0f0f0; }
+    body.theme-borders .card { background: #fafafa; border: 2px solid #5a6a7a !important; }
+    body.theme-borders .input-text { background: #fff !important; border: 2px solid #2c3e50 !important; }
+    body.theme-dark { background: #0d1117; color: #eee; }
+    body.theme-dark .content { background: #0d1117; }
+    body.theme-dark .card { background: #1a2332; border: 1px solid #2d3a4d !important; }
+    body.theme-dark .input-text { background: #252d3a !important; border: 1px solid #4a5568 !important; color: #eee; }
+    body.theme-dark .row label { color: #cbd5e0; }
+    body.theme-green { background: #f0f7f0; }
+    body.theme-green .card { background: #e8f5e9; border: 1px solid #a5d6a7 !important; }
+    body.theme-green .input-text { background: #fff !important; border: 1px solid #81c784 !important; }
+    body.theme-green .header { background: #1b5e20; }
+    body.theme-green .btn-primary { background: #2e7d32; border-color: #1b5e20; }
+    body.theme-green .input-text:focus { border-color: #2e7d32; }
+  </style>
+</head>
+<body>
+  <script>(function(){ var p = new URLSearchParams(location.search); var t = p.get('theme'); if (t) document.body.classList.add('theme-' + t); })();</script>
+  <header class="header">
+    <h1>Настройки системы</h1>
+    <div class="header-actions">
+      <button type="button" class="btn btn-outline">Cancel</button>
+      <button type="button" class="btn btn-primary">Apply</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar">
+      <a href="#">Профиль</a>
+      <a href="#">Уведомления</a>
+      <a href="#">Интеграции</a>
+      <a href="#">Безопасность</a>
+    </nav>
+
+    <main class="content">
+      <div class="card" data-form="profile">
+        <h2 class="card-title">Профиль</h2>
+        <div class="row horizontal">
+          <label for="p-login">Login</label>
+          <input type="text" id="p-login" class="input-text" placeholder="admin" data-input-type="text">
+        </div>
+        <div class="row horizontal">
+          <label for="p-email">Email</label>
+          <input type="email" id="p-email" class="input-text" placeholder="admin@example.com" data-input-type="email">
+        </div>
+        <div class="block">
+          <label for="p-bio" style="display:block; margin-bottom:6px;">Описание</label>
+          <textarea id="p-bio" class="input-text" rows="3" placeholder="Краткое описание" data-input-type="textarea"></textarea>
+        </div>
+      </div>
+
+      <div class="card" data-form="notifications">
+        <h2 class="card-title">Уведомления</h2>
+        <div class="row horizontal">
+          <label for="n-email">Email для алертов</label>
+          <input type="email" id="n-email" class="input-text" data-input-type="email">
+        </div>
+        <div class="row horizontal">
+          <label for="n-webhook">Webhook URL</label>
+          <input type="url" id="n-webhook" class="input-text" placeholder="https://..." data-input-type="url">
+        </div>
+      </div>
+
+      <div class="card" data-form="search">
+        <h2 class="card-title">Поиск</h2>
+        <div class="row horizontal">
+          <label for="s-query">Запрос</label>
+          <input type="search" id="s-query" class="input-text" placeholder="Введите запрос" data-input-type="search">
+          <button type="button" class="btn btn-outline">Search</button>
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

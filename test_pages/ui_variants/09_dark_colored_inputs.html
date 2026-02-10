@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Тёмная тема — цветные input</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; font-size: 14px; background: #0d1117; color: #eee; }
+    .card { max-width: 480px; margin: 24px auto; padding: 20px; background: #1a2332; border: 1px solid #2d3a4d; border-radius: 8px; }
+    .card-title { margin: 0 0 16px; font-size: 16px; font-weight: 600; }
+    .form-row { margin-bottom: 14px; }
+    .label { display: block; margin-bottom: 6px; font-size: 13px; color: #cbd5e0; }
+    .input-text { width: 100%; padding: 8px 12px; border-radius: 6px; font-size: 14px; min-height: 36px; color: #eee; }
+    .input-gray { background: #252d3a; border: 1px solid #4a5568; }
+    .input-blue { background: #1e3a5f; border: 1px solid #3b82f6; }
+    .input-green { background: #1a3329; border: 1px solid #22c55e; }
+    .btn { padding: 8px 16px; border-radius: 6px; font-size: 14px; background: #3b82f6; color: #fff; border: none; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2 class="card-title">Цветные поля (тёмная тема)</h2>
+    <div class="form-row">
+      <label class="label">Серый</label>
+      <input type="text" class="input-text input-gray" placeholder="Введите имя">
+    </div>
+    <div class="form-row">
+      <label class="label">Синий</label>
+      <input type="text" class="input-text input-blue" placeholder="email@example.com">
+    </div>
+    <div class="form-row">
+      <label class="label">Зелёный</label>
+      <input type="text" class="input-text input-green" placeholder="+7 …">
+    </div>
+    <button type="button" class="btn">Сохранить</button>
+  </div>
+</body>
+</html>

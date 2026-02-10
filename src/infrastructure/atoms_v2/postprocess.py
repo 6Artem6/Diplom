@@ -22,6 +22,8 @@ LINE_Y_THRESHOLD_PX = 12.0
 LINE_X_GAP_MAX_PX = 35.0
 MIN_OCR_BOXES_FOR_SYNTHETIC_LINE = 2
 SYNTHETIC_OVERLAP_IOU_SKIP = 0.45
+# Синтетическая кнопка не создаётся из длинной горизонтальной строки (label + поле — не кнопка)
+SYNTHETIC_BTN_MAX_ASPECT = 8.0
 SMALL_LINK_WIDTH_PX = 90.0
 LINK_INSIDE_PARAGRAPH_AREA_RATIO = 0.85
 INPUT_MIN_WIDTH_PX = 40.0
@@ -215,6 +217,10 @@ def _synthetic_buttons_from_ocr(
             if len(line) < MIN_OCR_BOXES_FOR_SYNTHETIC_LINE:
                 continue
             line_bbox = _bbox_union([b["bbox"] for b in line])
+            lw = line_bbox[2] - line_bbox[0]
+            lh = line_bbox[3] - line_bbox[1]
+            if lh <= 0 or lw / lh > SYNTHETIC_BTN_MAX_ASPECT:
+                continue
             # Не дублируем: если уже есть CV-атом (button/link) с большим IoU — пропускаем
             skip = False
             for a in atoms:

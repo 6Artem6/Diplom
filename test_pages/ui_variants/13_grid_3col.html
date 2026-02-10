@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Сетка 3 колонки</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; font-size: 14px; background: #f0f2f5; color: #1a1a1a; }
+    .card { max-width: 640px; margin: 24px auto; padding: 20px; background: #fff; border: 1px solid #dfe6e9; border-radius: 8px; }
+    .card-title { margin: 0 0 16px; font-size: 16px; font-weight: 600; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px 16px; }
+    .form-cell { display: flex; flex-direction: column; }
+    .label { margin-bottom: 4px; font-size: 12px; color: #2c3e50; }
+    .input-text { width: 100%; padding: 8px 10px; border: 1px solid #bdc3c7; border-radius: 6px; font-size: 14px; background: #fff; min-height: 36px; }
+    .btn { padding: 8px 16px; border-radius: 6px; font-size: 14px; background: #3498db; color: #fff; border: none; margin-top: 12px; grid-column: span 3; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2 class="card-title">Форма 3 колонки</h2>
+    <div class="grid">
+      <div class="form-cell">
+        <label class="label">A</label>
+        <input type="text" class="input-text" placeholder="Поле 1">
+      </div>
+      <div class="form-cell">
+        <label class="label">B</label>
+        <input type="text" class="input-text" placeholder="Поле 2">
+      </div>
+      <div class="form-cell">
+        <label class="label">C</label>
+        <input type="text" class="input-text" placeholder="Поле 3">
+      </div>
+      <div class="form-cell">
+        <label class="label">D</label>
+        <input type="text" class="input-text" placeholder="Поле 4">
+      </div>
+      <div class="form-cell">
+        <label class="label">E</label>
+        <input type="text" class="input-text" placeholder="Поле 5">
+      </div>
+      <div class="form-cell">
+        <label class="label">F</label>
+        <input type="text" class="input-text" placeholder="Поле 6">
+      </div>
+      <button type="button" class="btn">Отправить</button>
+    </div>
+  </div>
+</body>
+</html>

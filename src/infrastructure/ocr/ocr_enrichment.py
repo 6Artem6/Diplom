@@ -8,13 +8,17 @@ Architecture (docs/ARCHITECTURE_ANALYSIS.md):
   when used in yolo_clip path so plain text is not ignored.
 """
 
+import logging
+import os
 from pathlib import Path
 from typing import List, Tuple
-import logging
 
 from src.domain.models.gui_block import GUIBlock
 
 logger = logging.getLogger(__name__)
+
+# Языки OCR: английский + русский (можно переопределить через OCR_LANGS_TESSERACT)
+OCR_LANGS_TESSERACT = os.environ.get("OCR_LANGS_TESSERACT", "eng+rus")
 
 # Minimum crop size to run OCR (avoid tiny crops)
 MIN_CROP_W = 4
@@ -72,7 +76,7 @@ def enrich_blocks_with_ocr(
             continue
         try:
             crop = img.crop((x1, y1, x2, y2))
-            text = pytesseract.image_to_string(crop, config=f"--psm {psm}").strip()
+            text = pytesseract.image_to_string(crop, lang=OCR_LANGS_TESSERACT, config=f"--psm {psm}").strip()
             if text:
                 block.ocr_text = text
         except Exception as e:
@@ -91,7 +95,7 @@ def _ocr_words(image_path: str, psm: int = 6) -> List[Tuple[str, int, int, int, 
         return []
     try:
         img = Image.open(path).convert("RGB")
-        data = pytesseract.image_to_data(img, output_type=pytesseract.Output.DICT, config=f"--psm {psm}")
+        data = pytesseract.image_to_data(img, lang=OCR_LANGS_TESSERACT, output_type=pytesseract.Output.DICT, config=f"--psm {psm}")
         out: List[Tuple[str, int, int, int, int]] = []
         for i, t in enumerate(data.get("text", []) or []):
             t = (t or "").strip()
