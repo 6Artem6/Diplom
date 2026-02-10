@@ -91,8 +91,19 @@ def run_form_container_first_inference(
 
     ocr_inside = _ocr_inside(container.bbox)
 
-    # Level 1 — FormInnerLayout строго внутри container.bbox
-    skeleton, layout_diag = build_form_inner_layout(image_path, container, ocr_inside)
+    # Визуальные кандидаты до layout: строки строятся из CV, OCR только для label/helper
+    visual_candidates: List[List[float]] = []
+    try:
+        from src.infrastructure.atoms_v2.visual_field_scanner import run_visual_field_scan
+        form_regions_for_scan = [{"bbox": container.bbox}]
+        visual_candidates, _ = run_visual_field_scan(image_path, form_regions_for_scan, dark_theme=dark_theme)
+    except Exception as e:
+        log_lines.append("form_container_first: visual_scan failed %s" % e)
+
+    # Level 1 — FormInnerLayout строго внутри container.bbox (при non-empty visual_candidates — только CV-строки)
+    skeleton, layout_diag = build_form_inner_layout(
+        image_path, container, ocr_inside, visual_candidates=visual_candidates or None
+    )
     if not skeleton:
         log_lines.append("form_container_first: FormInnerLayout failed")
         return [], log_lines, None
@@ -123,16 +134,7 @@ def run_form_container_first_inference(
     if debug_output_dir:
         visualize_slot_layout(image_path, row_slots, os.path.join(debug_output_dir, "slots.png"))
 
-    # Визуальные кандидаты только внутри контейнера
-    try:
-        from src.infrastructure.atoms_v2.visual_field_scanner import run_visual_field_scan
-        form_regions_for_scan = [{"bbox": container.bbox}]
-        visual_candidates, _ = run_visual_field_scan(image_path, form_regions_for_scan, dark_theme=dark_theme)
-    except Exception as e:
-        log_lines.append("form_container_first: visual_scan failed %s" % e)
-        visual_candidates = []
-
-    # Level 3 — FieldLocator: bbox только внутри container, пересечение с expected_bbox_hint
+    # Level 3 — FieldLocator (visual_candidates уже получены выше для layout): bbox только внутри container, пересечение с expected_bbox_hint
     assignments, loc_diag = run_role_based_locator(
         row_slots,
         visual_candidates,

@@ -55,21 +55,36 @@ class Region:
 
 
 # --- Level 2: скелет формы ---
-RowType = Literal["HEADER", "FIELD", "TEXTAREA", "ACTION", "SPACER"]
+RowType = Literal[
+    "FIELD_HORIZONTAL",
+    "FIELD_VERTICAL",
+    "FIELD_INPUT_ONLY",
+    "TEXTAREA",
+    "ACTION",
+    "TEXT",
+    "HEADER",
+    "FIELD",
+    "SPACER",
+]
 HeightMode = Literal["fixed", "adaptive"]
 
 
 @dataclass
 class FormRow:
-    """Строка формы (каркас)."""
+    """Строка формы (каркас). Внутренняя декомпозиция: label_bbox, input_bbox, helper_bbox по визуальным кандидатам и OCR."""
     row_index: int
     y_min: float
     y_max: float
     x_min: float
     x_max: float
-    column_count: int = 1  # 1 = vertical, >1 = grid
-    row_type: RowType = "FIELD"
+    column_count: int = 1
+    row_type: RowType = "FIELD_HORIZONTAL"
     height_mode: HeightMode = "adaptive"
+    label_bbox: Optional[List[float]] = None
+    input_bbox: Optional[List[float]] = None
+    helper_bbox: Optional[List[float]] = None
+    vertical_split_y: Optional[float] = None
+    height_confidence: Optional[float] = None
 
 
 @dataclass

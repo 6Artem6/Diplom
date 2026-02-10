@@ -42,7 +42,10 @@ def infer_slots_for_row(
     row_h = row.y_max - row.y_min
     slots: List[Slot] = []
 
-    row_type = getattr(row, "row_type", "FIELD")
+    row_type = getattr(row, "row_type", "FIELD_HORIZONTAL")
+
+    if row_type in ("TEXT", "HEADER"):
+        return RowSlots(row_index=row.row_index, row_bbox=[row.x_min, row.y_min, row.x_max, row.y_max], slots=[])
 
     if row_type == "ACTION":
         slots.append(Slot(
@@ -59,6 +62,83 @@ def infer_slots_for_row(
             expected_bbox_hint=[row.x_min, row.y_min, row.x_max, row.y_max],
             metadata={"row_type": "ACTION"},
         ))
+        return RowSlots(row_index=row.row_index, row_bbox=[row.x_min, row.y_min, row.x_max, row.y_max], slots=slots)
+
+    if row_type == "FIELD_INPUT_ONLY":
+        hint = getattr(row, "input_bbox", None)
+        if not hint or len(hint) < 4:
+            hint = [row.x_min, row.y_min, row.x_max, row.y_max]
+        slots.append(Slot(
+            slot_id=_slot_id(),
+            role="input_slot",
+            row_index=row.row_index,
+            column_index=0,
+            x_min=hint[0],
+            x_max=hint[2],
+            y_min=hint[1],
+            y_max=hint[3],
+            width_hint=hint[2] - hint[0],
+            height_hint=hint[3] - hint[1],
+            expected_bbox_hint=list(hint),
+            metadata={"row_type": "FIELD_INPUT_ONLY"},
+        ))
+        return RowSlots(row_index=row.row_index, row_bbox=[row.x_min, row.y_min, row.x_max, row.y_max], slots=slots)
+
+    split_y = getattr(row, "vertical_split_y", None)
+    if row_type == "FIELD_VERTICAL" and split_y is not None and row.y_min < split_y < row.y_max:
+        label_bbox = getattr(row, "label_bbox", None)
+        input_bbox = getattr(row, "input_bbox", None)
+        y_label_end = split_y
+        y_input_start = split_y
+        if label_bbox and len(label_bbox) >= 4:
+            y_label_end = label_bbox[3]
+            y_input_start = label_bbox[3]
+        if input_bbox and len(input_bbox) >= 4:
+            y_input_start = input_bbox[1]
+        slots.append(Slot(
+            slot_id=_slot_id(),
+            role="label_slot",
+            row_index=row.row_index,
+            column_index=0,
+            x_min=row.x_min,
+            x_max=row.x_max,
+            y_min=row.y_min,
+            y_max=y_label_end,
+            width_hint=row_w,
+            height_hint=y_label_end - row.y_min,
+            expected_bbox_hint=[row.x_min, row.y_min, row.x_max, y_label_end],
+            metadata={"row_type": "FIELD_VERTICAL"},
+        ))
+        slots.append(Slot(
+            slot_id=_slot_id(),
+            role="input_slot",
+            row_index=row.row_index,
+            column_index=0,
+            x_min=row.x_min,
+            x_max=row.x_max,
+            y_min=y_input_start,
+            y_max=row.y_max,
+            width_hint=row_w,
+            height_hint=row.y_max - y_input_start,
+            expected_bbox_hint=[row.x_min, y_input_start, row.x_max, row.y_max],
+            metadata={"row_type": "FIELD_VERTICAL"},
+        ))
+        helper_bbox = getattr(row, "helper_bbox", None)
+        if helper_bbox and len(helper_bbox) >= 4:
+            slots.append(Slot(
+                slot_id=_slot_id(),
+                role="helper_slot",
+                row_index=row.row_index,
+                column_index=0,
+                x_min=helper_bbox[0],
+                x_max=helper_bbox[2],
+                y_min=helper_bbox[1],
+                y_max=helper_bbox[3],
+                width_hint=helper_bbox[2] - helper_bbox[0],
+                height_hint=helper_bbox[3] - helper_bbox[1],
+                expected_bbox_hint=list(helper_bbox),
+                metadata={"row_type": "FIELD_VERTICAL"},
+            ))
         return RowSlots(row_index=row.row_index, row_bbox=[row.x_min, row.y_min, row.x_max, row.y_max], slots=slots)
 
     if skeleton.column_boundaries and row.column_count > 1:
