@@ -15,14 +15,26 @@ from src.infrastructure.atoms_v2.experimental_v2.models import FormContainer
 
 logger = logging.getLogger(__name__)
 
-# Ограничения контейнера
+# Главный инвариант контейнера: относительные размеры (не зависят от цвета фона)
+MIN_CONTAINER_WIDTH_RATIO = 0.35   # width >= 0.35 * page_width
+MIN_CONTAINER_HEIGHT_RATIO = 0.25  # height >= 0.25 * page_height
+MIN_CONTAINER_AREA_RATIO = 0.10    # площадь >= 0.1 * page_area
+# Отсечение согласовано с минимумами: не контейнер если уже не прошёл min (чтобы не отбрасывать 0.35–0.4 ширины)
+REJECT_WIDTH_RATIO = 0.35
+REJECT_HEIGHT_RATIO = 0.25
+# Абсолютные минимумы (fallback при отсутствии размеров страницы)
+MIN_CONTAINER_WIDTH = 320
+MIN_CONTAINER_HEIGHT = 120
 MIN_CONTAINER_AREA = 8000
-MAX_ASPECT = 4.0
-MIN_ASPECT = 0.3
-# Доля площади страницы: контейнер не больше 90%
+MAX_ASPECT = 2.5
+MIN_ASPECT = 0.6
 MAX_CONTAINER_AREA_RATIO = 0.90
-# Отступ от краёв страницы (минимум)
 MIN_MARGIN_PX = 10
+# Кнопка никогда не контейнер
+BUTTON_CONTAINER_HEIGHT_MIN = 28
+BUTTON_CONTAINER_HEIGHT_MAX = 64
+BUTTON_CONTAINER_WIDTH_MIN = 60
+BUTTON_CONTAINER_ASPECT_MIN = 1.8
 # Порог «светлее фона»: разница средних (inside - outside)
 LIGHT_ON_DARK_MIN_DIFF = 15
 # Минимальный confidence для кандидата
@@ -164,17 +176,25 @@ def detect_form_containers(
             continue
         unique.append((sc, bbox))
 
+    # Как в исходной версии (04cd37d): контейнеры из unique без жёсткой геометрии.
+    # Отсев кнопок и мелких bbox делается в validate_container_with_visual (≥3 строк, ≥2 полей).
     containers = [FormContainer(bbox=b, confidence=float(sc), metadata={"source": "form_container_detector"}) for sc, b in unique]
-    diag = {"candidates": len(candidates), "after_dedup": len(containers), "image_h": h, "image_w": w}
+    diag = {"candidates": len(candidates), "after_dedup": len(unique), "after_geometry": len(containers), "image_h": h, "image_w": w}
     return containers, diag
 
 
 def get_best_container(
     containers: List[FormContainer],
+    demo_mode: bool = False,
 ) -> Optional[FormContainer]:
-    """Возвращает один лучший контейнер по confidence."""
+    """Возвращает один лучший контейнер. В demo_mode — по площади (самый большой bbox)."""
     if not containers:
         return None
+    if demo_mode:
+        return max(
+            containers,
+            key=lambda c: (c.bbox[2] - c.bbox[0]) * (c.bbox[3] - c.bbox[1]) if len(c.bbox) >= 4 else 0,
+        )
     return max(containers, key=lambda c: c.confidence)
 
 
@@ -188,12 +208,17 @@ def visualize_container(
     img = cv2.imread(str(image_path))
     if img is None:
         return
+    from src.infrastructure.debug_draw import putText_visible, rectangle_visible
+
     out = img.copy()
     b = container.bbox
     if len(b) >= 4:
         x1, y1, x2, y2 = int(b[0]), int(b[1]), int(b[2]), int(b[3])
-        cv2.rectangle(out, (x1, y1), (x2, y2), (0, 255, 0), 2)
-        cv2.putText(out, "FormContainer %.2f" % container.confidence, (x1, y1 - 5),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+        color_bgr = (0, 180, 0)
+        rectangle_visible(out, (x1, y1), (x2, y2), color_bgr, 2)
+        putText_visible(
+            out, "FormContainer %.2f" % container.confidence, (x1, y1 - 5),
+            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), (0, 0, 0), 1,
+        )
     cv2.imwrite(output_path, out)
     logger.debug("form_container_detector: saved %s", output_path)

@@ -29,6 +29,9 @@ huggingface_hub>=0.22.0  # For Hugging Face models
 # Utilities
 python-multipart>=0.0.6  # For file uploads
 
+# Demo forms generator (HTML + screenshot)
+playwright>=1.40.0
+
 # Logging
 # (logging is built-in, but we use structured logging)
 

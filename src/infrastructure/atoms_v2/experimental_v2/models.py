@@ -81,10 +81,15 @@ class FormRow:
     row_type: RowType = "FIELD_HORIZONTAL"
     height_mode: HeightMode = "adaptive"
     label_bbox: Optional[List[float]] = None
+    right_label_bbox: Optional[List[float]] = None  # OCR-блок справа от поля (деление вертикальными границами)
     input_bbox: Optional[List[float]] = None
+    input_bboxes: Optional[List[List[float]]] = None  # для GRID: по одному bbox на колонку (отсортированы по X)
     helper_bbox: Optional[List[float]] = None
     vertical_split_y: Optional[float] = None
+    vertical_separators: Optional[List[float]] = None  # X-координаты разделителей между колонками (midpoints)
     height_confidence: Optional[float] = None
+    action_bbox: Optional[List[float]] = None  # кнопка в строке (при наличии input_bbox row_type не ACTION)
+    metadata: Dict[str, Any] = field(default_factory=dict)  # ocr_orientation и др., геометрию не меняет
 
 
 @dataclass

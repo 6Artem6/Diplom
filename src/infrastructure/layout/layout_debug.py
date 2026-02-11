@@ -14,13 +14,13 @@ from .atoms import Region, Word
 
 logger = logging.getLogger(__name__)
 
-# RGB for PIL
-COLOR_TEXT_REGION = (100, 200, 100)    # green
-COLOR_UI_REGION = (200, 150, 50)       # orange
-COLOR_BACKGROUND = (120, 120, 120)     # gray
-COLOR_WORD = (255, 100, 100)           # red
-COLOR_TEXT_BBOX = (80, 80, 255)        # blue solid = text bbox
-COLOR_CONTAINER = (180, 180, 100)      # yellow dashed = container/region
+# RGB for PIL: тёмные тона, чтобы были видны на светлом фоне; подписи — с обводкой (белый по чёрному)
+COLOR_TEXT_REGION = (0, 140, 0)       # dark green
+COLOR_UI_REGION = (0, 80, 180)        # dark orange
+COLOR_BACKGROUND = (80, 80, 80)       # dark gray
+COLOR_WORD = (0, 0, 200)              # dark red
+COLOR_TEXT_BBOX = (180, 80, 0)        # dark blue
+COLOR_CONTAINER = (0, 120, 120)       # dark yellow/teal
 
 DASH_LEN = 6
 GAP_LEN = 4
@@ -90,6 +90,8 @@ def render_layout_debug(
         except Exception:
             font = ImageFont.load_default()
 
+        from src.infrastructure.debug_draw import pil_text_visible
+
         # 1) Regions (dashed = context, not text)
         for i, r in enumerate(regions):
             if r.region_type == "text_region":
@@ -100,7 +102,7 @@ def render_layout_debug(
                 color = COLOR_BACKGROUND
             _dashed_rectangle(draw, r.x, r.y, r.x + r.w, r.y + r.h, tuple(min(255, c) for c in color), width=2)
             label = f"{r.region_type[:4]}"
-            draw.text((r.x, max(0, r.y - 12)), label, fill=tuple(min(255, c) for c in color), font=font)
+            pil_text_visible(draw, (r.x, max(0, r.y - 12)), label, font)
 
         # 2) Words (if region_assignments given)
         if region_assignments:
@@ -112,15 +114,13 @@ def render_layout_debug(
                         width=1,
                     )
 
+        from src.infrastructure.debug_draw import pil_rectangle_visible
+
         # 3) TextBlocks (if given; solid = text bbox)
         if text_blocks:
             for tb in text_blocks:
                 if hasattr(tb, "x") and hasattr(tb, "y") and hasattr(tb, "w") and hasattr(tb, "h"):
-                    draw.rectangle(
-                        [tb.x, tb.y, tb.x + tb.w, tb.y + tb.h],
-                        outline=tuple(min(255, c) for c in COLOR_TEXT_BBOX),
-                        width=2,
-                    )
+                    pil_rectangle_visible(draw, (tb.x, tb.y, tb.x + tb.w, tb.y + tb.h), COLOR_TEXT_BBOX, width=2)
         # 4) GUIBlocks: text_bbox = solid; container_bbox = dashed
         if gui_blocks:
             for blk in gui_blocks:
@@ -129,14 +129,10 @@ def render_layout_debug(
                 y1 = int(bb.get("y1", bb.get("y", 0)))
                 x2 = int(bb.get("x2", x1 + bb.get("width", 0)))
                 y2 = int(bb.get("y2", y1 + bb.get("height", 0)))
-                draw.rectangle(
-                    [x1, y1, x2, y2],
-                    outline=tuple(min(255, c) for c in COLOR_TEXT_BBOX),
-                    width=2,
-                )
+                pil_rectangle_visible(draw, (x1, y1, x2, y2), COLOR_TEXT_BBOX, width=2)
                 etypes = getattr(blk, "element_types", None) or []
                 label = etypes[0] if etypes else "block"
-                draw.text((x1, max(0, y1 - 10)), label, fill=COLOR_TEXT_BBOX, font=font)
+                pil_text_visible(draw, (x1, max(0, y1 - 10)), label, font)
                 container = bb.get("container_bbox")
                 if container:
                     cx1 = int(container.get("x1", container.get("x", 0)))

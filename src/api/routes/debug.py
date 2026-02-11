@@ -398,17 +398,19 @@ async def debug_atoms_v2_pipeline(
     experimental_v2_debug_dir: Optional[str] = Query(None, description="Подкаталог для визуализаций v2 (level0–level5). Имя под $TMP/experimental_v2/"),
     use_form_container_first: bool = Query(False, description="Дополнительно запустить Form Container First (FormContainerDetector → FormInnerLayout → Slots → FieldLocator → FormGraph); атомы добавляются в atoms"),
     form_container_first_debug_dir: Optional[str] = Query(None, description="Подкаталог для визуализаций Form Container First (container_bbox.png, rows.png, slots.png, slot_assignments.png). Имя под $TMP/form_container_first/"),
+    demo_mode: bool = Query(False, description="Режим отладки до BPG: идеальная форма, одна строка = один input, demo_*.json и demo_visualization.png, validate_demo_pipeline (требует use_form_container_first)"),
 ):
     """
     Режим atoms_v2: Detectron2 — атомы; OCR; merge & grouping.
 
     **Experimental v2:** use_experimental_multilevel_v2 / experimental_v2_debug_dir → level0–level5 PNG.
     **Form Container First (ТЗ):** use_form_container_first / form_container_first_debug_dir → контейнер формы, строки, слоты, назначения; все уровни только внутри FormContainer.bbox.
+    **demo_mode:** при use_form_container_first — идеальная форма, demo_*.json, demo_visualization.png, validate_demo_pipeline.
     """
     logger.info(
-        "debug/atoms-v2-pipeline: filename=%s parallel_ocr=%s legacy_text_pipeline=%s use_experimental_v2=%s experimental_v2_debug_dir=%s use_form_container_first=%s form_container_first_debug_dir=%s",
+        "debug/atoms-v2-pipeline: filename=%s parallel_ocr=%s legacy_text_pipeline=%s use_experimental_v2=%s experimental_v2_debug_dir=%s use_form_container_first=%s form_container_first_debug_dir=%s demo_mode=%s",
         image.filename, parallel_ocr, legacy_text_pipeline, use_experimental_multilevel_v2, experimental_v2_debug_dir,
-        use_form_container_first, form_container_first_debug_dir,
+        use_form_container_first, form_container_first_debug_dir, demo_mode,
     )
     path = _save_upload_and_get_path(image)
     # База для отладочных артефактов: монтированная debug (DEBUG_OUTPUT_DIR=/app/debug) или /tmp
@@ -426,12 +428,11 @@ async def debug_atoms_v2_pipeline(
         exp_v2_dir = None
 
     fcf_dir: Optional[str] = None
-    if use_form_container_first and form_container_first_debug_dir:
+    if use_form_container_first and (form_container_first_debug_dir or demo_mode):
         base = debug_base / "form_container_first"
         base.mkdir(parents=True, exist_ok=True)
-        fcf_dir = str(base / (form_container_first_debug_dir.strip() or uuid.uuid4().hex[:8]))
-    elif use_form_container_first:
-        fcf_dir = None
+        subdir = (form_container_first_debug_dir or "").strip() or ("demo_mode" if demo_mode else uuid.uuid4().hex[:8])
+        fcf_dir = str(base / subdir)
 
     try:
         from src.infrastructure.atoms_v2 import run_atoms_v2_pipeline
@@ -443,6 +444,7 @@ async def debug_atoms_v2_pipeline(
             experimental_v2_debug_dir=exp_v2_dir,
             use_form_container_first=use_form_container_first,
             form_container_first_debug_dir=fcf_dir,
+            demo_mode=demo_mode,
         )
         exp_v2_files: List[str] = []
         if exp_v2_dir and os.path.isdir(exp_v2_dir):

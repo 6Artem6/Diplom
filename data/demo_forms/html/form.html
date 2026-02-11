@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1600, height=2400">
+  <title>Demo forms</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #3c3c41;
+      font-family: system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    .page {
+      width: 1600px;
+      height: 2400px;
+      background: #3c3c41;
+      position: relative;
+    }
+    .form-container {
+      position: absolute;
+      left: 80px;
+      top: 100px;
+      right: 80px;
+      bottom: 100px;
+      background: #fffefc;
+      border: 5px solid #19191e;
+      padding: 54px 40px 40px;
+    }
+    .form-container[hidden] { display: none !important; }
+    .title {
+      font-size: 48px;
+      color: #141419;
+      margin-bottom: 56px;
+      font-weight: 600;
+    }
+    .field {
+      margin-bottom: 56px;
+    }
+    .field {
+      background: #f7f7f7;
+    }
+    .field label {
+      display: block;
+      font-size: 40px;
+      color: #141419;
+      margin-bottom: 18px;
+    }
+    .field input,
+    .field textarea {
+      width: 85%;
+      max-width: 100%;
+      display: block;
+      height: 84px;
+      border: 5px solid #343438;
+      border-radius: 0;
+      font-size: 32px;
+      padding: 0 16px;
+      margin: 0;
+      color: #141419;
+      background: #fff;
+      /* Центрирование однострочного текста и placeholder по вертикали */
+      line-height: 84px;
+    }
+    .field input::placeholder,
+    .field textarea::placeholder {
+      color: #8c8c91;
+    }
+    .field textarea {
+      height: 200px;
+      line-height: 1.4;
+      padding: 12px 16px;
+      resize: none;
+      line-height: 1.5;
+    }
+    .field textarea::placeholder {
+      /* многострочный placeholder выравниваем по верху, т.к. вертикальный центр не так важен */
+    }
+    .btn-wrap { margin-top: 24px; text-align: center; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 96px;
+      min-width: 200px;
+      padding: 0 32px;
+      font-size: 40px;
+      color: #fff;
+      background: #4682c8;
+      border: none;
+      cursor: default;
+      font-family: inherit;
+      border-radius: 0;
+      /* текст кнопки строго по центру */
+      line-height: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <!-- Form 01: Регистрация -->
+    <div class="form-container" id="form-01" data-form="01">
+      <h1 class="title">Регистрация пользователя</h1>
+      <div class="field">
+        <label>Имя</label>
+        <input type="text" placeholder="Введите имя">
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="text" placeholder="example@mail.ru">
+      </div>
+      <div class="field">
+        <label>Телефон</label>
+        <input type="text" placeholder="+7 (___) ___-__-__">
+      </div>
+      <div class="btn-wrap">
+        <button type="button" class="btn">Сохранить</button>
+      </div>
+    </div>
+
+    <!-- Form 02: Вход -->
+    <div class="form-container" id="form-02" data-form="02" hidden>
+      <h1 class="title">Вход</h1>
+      <div class="field">
+        <label>Логин</label>
+        <input type="text" placeholder="логин">
+      </div>
+      <div class="field">
+        <label>Пароль</label>
+        <input type="password" placeholder="••••••••">
+      </div>
+      <div class="btn-wrap">
+        <button type="button" class="btn">Войти</button>
+      </div>
+    </div>
+
+    <!-- Form 03: Обратная связь -->
+    <div class="form-container" id="form-03" data-form="03" hidden>
+      <h1 class="title">Обратная связь</h1>
+      <div class="field">
+        <label>Тема</label>
+        <input type="text" placeholder="Кратко опишите вопрос">
+      </div>
+      <div class="field">
+        <label>Сообщение</label>
+        <textarea placeholder="Введите сообщение" rows="5"></textarea>
+      </div>
+      <div class="btn-wrap">
+        <button type="button" class="btn">Отправить</button>
+      </div>
+    </div>
+
+    <!-- Form 04: Профиль -->
+    <div class="form-container" id="form-04" data-form="04" hidden>
+      <h1 class="title">Профиль</h1>
+      <div class="field">
+        <label>ФИО</label>
+        <input type="text" placeholder="Иванов И. И.">
+      </div>
+      <div class="field">
+        <label>Город</label>
+        <input type="text" placeholder="Москва">
+      </div>
+      <div class="btn-wrap">
+        <button type="button" class="btn">Сохранить</button>
+      </div>
+    </div>
+
+    <!-- Form 05: Быстрая форма -->
+    <div class="form-container" id="form-05" data-form="05" hidden>
+      <h1 class="title">Быстрая форма</h1>
+      <div class="field">
+        <label>Поле A</label>
+        <input type="text" placeholder="значение A">
+      </div>
+      <div class="field">
+        <label>Поле B</label>
+        <input type="text" placeholder="значение B">
+      </div>
+      <div class="btn-wrap">
+        <button type="button" class="btn">OK</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function() {
+      var p = new URLSearchParams(location.search);
+      var formId = p.get('form') || '01';
+      var id = 'form-' + formId;
+      document.querySelectorAll('.form-container').forEach(function(el) {
+        el.setAttribute('hidden', '');
+      });
+      var el = document.getElementById(id);
+      if (el) el.removeAttribute('hidden');
+    })();
+  </script>
+</body>
+</html>

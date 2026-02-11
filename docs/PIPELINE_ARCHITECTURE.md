@@ -195,6 +195,8 @@ sequenceDiagram
 
 **Инвариант №0:** ни строка, ни слот, ни поле не существуют вне FormContainer.bbox. Подключается флагом `use_form_container_first=True` в `run_atoms_v2_pipeline`. Вызывается после baseline multilevel.
 
+**Полный пошаговый алгоритм пайплайна форм:** см. **`docs/FORM_CONTAINER_FIRST_PIPELINE.md`** (построение строк из CV-якорей, OCR только для label/helper/ACTION, grid, textarea, слоты, граф). При изменении кода в `experimental_v2/` обновлять тот документ.
+
 | Уровень | Модуль | Файл |
 |---------|--------|------|
 | 0 | FormContainerDetector | `experimental_v2/form_container_detector.py` |
@@ -204,7 +206,7 @@ sequenceDiagram
 | 4 | FormGraphAssembler | `experimental_v2/form_graph_assembler.py` |
 | — | Точка входа | `experimental_v2/run_form_container_first_inference.py` |
 
-**Правила:** форма — геометрический контейнер (замкнутый прямоугольник, светлый фон, border), не «остаток между header и footer»; OCR не используется для bbox формы. Debug: container_bbox.png, rows.png, slots.png, slot_assignments.png.
+**Правила:** форма — геометрический контейнер (замкнутый прямоугольник, светлый фон, border), не «остаток между header и footer»; границы строк — из CV (visual_candidates + якоря), OCR не задаёт row_y_min/max; label/helper/ACTION — по OCR с валидацией текста. Debug: container_bbox.png, rows.png, rows_with_types.png, skipped_rows.png, textarea_rows.png, rows_debug.png, slots.png, slot_assignments.png, form_graph.png.
 
 ### 5.2. Experimental multilevel v2 (side-path)
 
@@ -237,3 +239,8 @@ sequenceDiagram
 1. **Обновить этот документ** — секции 2–5 (схема Mermaid, порядок шагов, инварианты, модули).
 2. **Обновить PlantUML** — `diagrams/atoms_v2/pipeline_atoms_v2.puml` (блоки и связи).
 3. Проверить, что нумерация шагов в таблице совпадает с порядком вызовов в коде.
+
+При изменении **Form Container First** (`experimental_v2/`: form_inner_layout, slot_layout_inference, run_form_container_first_inference и др.):
+
+4. **Обновить описание алгоритма форм** — `docs/FORM_CONTAINER_FIRST_PIPELINE.md` (шаги построения строк, слотов, роли OCR/CV, ветки слотов).
+5. При необходимости скорректировать секцию 5.1 выше (модули, правила, debug-файлы).

@@ -141,11 +141,15 @@ def visualize_page_orientation(
     if img is None:
         return
     out = img.copy()
-    for i, seg in enumerate(segments):
+    from src.infrastructure.debug_draw import putText_visible, rectangle_visible
+
+    for seg in segments:
         y1, y2 = int(seg.y_min), int(seg.y_max)
-        color = (0, 255, 0) if seg.is_likely_gap else (0, 0, 255)
-        cv2.rectangle(out, (0, y1), (out.shape[1], y2), color, 1)
-        cv2.putText(out, "gap" if seg.is_likely_gap else "content", (5, y1 + 14),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+        color = (0, 180, 0) if seg.is_likely_gap else (0, 0, 180)
+        rectangle_visible(out, (0, y1), (out.shape[1], y2), color, 1)
+        putText_visible(
+            out, "gap" if seg.is_likely_gap else "content", (5, y1 + 14),
+            cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), (0, 0, 0), 1,
+        )
     cv2.imwrite(output_path, out)
     logger.debug("page_orientation_context: saved %s", output_path)

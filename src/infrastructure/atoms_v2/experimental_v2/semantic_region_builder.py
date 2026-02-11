@@ -114,20 +114,25 @@ def visualize_semantic_regions(
         return
     out = img.copy()
     colors = {
-        "header": (180, 120, 255),
-        "footer": (120, 180, 255),
-        "sidebar": (255, 200, 100),
-        "content": (100, 255, 180),
-        "form_area": (255, 100, 100),
-        "unknown": (128, 128, 128),
+        "header": (120, 0, 180),
+        "footer": (0, 120, 180),
+        "sidebar": (0, 140, 180),
+        "content": (0, 180, 120),
+        "form_area": (0, 0, 180),
+        "unknown": (80, 80, 80),
     }
+    from src.infrastructure.debug_draw import putText_visible, rectangle_visible
+
     for r in regions:
         bbox = r.bbox
         if len(bbox) < 4:
             continue
         x1, y1, x2, y2 = int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3])
         color = colors.get(r.region_type, colors["unknown"])
-        cv2.rectangle(out, (x1, y1), (x2, y2), color, 2)
-        cv2.putText(out, r.region_type, (x1, y1 + 18), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+        rectangle_visible(out, (x1, y1), (x2, y2), color, 2)
+        putText_visible(
+            out, r.region_type, (x1, y1 + 18), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+            (255, 255, 255), (0, 0, 0), 1,
+        )
     cv2.imwrite(output_path, out)
     logger.debug("semantic_region_builder: saved %s", output_path)

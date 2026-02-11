@@ -875,7 +875,9 @@ def run_semantic_validation(
         cont_after = after.get("container_candidate", 0)
         in_barely = in_before > 0 and in_after >= NO_EFFECT_THRESHOLD * in_before
         cont_barely = cont_before > 0 and cont_after >= NO_EFFECT_THRESHOLD * cont_before
-        if in_barely and cont_barely:
+        # Require pruning only when there was something to prune (e.g. form with 1 container + 1 input is allowed)
+        had_multiple = cont_before >= 2 or in_before >= 2
+        if had_multiple and in_barely and cont_barely:
             raise AssertionError(
                 "semantic_validation_no_effect: input and container_candidate barely changed "
                 "(before input=%s container=%s, after input+weak_input=%s container=%s). Layer must prune."

@@ -1491,17 +1491,19 @@ def save_debug_image_regions(
     out_dir = _ensure_debug_dir()
     out_path = out_dir / output_filename
     try:
+        from src.infrastructure.debug_draw import pil_rectangle_visible
+
         img = Image.open(path).convert("RGB")
         draw = ImageDraw.Draw(img)
-        colors = {"text_region": (100, 200, 100), "ui_region": (200, 150, 50), "background": (120, 120, 120)}
+        colors = {"text_region": (0, 140, 0), "ui_region": (0, 80, 180), "background": (80, 80, 80)}
         for r in regions:
             x, y, w, h = r.get("x", 0), r.get("y", 0), r.get("w", 0), r.get("h", 0)
             if outline_color_override is not None:
                 color = outline_color_override
             else:
                 t = r.get("type", "text_region")
-                color = colors.get(t, (128, 128, 128))
-            draw.rectangle([x, y, x + w, y + h], outline=color, width=2)
+                color = colors.get(t, (80, 80, 80))
+            pil_rectangle_visible(draw, (x, y, x + w, y + h), color, width=2)
         img.save(out_path, "PNG")
         logger.info("debug: saved layout image to %s", out_path)
         return str(out_path)
@@ -1527,11 +1529,14 @@ def save_debug_image_boxes(
     out_dir = _ensure_debug_dir()
     out_path = out_dir / output_filename
     try:
+        from src.infrastructure.debug_draw import pil_rectangle_visible
+
         img = Image.open(path).convert("RGB")
         draw = ImageDraw.Draw(img)
+        outline = color if max(color) < 180 else (0, 0, 200)  # тёмный контур для видимости на светлом
         for b in boxes:
             x, y, w, h = b.get("x", 0), b.get("y", 0), b.get("w", 0), b.get("h", 0)
-            draw.rectangle([x, y, x + w, y + h], outline=color, width=2)
+            pil_rectangle_visible(draw, (x, y, x + w, y + h), outline, width=2)
         img.save(out_path, "PNG")
         logger.info("debug: saved text-detect image to %s", out_path)
         return str(out_path)
@@ -1540,13 +1545,13 @@ def save_debug_image_boxes(
         return None
 
 
-# Debug: parent=blue, child=purple, text_boxes=red, button text_boxes=green
-COLOR_PARENT_REGIONS = (0, 0, 255)
+# Debug (RGB): тёмные тона для видимости на светлом фоне; подписи с обводкой
+COLOR_PARENT_REGIONS = (180, 0, 0)
 COLOR_CHILD_REGIONS = (128, 0, 128)
-COLOR_TEXT_BOXES = (255, 0, 0)
-COLOR_BUTTON_TEXT_BOXES = (0, 255, 0)
-COLOR_LINES = (0, 200, 100)
-COLOR_PARAGRAPHS = (255, 255, 0)
+COLOR_TEXT_BOXES = (0, 0, 180)
+COLOR_BUTTON_TEXT_BOXES = (0, 140, 0)
+COLOR_LINES = (0, 140, 60)
+COLOR_PARAGRAPHS = (0, 120, 180)
 
 
 def _dashed_rect(draw: Any, x1: int, y1: int, x2: int, y2: int, color: Tuple[int, int, int], width: int = 2) -> None:

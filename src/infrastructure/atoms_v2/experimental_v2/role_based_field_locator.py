@@ -20,6 +20,8 @@ logger = logging.getLogger(__name__)
 
 # Перекрытие bbox с зоной слота (IoU с слотом) — минимум для кандидата
 SLOT_OVERLAP_MIN = 0.3
+# input_bbox никогда не режется по OCR; обрезка допустима только при пересечении с соседним слотом > 40%
+SLOT_OVERLAP_FOR_TRIM = 0.4
 # Соотношение сторон: input вытянут по ширине
 INPUT_ASPECT_MIN = 2.0
 TEXTAREA_ASPECT_MAX = 4.0
@@ -170,16 +172,28 @@ def visualize_slot_assignments(
     img = cv2.imread(str(image_path))
     if img is None:
         return
+    from src.infrastructure.debug_draw import line_visible, rectangle_visible
+
     out = img.copy()
     for a in assignments:
         slot_rect = _slot_bbox(a.slot)
-        cv2.rectangle(out, (int(slot_rect[0]), int(slot_rect[1])), (int(slot_rect[2]), int(slot_rect[3])), (100, 200, 255), 1)
+        rectangle_visible(
+            out,
+            (int(slot_rect[0]), int(slot_rect[1])),
+            (int(slot_rect[2]), int(slot_rect[3])),
+            (0, 140, 180), 1,
+        )
         if a.bbox is not None:
-            cv2.rectangle(out, (int(a.bbox[0]), int(a.bbox[1])), (int(a.bbox[2]), int(a.bbox[3])), (0, 255, 0), 2)
-            cx_s = (slot_rect[0] + slot_rect[2]) / 2
-            cy_s = (slot_rect[1] + slot_rect[3]) / 2
-            cx_b = (a.bbox[0] + a.bbox[2]) / 2
-            cy_b = (a.bbox[1] + a.bbox[3]) / 2
-            cv2.line(out, (int(cx_s), int(cy_s)), (int(cx_b), int(cy_b)), (0, 255, 255), 1)
+            rectangle_visible(
+                out,
+                (int(a.bbox[0]), int(a.bbox[1])),
+                (int(a.bbox[2]), int(a.bbox[3])),
+                (0, 180, 0), 2,
+            )
+            cx_s = int((slot_rect[0] + slot_rect[2]) / 2)
+            cy_s = int((slot_rect[1] + slot_rect[3]) / 2)
+            cx_b = int((a.bbox[0] + a.bbox[2]) / 2)
+            cy_b = int((a.bbox[1] + a.bbox[3]) / 2)
+            line_visible(out, (cx_s, cy_s), (cx_b, cy_b), (0, 180, 180), 1)
     cv2.imwrite(output_path, out)
     logger.debug("role_based_field_locator: saved %s", output_path)

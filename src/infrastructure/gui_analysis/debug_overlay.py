@@ -57,6 +57,8 @@ def save_backend_debug_pngs(
         except Exception:
             font = ImageFont.load_default()
 
+        from src.infrastructure.debug_draw import pil_rectangle_visible, pil_text_visible
+
         for i, block in enumerate(to_draw):
             bbox = block.bounding_box
             x1 = bbox.get("x1", bbox.get("x", 0))
@@ -64,11 +66,11 @@ def save_backend_debug_pngs(
             x2 = bbox.get("x2", x1 + bbox.get("width", 0))
             y2 = bbox.get("y2", y1 + bbox.get("height", 0))
             x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
-            color = (0, 128, 255) if backend == "pix2struct" else (128, 0, 255)
-            draw.rectangle([x1, y1, x2, y2], outline=color, width=2)
+            color = (180, 60, 0) if backend == "pix2struct" else (180, 0, 180)
+            pil_rectangle_visible(draw, (x1, y1, x2, y2), color, width=2)
             type_str = block.element_types[0] if block.element_types else "unknown"
             label = f"{type_str} [{backend}]"
-            draw.text((x1, max(0, y1 - 14)), label, fill=color, font=font)
+            pil_text_visible(draw, (x1, max(0, y1 - 14)), label, font)
 
         image.save(out_path, "PNG")
         logger.info(

@@ -173,14 +173,23 @@ def visualize_form_skeleton(
     img = cv2.imread(str(image_path))
     if img is None:
         return
+    from src.infrastructure.debug_draw import line_visible, putText_visible, rectangle_visible
+
     out = img.copy()
     for row in skeleton.rows:
         y1, y2 = int(row.y_min), int(row.y_max)
-        cv2.rectangle(out, (int(row.x_min), y1), (int(row.x_max), y2), (0, 255, 255), 1)
-        cv2.putText(out, "R%d" % row.row_index, (int(row.x_min) + 2, y1 + 14),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 0), 1)
+        rectangle_visible(out, (int(row.x_min), y1), (int(row.x_max), y2), (0, 180, 180), 1)
+        putText_visible(
+            out, "R%d" % row.row_index, (int(row.x_min) + 2, y1 + 14),
+            cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), (0, 0, 0), 1,
+        )
     if skeleton.column_boundaries:
-        for i, (cx1, cx2) in enumerate(skeleton.column_boundaries):
-            cv2.line(out, (int(cx1), int(skeleton.rows[0].y_min)), (int(cx1), int(skeleton.rows[-1].y_max)), (255, 200, 0), 1)
+        for (cx1, cx2) in skeleton.column_boundaries:
+            line_visible(
+                out,
+                (int(cx1), int(skeleton.rows[0].y_min)),
+                (int(cx1), int(skeleton.rows[-1].y_max)),
+                (0, 140, 200), 1,
+            )
     cv2.imwrite(output_path, out)
     logger.debug("form_skeleton_builder: saved %s", output_path)

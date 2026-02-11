@@ -900,6 +900,7 @@ def run_atoms_v2_pipeline(
     experimental_v2_debug_dir: Optional[str] = None,
     use_form_container_first: bool = False,
     form_container_first_debug_dir: Optional[str] = None,
+    demo_mode: bool = False,
 ) -> Dict[str, Any]:
     """
     Пайплайн atoms_v2: Detectron2 (atoms) + CV regions; OCR; merge & conflict resolution; legacy grouping.
@@ -907,6 +908,7 @@ def run_atoms_v2_pipeline(
     use_form_container_first: если True, после multilevel запускается run_form_container_first_inference
     (FormContainerDetector → FormInnerLayout → SlotDetector → FieldLocator → FormGraph). Все уровни только внутри FormContainer.bbox.
     form_container_first_debug_dir: каталог для container_bbox.png, rows.png, slots.png, slot_assignments.png.
+    demo_mode: идеальная форма для отладки до BPG (контейнер по площади, одна строка = один input, demo_*.json и validate_demo_pipeline).
     """
     log: List[str] = []
     path = Path(image_path)
@@ -1147,6 +1149,7 @@ def run_atoms_v2_pipeline(
                 debug_output_dir=form_container_first_debug_dir,
                 existing_atom_ids=existing_ids,
                 detectron_regions=detectron_regions,
+                demo_mode=demo_mode,
             )
             log.extend(fcf_log)
             if fcf_atoms:
