@@ -49,13 +49,14 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PipelineConfig:
     """Pipeline configuration."""
-    ocr_engine: str = "easyocr"
+    ocr_engine: str = "easyocr"  # 'easyocr', 'tesseract', 'paddleocr_service'
     demo_mode: bool = True
     output_dir: Optional[str] = None
     
     # OCR options
     skip_ocr: bool = False
     precomputed_ocr: Optional[List[Dict[str, Any]]] = None
+    ocr_service_url: Optional[str] = None  # URL для paddleocr_service (напр. http://paddleocr_service:8000)
     
     # S0: Container Detection options
     auto_detect_container: bool = True  # если container_bbox не передан — детектить автоматически
@@ -432,6 +433,7 @@ def run_state_machine_pipeline(
                 container_bbox=container_bbox,
                 ocr_engine=config.ocr_engine,
                 precomputed_ocr=config.precomputed_ocr,
+                ocr_service_url=config.ocr_service_url,
             )
         result.s2_result = s2_result
         logger.debug(f"S2 completed: {len(s2_result.ocr_blocks)} OCR blocks")
@@ -488,6 +490,7 @@ def run_state_machine_pipeline(
             rows=s3_result.rows,
             context=s1_result.context,
             language=s2_result.language,
+            all_elements=s1_result.visual_elements,  # for container expansion
         )
         result.s4_result = s4_result
         logger.debug(f"S4 completed: {sum(len(rs.assignments) for rs in s4_result.row_slots)} assignments")
@@ -603,9 +606,11 @@ def main():
                        help="Container bbox: x1 y1 x2 y2 (optional - auto-detect if not provided)")
     parser.add_argument("--output", "-o", default="./output",
                        help="Output directory for visualizations")
-    parser.add_argument("--ocr-engine", default="easyocr",
-                       choices=["easyocr", "tesseract"],
-                       help="OCR engine to use")
+    parser.add_argument("--ocr-engine", default="paddleocr_service",
+                       choices=["easyocr", "tesseract", "paddleocr_service"],
+                       help="OCR engine to use (default: paddleocr_service)")
+    parser.add_argument("--ocr-service-url", default="http://paddleocr_service:8000",
+                       help="URL of OCR service (for paddleocr_service engine)")
     parser.add_argument("--no-demo", action="store_true",
                        help="Disable visualization output")
     parser.add_argument("--skip-ocr", action="store_true",
@@ -625,6 +630,7 @@ def main():
         demo_mode=not args.no_demo,
         output_dir=args.output,
         skip_ocr=args.skip_ocr,
+        ocr_service_url=args.ocr_service_url,
     )
     
     result = run_state_machine_pipeline(

@@ -182,19 +182,127 @@ def is_value_text(text: str) -> bool:
 # OCR WRAPPER
 # =============================================================================
 
+def run_ocr_via_service(
+    image_path: str,
+    container_bbox: List[float],
+    service_url: str,
+    timeout: int = 60,
+) -> Tuple[List[Dict[str, Any]], str]:
+    """
+    OCR через paddleocr_service: POST изображения на /ocr.
+    Сервис возвращает [{x, y, w, h, text, confidence}]; конвертируем в {text, bbox, confidence}.
+    
+    Args:
+        image_path: путь к изображению
+        container_bbox: bbox контейнера (для offset)
+        service_url: URL сервиса (например http://paddleocr_service:8000)
+        timeout: таймаут запроса
+    
+    Returns:
+        (results, detected_language)
+    """
+    import json
+    from pathlib import Path
+    
+    url = f"{service_url.rstrip('/')}/ocr"
+    image_path = Path(image_path)
+    
+    x1, y1 = int(container_bbox[0]), int(container_bbox[1])
+    
+    try:
+        with open(image_path, "rb") as f:
+            body = f.read()
+    except OSError as e:
+        logger.warning("OCR service: read image %s: %s", image_path, e)
+        return [], "unknown"
+    
+    try:
+        # Try requests first (preferred)
+        try:
+            import requests
+            resp = requests.post(
+                url,
+                files={"image": (image_path.name, body, "image/png")},
+                timeout=timeout,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+        except ImportError:
+            # Fallback to urllib
+            import urllib.request
+            boundary = "----FormBoundary"
+            payload = (
+                f"--{boundary}\r\n"
+                f'Content-Disposition: form-data; name="image"; filename="{image_path.name}"\r\n'
+                "Content-Type: image/png\r\n\r\n"
+            ).encode("utf-8") + body + f"\r\n--{boundary}--\r\n".encode("utf-8")
+            req = urllib.request.Request(url, data=payload, method="POST")
+            req.add_header("Content-Type", f"multipart/form-data; boundary={boundary}")
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                data = json.loads(resp.read().decode())
+        
+        results = []
+        for b in data:
+            x = int(b.get("x", 0))
+            y = int(b.get("y", 0))
+            w = max(1, int(b.get("w", 0)))
+            h = max(1, int(b.get("h", 0)))
+            text = (b.get("text") or "").strip()
+            
+            if not text:
+                continue
+            
+            # Coordinates are relative to the image, not container
+            # Add container offset if OCR was run on full image
+            results.append({
+                "text": text,
+                "bbox": [float(x), float(y), float(x + w), float(y + h)],
+                "confidence": float(b.get("confidence", 0.5)),
+            })
+        
+        # Determine language
+        all_text = " ".join(r["text"] for r in results)
+        lang_info = detect_language(all_text)
+        
+        logger.info(f"OCR service returned {len(results)} blocks")
+        return results, lang_info.primary
+        
+    except Exception as e:
+        logger.warning("OCR service %s failed for %s: %s", url, image_path.name, e)
+        return [], "unknown"
+
+
 def run_ocr(
     image,
     container_bbox: List[float],
     ocr_engine: str = "easyocr",
     languages: Optional[List[str]] = None,
+    image_path: Optional[str] = None,
+    ocr_service_url: Optional[str] = None,
 ) -> Tuple[List[Dict[str, Any]], str]:
     """
     Run OCR on image region.
+    
+    Args:
+        image: cv2 image array
+        container_bbox: bbox контейнера
+        ocr_engine: OCR движок ('easyocr', 'tesseract', 'paddleocr_service')
+        languages: список языков
+        image_path: путь к изображению (нужен для paddleocr_service)
+        ocr_service_url: URL сервиса (для paddleocr_service)
     
     Returns (raw_results, detected_ocr_language)
     """
     if languages is None:
         languages = ["ru", "en"]
+    
+    # Use paddleocr_service if specified
+    if ocr_engine == "paddleocr_service":
+        if image_path and ocr_service_url:
+            return run_ocr_via_service(image_path, container_bbox, ocr_service_url)
+        else:
+            logger.warning("paddleocr_service requires image_path and ocr_service_url")
+            return [], "unknown"
     
     x1, y1, x2, y2 = int(container_bbox[0]), int(container_bbox[1]), int(container_bbox[2]), int(container_bbox[3])
     
@@ -277,6 +385,7 @@ def extract_ocr(
     container_bbox: List[float],
     ocr_engine: str = "easyocr",
     precomputed_ocr: Optional[List[Dict[str, Any]]] = None,
+    ocr_service_url: Optional[str] = None,
 ) -> S2Result:
     """
     S2 — OCR Extraction.
@@ -286,8 +395,9 @@ def extract_ocr(
     Args:
         image_path: путь к изображению
         container_bbox: bbox контейнера формы
-        ocr_engine: OCR движок ('easyocr' или 'tesseract')
+        ocr_engine: OCR движок ('easyocr', 'tesseract', 'paddleocr_service')
         precomputed_ocr: предвычисленные OCR-результаты (опционально)
+        ocr_service_url: URL сервиса OCR (для paddleocr_service)
     
     Returns:
         S2Result с ocr_blocks и language info
@@ -299,18 +409,21 @@ def extract_ocr(
         "labels_detected": 0,
         "buttons_detected": 0,
         "values_detected": 0,
+        "ocr_engine": ocr_engine,
     }
     
-    # Load image if needed
-    image = cv2.imread(str(image_path))
-    if image is None:
-        logger.error(f"Could not read image: {image_path}")
-        return S2Result(
-            ocr_blocks=[],
-            language=LanguageInfo(primary="unknown", ru_ratio=0.0, en_ratio=0.0, confidence=0.0),
-            median_line_height=20.0,
-            diagnostics={"error": "could not read image"},
-        )
+    # Load image if needed (not required for paddleocr_service)
+    image = None
+    if ocr_engine != "paddleocr_service":
+        image = cv2.imread(str(image_path))
+        if image is None:
+            logger.error(f"Could not read image: {image_path}")
+            return S2Result(
+                ocr_blocks=[],
+                language=LanguageInfo(primary="unknown", ru_ratio=0.0, en_ratio=0.0, confidence=0.0),
+                median_line_height=20.0,
+                diagnostics={"error": "could not read image"},
+            )
     
     # Get OCR results
     if precomputed_ocr is not None:
@@ -319,7 +432,13 @@ def extract_ocr(
         lang_info = detect_language(all_text)
         detected_lang = lang_info.primary
     else:
-        raw_results, detected_lang = run_ocr(image, container_bbox, ocr_engine)
+        raw_results, detected_lang = run_ocr(
+            image, 
+            container_bbox, 
+            ocr_engine,
+            image_path=image_path,
+            ocr_service_url=ocr_service_url,
+        )
     
     # Process results into OCRBlock objects
     ocr_blocks = []

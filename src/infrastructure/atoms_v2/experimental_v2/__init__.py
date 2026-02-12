@@ -15,6 +15,8 @@ from .visual_geometry_extractor import (
     VisualElement,
     GeometryContext,
     S1Result,
+    ElementTypes,
+    RelativeThresholds,
     extract_visual_geometry,
 )
 
@@ -72,6 +74,8 @@ __all__ = [
     "VisualElement",
     "GeometryContext", 
     "S1Result",
+    "ElementTypes",
+    "RelativeThresholds",
     "extract_visual_geometry",
     # S2
     "OCRBlock",
