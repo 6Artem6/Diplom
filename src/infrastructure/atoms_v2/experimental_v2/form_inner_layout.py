@@ -164,9 +164,11 @@ GRID_MIN_X_DISTANCE_RATIO = 0.15
 BUTTON_ASPECT_MIN = 3.0
 BUTTON_HEIGHT_MIN = 28
 BUTTON_HEIGHT_MAX = 70
-MIN_ANCHORS_FOR_CONTAINER = 3
-MIN_INPUT_BBOX_INSIDE_CONTAINER = 2
-REJECT_ALL_BBOX_HEIGHT_LT = 40
+# Смягчённые требования для валидации контейнера
+# Ранее: 3 анкора, 2 input — слишком строго для маленьких форм
+MIN_ANCHORS_FOR_CONTAINER = 1  # минимум 1 row anchor
+MIN_INPUT_BBOX_INSIDE_CONTAINER = 1  # минимум 1 input-like элемент
+REJECT_ALL_BBOX_HEIGHT_LT = 20  # минимальная высота элемента (checkbox ~12-20px)
 TEXTAREA_MIN_WIDTH_PX = 120
 TEXTAREA_MAX_ASPECT = 8.0
 TEXTAREA_CENTER_Y_MIN_RATIO = 0.2
@@ -212,31 +214,60 @@ def validate_container_with_ocr(container_bbox: List[float], ocr_inside: List[Di
 
 def validate_container_with_visual(container_bbox: List[float], visual_candidates: List[List[float]]) -> bool:
     """
-    Главный инвариант: внутри ≥ 3 строк (анкоров), ≥ 2 candidate field элементов (не кнопка).
-    Отклоняется если: height < 120, внутри только 1 bbox, все внутренние bbox height < 40, контейнер — кнопка.
+    Главный инвариант: внутри есть row anchors и input-like элементы.
+    Отклоняется если: height < 100, контейнер — кнопка, нет элементов внутри.
+    
+    Смягчённые требования (для маленьких форм):
+    - MIN_ANCHORS_FOR_CONTAINER = 1
+    - MIN_INPUT_BBOX_INSIDE_CONTAINER = 1
     """
     if len(container_bbox) < 4:
+        logger.debug("validate_container_with_visual: rejected - invalid bbox")
         return False
     cw = container_bbox[2] - container_bbox[0]
     ch = container_bbox[3] - container_bbox[1]
-    if ch < 120:
+    
+    # Минимальная высота контейнера 100px (уменьшено с 120)
+    if ch < 100:
+        logger.debug("validate_container_with_visual: rejected - height %.0f < 100", ch)
         return False
     if cw <= 0 or ch <= 0:
+        logger.debug("validate_container_with_visual: rejected - zero dimensions")
         return False
+    
+    # Контейнер не должен быть кнопкой
     aspect = cw / ch
     if aspect >= BUTTON_ASPECT_MIN and BUTTON_HEIGHT_MIN <= ch <= BUTTON_HEIGHT_MAX:
+        logger.debug("validate_container_with_visual: rejected - looks like button")
         return False
+    
+    # Элементы внутри контейнера
     inside = [b for b in visual_candidates if len(b) >= 4 and _bbox_in_container(b, container_bbox)]
-    if len(inside) < 2:
+    logger.debug("validate_container_with_visual: %d candidates, %d inside", len(visual_candidates), len(inside))
+    
+    # Нужен хотя бы 1 элемент внутри (смягчено с 2)
+    if len(inside) < 1:
+        logger.debug("validate_container_with_visual: rejected - no elements inside")
         return False
+    
+    # Не все элементы должны быть слишком маленькими
     if all((b[3] - b[1]) < REJECT_ALL_BBOX_HEIGHT_LT for b in inside):
+        logger.debug("validate_container_with_visual: rejected - all elements too small (h < %d)", REJECT_ALL_BBOX_HEIGHT_LT)
         return False
+    
+    # Нужен хотя бы 1 non-button элемент
     non_button = [b for b in inside if not _is_button_bbox(b)]
     if len(non_button) < MIN_INPUT_BBOX_INSIDE_CONTAINER:
+        logger.debug("validate_container_with_visual: rejected - only %d non-button (need %d)", len(non_button), MIN_INPUT_BBOX_INSIDE_CONTAINER)
         return False
+    
+    # Нужен хотя бы 1 row anchor
     anchors = collect_field_row_anchors(visual_candidates, container_bbox)
     if len(anchors) < MIN_ANCHORS_FOR_CONTAINER:
+        logger.debug("validate_container_with_visual: rejected - only %d anchors (need %d)", len(anchors), MIN_ANCHORS_FOR_CONTAINER)
         return False
+    
+    logger.debug("validate_container_with_visual: PASSED - %d inside, %d non-button, %d anchors", len(inside), len(non_button), len(anchors))
     return True
 
 
@@ -624,42 +655,209 @@ def _tall_contours_inside_container(
 
 DEMO_ROW_LABEL_TOP_PAD = 20
 DEMO_ROW_BOTTOM_PAD = 8
-DEMO_BUTTON_ASPECT_MIN = 3.0
-DEMO_BUTTON_HEIGHT_MIN = 28
-DEMO_BUTTON_HEIGHT_MAX = 70
+DEMO_BUTTON_ASPECT_MIN = 1.5  # снижено для лучшей детекции кнопок
+DEMO_BUTTON_HEIGHT_MIN = 25
+DEMO_BUTTON_HEIGHT_MAX = 75  # увеличено для крупных кнопок
+DEMO_BUTTON_WIDTH_MIN = 70  # минимальная ширина кнопки (исключает буквы)
+DEMO_TEXTAREA_HEIGHT_MIN = 80  # textarea выше обычных input и кнопок
+DEMO_INPUT_HEIGHT_MAX = 55
+DEMO_INPUT_WIDTH_MIN = 100  # минимальная ширина input
+DEMO_CHECKBOX_SIZE_MAX = 32
+DEMO_MIN_ELEMENT_AREA = 3500  # минимальная площадь элемента (исключает буквы)
+
+
+def _classify_visual_element(
+    bbox: List[float],
+    container_bbox: List[float],
+    element_info: Optional[Dict[str, Any]] = None,
+    y_position_ratio: float = 0.5,  # позиция по Y в контейнере (0=верх, 1=низ)
+) -> Tuple[RowType, bool]:
+    """
+    Классификация визуального элемента в row_type.
+    Возвращает (row_type, is_input) — тип строки и флаг наличия input_bbox.
+    
+    Приоритет классификации:
+    1. CHECKBOX/RADIO — маленькие квадратные (высший приоритет)
+    2. HEADER — широкие текстовые области (секции, заголовки)
+    3. ACTION/BUTTON — кнопки (цветные и outline)
+    4. TEXTAREA — высокие поля (>80px)
+    5. INPUT — обычные поля (28-60px)
+    """
+    rw = bbox[2] - bbox[0]
+    rh = bbox[3] - bbox[1]
+    aspect = rw / max(1e-9, rh)
+    container_w = container_bbox[2] - container_bbox[0] if len(container_bbox) >= 4 else 1000
+    container_h = container_bbox[3] - container_bbox[1] if len(container_bbox) >= 4 else 500
+    width_ratio = rw / max(1, container_w)
+    
+    # Используем element_type из scan_all_visual_elements если доступен
+    elem_type = element_info.get("element_type") if element_info else None
+    is_colored = element_info.get("source") == "color_segmentation" if element_info else False
+    has_border = element_info.get("source") == "edge_detection" if element_info else False
+    is_container = element_info.get("is_container", False) if element_info else False
+    
+    # ========== 0. КОНТЕЙНЕРЫ — пропускаем ==========
+    if is_container:
+        return "TEXT", False
+    
+    # ========== 1. CHECKBOX/RADIO (ВЫСШИЙ ПРИОРИТЕТ) ==========
+    # Маленькие квадратные элементы 12-32px
+    if (12 <= rw <= DEMO_CHECKBOX_SIZE_MAX and 12 <= rh <= DEMO_CHECKBOX_SIZE_MAX and
+        abs(aspect - 1.0) <= 0.35):
+        return "FIELD_VERTICAL", True
+    
+    if elem_type in ("checkbox", "radio"):
+        return "FIELD_VERTICAL", True
+    
+    # ========== 2. HEADER ==========
+    # Заголовки и секции — широкие, низкие элементы
+    
+    # Главный заголовок формы: очень широкий, в верхней части
+    if width_ratio >= 0.70 and rh < 70 and aspect > 8.0:
+        return "HEADER", False
+    
+    # Заголовок в верхних 20% контейнера
+    if y_position_ratio < 0.20 and width_ratio >= 0.60 and aspect > 5.0 and rh < 70:
+        return "HEADER", False
+    
+    # Секционные заголовки: широкие горизонтальные полосы
+    if width_ratio >= 0.50 and aspect > 5.0 and rh < 50:
+        return "HEADER", False
+    
+    # Любой элемент шире 55% с aspect > 6 — это точно не кнопка
+    if width_ratio >= 0.55 and aspect > 6.0 and rh < 80:
+        return "HEADER", False
+    
+    # ========== 3. ACTION/BUTTON ==========
+    # Кнопки: цветные, outline, или типичной формы
+    # Критерии: ширина 70-300px, высота 30-75px, aspect 2-6
+    
+    # Явный тип button
+    if elem_type == "button":
+        return "ACTION", False
+    
+    # Цветные кнопки (filled buttons)
+    if (is_colored and rw >= DEMO_BUTTON_WIDTH_MIN and
+        DEMO_BUTTON_HEIGHT_MIN <= rh <= DEMO_BUTTON_HEIGHT_MAX and 
+        1.5 <= aspect <= 6.0):
+        # Не слишком широкие (широкие — это input или header)
+        if width_ratio <= 0.60:
+            return "ACTION", False
+    
+    # Outline кнопки (с рамкой, без заливки)
+    if (has_border and not is_colored and rw >= DEMO_BUTTON_WIDTH_MIN and
+        DEMO_BUTTON_HEIGHT_MIN <= rh <= DEMO_BUTTON_HEIGHT_MAX and
+        1.8 <= aspect <= 5.0 and width_ratio <= 0.50):
+        return "ACTION", False
+    
+    # Full width buttons: широкие цветные элементы в нижней части формы
+    if (is_colored and width_ratio >= 0.50 and width_ratio <= 0.95 and
+        DEMO_BUTTON_HEIGHT_MIN <= rh <= DEMO_BUTTON_HEIGHT_MAX and
+        y_position_ratio > 0.70):
+        return "ACTION", False
+    
+    # Section маленького размера — вероятно кнопка
+    if (elem_type == "section" and width_ratio <= 0.35 and rw >= DEMO_BUTTON_WIDTH_MIN and
+        DEMO_BUTTON_HEIGHT_MIN <= rh <= DEMO_BUTTON_HEIGHT_MAX):
+        return "ACTION", False
+    
+    # ========== 4. TEXTAREA ==========
+    # Высокие элементы (>80px) — textarea
+    if rh >= DEMO_TEXTAREA_HEIGHT_MIN and aspect < 5.0 and width_ratio >= 0.25:
+        return "TEXTAREA", True
+    
+    if elem_type == "textarea":
+        return "TEXTAREA", True
+    
+    # ========== 5. LABEL (широкие низкие элементы без рамки) ==========
+    if elem_type == "label" or (aspect > 4.0 and rh < 25 and width_ratio >= 0.3):
+        return "TEXT", False
+    
+    # ========== 6. SECTION (контейнеры строк) ==========
+    if elem_type == "section":
+        return "TEXT", False
+    
+    # ========== 7. INPUT ==========
+    # Обычные поля ввода: 28-60px высотой, вытянутые горизонтально
+    if 28 <= rh <= DEMO_INPUT_HEIGHT_MAX + 15 and aspect >= 2.5 and width_ratio >= 0.25:
+        return "FIELD_VERTICAL", True
+    
+    # Любой горизонтально вытянутый элемент — скорее всего input
+    if aspect >= 3.0 and 25 <= rh <= 70:
+        return "FIELD_VERTICAL", True
+    
+    if elem_type in ("input", "field"):
+        return "FIELD_VERTICAL", True
+    
+    # ========== 7. FALLBACK ==========
+    if rh > DEMO_INPUT_HEIGHT_MAX:
+        if aspect < 4.0 and width_ratio >= 0.25:
+            return "TEXTAREA", True
+        return "FIELD_VERTICAL", True
+    
+    return "FIELD_VERTICAL", True
 
 
 def _build_rows_demo_mode(
     container: FormContainer,
     visual_candidates: List[List[float]],
+    visual_elements: Optional[List[Dict[str, Any]]] = None,
 ) -> List[FormRow]:
     """
     Demo_mode: одна строка = один input_bbox. Строго по визуальным кандидатам.
-    Кнопка (aspect >= 3, height 28–70) → ACTION, иначе FIELD_VERTICAL. Grid отключён.
+    Улучшенная классификация: кнопки, textarea, checkbox, input.
     """
     if len(container.bbox) < 4 or not visual_candidates:
         return []
     x1, y1, x2, y2 = container.bbox[0], container.bbox[1], container.bbox[2], container.bbox[3]
-    inside = [
-        b for b in visual_candidates
-        if len(b) >= 4
-        and x1 <= b[0] and b[2] <= x2 and y1 <= b[1] and b[3] <= y2
-    ]
+    
+    # Строим маппинг bbox → element_info для классификации
+    elem_by_bbox: Dict[tuple, Dict[str, Any]] = {}
+    if visual_elements:
+        for elem in visual_elements:
+            eb = elem.get("bbox")
+            if eb and len(eb) >= 4:
+                key = (round(eb[0]), round(eb[1]), round(eb[2]), round(eb[3]))
+                elem_by_bbox[key] = elem
+    
+    # Фильтруем элементы: внутри контейнера + минимальная площадь
+    inside = []
+    for b in visual_candidates:
+        if len(b) < 4:
+            continue
+        if not (x1 <= b[0] and b[2] <= x2 and y1 <= b[1] and b[3] <= y2):
+            continue
+        # Фильтр по минимальной площади (исключает буквы и мелкие артефакты)
+        bw = b[2] - b[0]
+        bh = b[3] - b[1]
+        if bw * bh < DEMO_MIN_ELEMENT_AREA:
+            continue
+        # Фильтр по минимальной ширине для input/textarea
+        if bw < DEMO_BUTTON_WIDTH_MIN and bh > DEMO_CHECKBOX_SIZE_MAX:
+            # Узкий высокий элемент — не input и не button
+            continue
+        inside.append(b)
+    
     if not inside:
         return []
     inside.sort(key=lambda b: (b[1] + b[3]) / 2)
+    container_h = y2 - y1
+    
     rows: List[FormRow] = []
     for i, bbox in enumerate(inside):
-        rw = bbox[2] - bbox[0]
-        rh = bbox[3] - bbox[1]
-        aspect = rw / max(1e-9, rh)
-        is_button = (
-            DEMO_BUTTON_HEIGHT_MIN <= rh <= DEMO_BUTTON_HEIGHT_MAX
-            and aspect >= DEMO_BUTTON_ASPECT_MIN
-        )
-        row_type: RowType = "ACTION" if is_button else "FIELD_VERTICAL"
+        # Ищем element_info
+        bbox_key = (round(bbox[0]), round(bbox[1]), round(bbox[2]), round(bbox[3]))
+        elem_info = elem_by_bbox.get(bbox_key)
+        
+        # Позиция элемента по Y в контейнере (0=верх, 1=низ)
+        elem_y_center = (bbox[1] + bbox[3]) / 2
+        y_position_ratio = (elem_y_center - y1) / max(1, container_h)
+        
+        row_type, has_input = _classify_visual_element(bbox, container.bbox, elem_info, y_position_ratio)
+        
         row_y_min = max(y1, bbox[1] - DEMO_ROW_LABEL_TOP_PAD)
         row_y_max = min(y2, bbox[3] + DEMO_ROW_BOTTOM_PAD)
+        
         r = FormRow(
             row_index=i,
             y_min=row_y_min,
@@ -669,9 +867,15 @@ def _build_rows_demo_mode(
             column_count=1,
             row_type=row_type,
             vertical_separators=None,
-            input_bbox=bbox if not is_button else None,
-            action_bbox=bbox if is_button else None,
+            input_bbox=bbox if has_input else None,
+            action_bbox=bbox if not has_input and row_type == "ACTION" else None,
         )
+        
+        # Сохраняем element_type в metadata для визуализации
+        if elem_info:
+            r.metadata["element_type"] = elem_info.get("element_type", "unknown")
+            r.metadata["element_confidence"] = elem_info.get("confidence", 0.0)
+        
         rows.append(r)
     return rows
 
@@ -1443,6 +1647,7 @@ def build_form_inner_layout(
     container: FormContainer,
     ocr_inside: Optional[List[Dict[str, Any]]] = None,
     visual_candidates: Optional[List[List[float]]] = None,
+    visual_elements: Optional[List[Dict[str, Any]]] = None,
     demo_mode: bool = False,
 ) -> Tuple[Optional[FormSkeleton], Dict[str, Any]]:
     """
@@ -1453,17 +1658,24 @@ def build_form_inner_layout(
     ocr_inside = ocr_inside or []
     layout_ocr, baseline, header_bboxes = normalize_ocr_for_layout(ocr_inside, container.bbox, image_path)
     if demo_mode and visual_candidates and len(container.bbox) >= 4:
-        rows = _build_rows_demo_mode(container, visual_candidates)
+        rows = _build_rows_demo_mode(container, visual_candidates, visual_elements)
         skipped_bboxes, textarea_row_indices, form_start_y = [], [], container.bbox[1]
         _post_process_rows_demo(container, rows, layout_ocr)
         _apply_row_invariants(rows, container.bbox)
         from src.infrastructure.atoms_v2.experimental_v2.form_invariants_patch import enforce_form_row_invariants
         enforce_form_row_invariants(rows, layout_ocr, container.bbox, baseline)
-        from src.infrastructure.atoms_v2.experimental_v2.row_semantic_classifier import classify_rows
+        # В demo_mode без OCR НЕ применяем classify_rows — он переклассифицирует всё в TEXT
+        # и удаляет строки. Типы уже правильно установлены в _build_rows_demo_mode.
+        if layout_ocr:
+            from src.infrastructure.atoms_v2.experimental_v2.row_semantic_classifier import classify_rows
+            classify_rows(rows, layout_ocr, container.bbox, baseline, image_path=image_path)
         from src.infrastructure.atoms_v2.experimental_v2.form_invariants_patch import enforce_field_has_input_bbox
-        classify_rows(rows, layout_ocr, container.bbox, baseline, image_path=image_path)
         enforce_field_has_input_bbox(rows)
-        _remove_orphan_field_rows(rows)
+        # Stage 1: LeafElementDetection — диагностика, не меняет структуру
+        from src.infrastructure.atoms_v2.experimental_v2.leaf_element_detector import run_leaf_element_detection
+        run_leaf_element_detection(rows, image_path, ocr_inside, container.bbox)
+        # В demo_mode не удаляем "orphan" строки — все строки нужны для визуализации
+        # _remove_orphan_field_rows(rows)
         rows_debug = []
         layout_type = "vertical"
         columns = [FormColumn(col_index=0, x_min=container.bbox[0], x_max=container.bbox[2])]
@@ -1516,6 +1728,9 @@ def build_form_inner_layout(
     from src.infrastructure.atoms_v2.experimental_v2.form_invariants_patch import enforce_field_has_input_bbox
     classify_rows(rows, layout_ocr, container.bbox, baseline, image_path=image_path)
     enforce_field_has_input_bbox(rows)
+    # Stage 1: LeafElementDetection — диагностика, не меняет структуру
+    from src.infrastructure.atoms_v2.experimental_v2.leaf_element_detector import run_leaf_element_detection
+    run_leaf_element_detection(rows, image_path, ocr_inside, container.bbox)
     _remove_orphan_field_rows(rows)
 
     rows_debug: List[Dict[str, Any]] = []
@@ -1648,25 +1863,132 @@ def visualize_rows_with_types(
     rows: List[FormRow],
     output_path: str,
 ) -> None:
-    """Сохраняет rows_with_types.png — цвет по row_type."""
+    """Сохраняет rows_with_types.png — УСИЛЕННАЯ контрастная визуализация для отладки."""
     import cv2
     img = cv2.imread(str(image_path))
     if img is None:
         return
     out = img.copy()
-    colors = {
-        "HEADER": (0, 140, 200), "TEXT": (0, 140, 200),
-        "FIELD": (0, 180, 180), "FIELD_HORIZONTAL": (0, 180, 180), "FIELD_VERTICAL": (0, 180, 140), "FIELD_INPUT_ONLY": (0, 180, 120),
-        "TEXTAREA": (180, 0, 180), "ACTION": (0, 140, 200), "SPACER": (80, 80, 80),
+    
+    # Контрастные цвета (BGR)
+    row_colors = {
+        "HEADER": (255, 100, 0),           # ярко-синий — заголовки (толстая рамка)
+        "TEXT": (200, 180, 0),             # циан — текст/label
+        "FIELD": (0, 220, 0),              # зелёный — поля
+        "FIELD_HORIZONTAL": (0, 220, 50),  # зелёный (светлее)
+        "FIELD_VERTICAL": (0, 180, 100),   # зелёный (желтее)
+        "FIELD_INPUT_ONLY": (0, 150, 200), # оранжевый — только input
+        "TEXTAREA": (0, 140, 255),         # оранжевый — textarea (пунктирная рамка)
+        "ACTION": (0, 0, 255),             # ярко-красный — кнопки (заливка 60%)
+        "SPACER": (100, 100, 100),         # серый — spacer
+    }
+    # Цвета для input_bbox по element_type
+    element_colors = {
+        "button": (0, 0, 255),             # красный
+        "input": (0, 200, 0),              # зелёный
+        "field": (0, 200, 0),              # зелёный
+        "textarea": (0, 140, 255),         # оранжевый
+        "checkbox": (200, 0, 200),         # пурпурный
+        "radio": (200, 0, 200),            # пурпурный
+        "section": (150, 150, 150),        # серый
+        "label": (255, 200, 100),          # голубой светлый
     }
     from src.infrastructure.debug_draw import putText_visible, rectangle_visible
 
     for r in rows:
         y1, y2 = int(r.y_min), int(r.y_max)
-        color = colors.get(r.row_type, (100, 100, 100))
-        rectangle_visible(out, (int(r.x_min), y1), (int(r.x_max), y2), color, 1)
-        putText_visible(out, "%s R%d" % (r.row_type, r.row_index), (int(r.x_min) + 2, y1 + 14),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), (0, 0, 0), 1)
+        row_color = row_colors.get(r.row_type, (150, 150, 150))
+        elem_type = r.metadata.get("element_type", "field") if hasattr(r, "metadata") and r.metadata else "field"
+        
+        # Определяем стиль визуализации по типу
+        if r.row_type == "HEADER":
+            # HEADER: толстая рамка 4px, без заливки
+            rectangle_visible(out, (int(r.x_min), y1), (int(r.x_max), y2), row_color, 4)
+        elif r.row_type == "ACTION":
+            # ACTION: ярко-красная заливка 60%
+            overlay = out.copy()
+            cv2.rectangle(overlay, (int(r.x_min), y1), (int(r.x_max), y2), row_color, -1)
+            cv2.addWeighted(overlay, 0.6, out, 0.4, 0, out)
+            cv2.rectangle(out, (int(r.x_min), y1), (int(r.x_max), y2), row_color, 3)
+        elif r.row_type == "TEXTAREA":
+            # TEXTAREA: оранжевая заливка 40%, пунктирная рамка
+            overlay = out.copy()
+            cv2.rectangle(overlay, (int(r.x_min), y1), (int(r.x_max), y2), row_color, -1)
+            cv2.addWeighted(overlay, 0.4, out, 0.6, 0, out)
+            # Пунктирная рамка
+            for x in range(int(r.x_min), int(r.x_max), 20):
+                cv2.line(out, (x, y1), (min(x + 10, int(r.x_max)), y1), row_color, 2)
+                cv2.line(out, (x, y2), (min(x + 10, int(r.x_max)), y2), row_color, 2)
+            for y in range(y1, y2, 20):
+                cv2.line(out, (int(r.x_min), y), (int(r.x_min), min(y + 10, y2)), row_color, 2)
+                cv2.line(out, (int(r.x_max), y), (int(r.x_max), min(y + 10, y2)), row_color, 2)
+        else:
+            # Обычная рамка
+            thickness = 3 if r.row_type.startswith("FIELD") else 2
+            rectangle_visible(out, (int(r.x_min), y1), (int(r.x_max), y2), row_color, thickness)
+        
+        # Рисуем input_bbox с цветом по element_type
+        if r.input_bbox and len(r.input_bbox) >= 4:
+            inp_color = element_colors.get(elem_type, (0, 200, 0))
+            ib = r.input_bbox
+            
+            if elem_type in ("checkbox", "radio"):
+                # CHECKBOX: рамка + крестик
+                cv2.rectangle(out, (int(ib[0]), int(ib[1])), (int(ib[2]), int(ib[3])), inp_color, 2)
+                if elem_type == "checkbox":
+                    # Крестик
+                    pad = 3
+                    cv2.line(out, (int(ib[0]) + pad, int(ib[1]) + pad), (int(ib[2]) - pad, int(ib[3]) - pad), inp_color, 2)
+                    cv2.line(out, (int(ib[0]) + pad, int(ib[3]) - pad), (int(ib[2]) - pad, int(ib[1]) + pad), inp_color, 2)
+                else:
+                    # Кружок (radio)
+                    cx = int((ib[0] + ib[2]) / 2)
+                    cy = int((ib[1] + ib[3]) / 2)
+                    radius = min(int(ib[2] - ib[0]), int(ib[3] - ib[1])) // 3
+                    cv2.circle(out, (cx, cy), radius, inp_color, 2)
+            else:
+                # Заполненный прямоугольник с прозрачностью
+                alpha = 0.4 if elem_type != "button" else 0.6
+                overlay = out.copy()
+                cv2.rectangle(overlay, (int(ib[0]), int(ib[1])), (int(ib[2]), int(ib[3])), inp_color, -1)
+                cv2.addWeighted(overlay, alpha, out, 1 - alpha, 0, out)
+                # Рамка
+                cv2.rectangle(out, (int(ib[0]), int(ib[1])), (int(ib[2]), int(ib[3])), inp_color, 3)
+        
+        # Рисуем action_bbox если есть
+        if hasattr(r, "action_bbox") and r.action_bbox and len(r.action_bbox) >= 4:
+            ab = r.action_bbox
+            overlay = out.copy()
+            cv2.rectangle(overlay, (int(ab[0]), int(ab[1])), (int(ab[2]), int(ab[3])), (0, 0, 255), -1)
+            cv2.addWeighted(overlay, 0.6, out, 0.4, 0, out)
+            cv2.rectangle(out, (int(ab[0]), int(ab[1])), (int(ab[2]), int(ab[3])), (0, 0, 255), 3)
+        
+        # Подпись с type, element_type, confidence
+        conf = r.metadata.get("confidence", 0) if hasattr(r, "metadata") and r.metadata else 0
+        inp_status = "[inp]" if r.input_bbox else "[no-inp]"
+        elem_info = f"({elem_type})" if elem_type else ""
+        conf_info = f" {conf:.2f}" if conf > 0 else ""
+        label = f"{r.row_type} R{r.row_index} {inp_status} {elem_info}{conf_info}"
+        
+        # Белый текст с чёрной обводкой для лучшей читаемости
+        putText_visible(out, label, (int(r.x_min) + 3, y1 + 16),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), (0, 0, 0), 1)
+    
+    # Легенда в верхнем левом углу
+    legend_y = 15
+    legend_items = [
+        ("HEADER", (255, 100, 0), "thick border"),
+        ("INPUT", (0, 200, 0), "green fill 40%"),
+        ("TEXTAREA", (0, 140, 255), "orange, dashed"),
+        ("ACTION", (0, 0, 255), "red fill 60%"),
+        ("CHECKBOX", (200, 0, 200), "cross"),
+    ]
+    for name, color, desc in legend_items:
+        cv2.rectangle(out, (5, legend_y - 8), (18, legend_y + 4), color, -1)
+        cv2.putText(out, f"{name}: {desc}", (22, legend_y + 2), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 2)
+        cv2.putText(out, f"{name}: {desc}", (22, legend_y + 2), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (255, 255, 255), 1)
+        legend_y += 16
+    
     cv2.imwrite(output_path, out)
     logger.debug("form_inner_layout: saved %s", output_path)
 

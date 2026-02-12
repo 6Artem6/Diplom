@@ -3,6 +3,8 @@
 **Источник истины:** код в `src/infrastructure/atoms_v2/experimental_v2/`.  
 **Точка входа:** `run_form_container_first_inference()` в `run_form_container_first_inference.py`.
 
+> ⚠️ **ЦЕЛЕВАЯ АРХИТЕКТУРА:** См. [FORM_PIPELINE_STATE_MACHINE.md](./FORM_PIPELINE_STATE_MACHINE.md) — детерминированная state machine без обратных связей.
+
 При изменении пайплайна форм обновлять этот документ и при необходимости секцию 5.1 в `PIPELINE_ARCHITECTURE.md`.
 
 ---
@@ -18,10 +20,13 @@
 | Уровень | Назначение | Модуль / функция |
 |--------|------------|-------------------|
 | 0 | Детекция контейнера формы | FormContainerDetector |
+| 0.5 | **Расширенная визуальная детекция** | `visual_field_scanner.py` (scan_all, postprocess, checkbox_radio_priority) |
 | 1 | Строки и колонки внутри контейнера | FormInnerLayout (`form_inner_layout.py`) |
+| 1.1 | **ContainerLeafDetection (диагностика)** | `container_leaf_detector.py` |
 | 2 | Слоты по строкам (label, input, helper, action) | SlotDetector (`slot_layout_inference.py`) |
 | 3 | Привязка визуальных bbox к слотам | RoleBasedFieldLocator |
 | 4 | Граф формы и преобразование в атомы | FormGraphAssembler |
+| 4.1 | **Диагностика atoms=0** | `_diagnose_zero_atoms()` |
 
 ---
 
@@ -45,9 +50,59 @@
 ### Шаг 1. Подготовка данных внутри контейнера
 
 1. **OCR внутри контейнера:** фильтрация `raw_ocr_boxes` по условию: центр bbox лежит внутри `container.bbox`. Результат: `ocr_inside`.
-2. **Валидация контейнера по OCR:** `validate_container_with_ocr(container.bbox, ocr_inside)` — требуется не менее 2 OCR в разных Y; при неудаче — выход.
-3. **Визуальные кандидаты:** вызов `run_visual_field_scan(image_path, [{"bbox": container.bbox}], dark_theme)` → список bbox полей. Результат: `visual_candidates`. При ошибке сканера — пустой список; пайплайн продолжается с fallback по OCR/edges.
-4. **Валидация по визуалу** (только при непустых `visual_candidates` и не demo_mode): `validate_container_with_visual(container.bbox, visual_candidates)` — минимум строк/полей; при неудаче — выход.
+2. **Валидация контейнера по OCR:** `validate_container_with_ocr(container.bbox, ocr_inside)` — требуется не менее 2 OCR в разных Y; при неудаче — выход. В `demo_mode` без OCR пропускается.
+3. **Визуальные кандидаты (базовый скан):** вызов `run_visual_field_scan(image_path, [{"bbox": container.bbox}], dark_theme)` → список bbox полей. Результат: `visual_candidates`. При ошибке сканера — пустой список.
+
+### Шаг 1.5. Расширенная визуальная детекция (NEW)
+
+Модуль: `visual_field_scanner.py`. Этап выполняется после базового скана для детального анализа элементов.
+
+1. **Приоритетная детекция checkbox/radio:** `detect_checkbox_radio_priority(image_path, container.bbox)`:
+   - Бинаризация OTSU + поиск контуров
+   - Фильтрация: размер 12-32px, aspect ≈ 1.0 (±0.35), fill_ratio < 0.7
+   - Определение типа: circularity > 0.7 → radio, иначе checkbox
+   - Результат: список `{bbox, element_type, confidence, source}`
+
+2. **Основная детекция всех элементов:** `scan_all_visual_elements(image_path, container.bbox)`:
+   - Цветовая сегментация (HSV saturation > 25) → кнопки, иконки
+   - Edge detection (Canny) → поля ввода, textarea, секции
+   - Адаптивный threshold → секции, контейнеры
+   - Классификация `_classify_element_type()` по приоритету:
+     1. checkbox/radio (маленькие квадратные 12-32px)
+     2. button (цветные, 25-75px высотой)
+     3. textarea (высота >80px, aspect <4)
+     4. input (28-60px, aspect ≥3)
+     5. section/label
+
+3. **Объединение:** checkbox/radio + остальные элементы (checkbox/radio имеют приоритет)
+
+4. **Пост-обработка:** `postprocess_visual_elements(elements, container_bbox)`:
+   - **Разделение контейнеров и leaf:** элемент считается контейнером если:
+     - Площадь ≥ 10000px² (100×100)
+     - НЕ является input/textarea/button/checkbox/radio
+     - Содержит другой элемент (>85% площади внутреннего)
+     - Минимум в 1.5 раза больше содержимого
+   - **Обработка вложенных label:** если label высотой > 2× median_text_height и содержит другие элементы → переклассифицируется в row_container
+   - **NMS с логированием:** сортировка по (is_container, -confidence, area), IoU threshold 0.3 для checkbox/radio/button, 0.5 для остальных
+
+5. **Результат:**
+   - `visual_elements` — обработанные элементы с типами
+   - `extra_candidates` — все bbox (для валидации контейнера)
+   - `leaf_candidates` — только leaf-элементы (для построения строк)
+
+6. **Объединение с visual_candidates:** дедупликация по IoU > 0.4
+
+### Шаг 1.6. Валидация контейнера по визуалу
+
+Только при непустых `visual_candidates` и не `demo_mode`: `validate_container_with_visual(container.bbox, visual_candidates)`.
+
+**Смягчённые требования (для маленьких форм):**
+- Минимум 1 row anchor (было 3)
+- Минимум 1 non-button элемент (было 2)
+- Минимальная высота контейнера 100px (было 120)
+- Минимальная высота элемента 20px (было 40, для checkbox ~12-20px)
+
+При неудаче — выход с логированием причины.
 
 ### Шаг 2. FormInnerLayout (`build_form_inner_layout`)
 
@@ -138,7 +193,8 @@
    - **ACTION:** ширина строки ≥ 60% контейнера, OCR ≤3 слова, центрирован, нет placeholder/label сверху → `row_type=ACTION`, не создавать FIELD.
    - **TEXT:** нет визуального прямоугольника поля, нет placeholder → `row_type=TEXT`, `input_bbox=None`.
    - **FIELD** допускается только при: визуальная рамка + высота bbox близка к median_input_height + (placeholder или label). Иначе → TEXT/HEADER.
-4. **`_remove_orphan_field_rows(rows)`** — удаление строк с полевым типом без `input_bbox`/`input_bboxes`; переиндексация `row_index`.
+4. **`run_leaf_element_detection(rows, image_path, ocr_inside, container.bbox)`** (модуль `leaf_element_detector.py`) — **диагностический слой** (Stage 1). Для каждой строки детектирует element-like паттерны внутри `row.bbox` (button, checkbox, radio, textarea). НЕ меняет `row_type`, geometry, `input_bbox`, slots. Только добавляет `row.metadata["leaf_candidates"]` и `row.metadata["leaf_debug"]`, логирует результаты. Используется для анализа конфликтов root vs leaf.
+5. **`_remove_orphan_field_rows(rows)`** — удаление строк с полевым типом без `input_bbox`/`input_bboxes`; переиндексация `row_index`.
 
 #### 2.5. Отладочная структура rows_debug (и ocr_considered_for_label_only)
 
@@ -215,6 +271,10 @@
 | **Колонки (grid)** | По визуальным bbox: X-overlap < 0.3 → input_bboxes и vertical_separators. При layout_type == "vertical" у строк с input_bboxes column_count не обнуляется. |
 | **Инварианты строк (патч)** | CV — единственный источник геометрии строк. Патч: только диагностика при расхождении row↔OCR (лог); изменение row_type, label_bbox, helper, label from above; границы строк не меняются. TEXTAREA bottom только по CV. |
 | **Семантический классификатор** | `row_semantic_classifier.classify_rows`: жёсткие правила HEADER/ACTION/TEXT/FIELD после патча; заголовок и кнопка не становятся FIELD; FIELD только при визуальная рамка + высота ≈ median + (placeholder или label). Геометрию не меняет. |
+| **Расширенная визуальная детекция (Stage 0.5)** | `visual_field_scanner`: `detect_checkbox_radio_priority` → `scan_all_visual_elements` → `postprocess_visual_elements`. Приоритет: checkbox/radio → button → textarea → input. Разделяет контейнеры и leaf. NMS с логированием. |
+| **ContainerLeafDetection (Stage 1.1)** | `container_leaf_detector.run_container_leaf_detection`: диагностика ДО row segmentation. **Геометрическая фильтрация** checkbox/radio: fill_ratio < 0.45, inner_contours ≤ 2, edge_density < 0.25, aspect_ratio ∈ [0.85, 1.15], symmetry ≥ 0.8, max_size ≤ 40px. Результат: `container.metadata["container_leaf"]`. |
+| **LeafElementDetection (Stage 1)** | `leaf_element_detector.run_leaf_element_detection`: диагностический слой, детектирует button/checkbox/radio/textarea внутри row.bbox. Не меняет row_type, geometry, slots. Записывает `row.metadata["leaf_candidates"]`. Визуализация: `leaf_detection.png` — строки с цветом по типу кандидата + confidence справа. |
+| **Диагностика atoms=0** | `_diagnose_zero_atoms`: при неудаче demo_validation выводит детальный отчёт: контейнер, строки, слоты, assignments, visual_elements, причины отклонения. Сохраняет `atoms_zero_diagnostics.txt/json`. |
 | **Коррекция bbox назначений** | `correct_slot_assignment_bboxes`: меняется только `assignment.bbox`; row не меняется. `log_assignment_outside_row_invariant`: лог при bbox вне строки. |
 
 ---
@@ -229,15 +289,74 @@
 
 ## Отладочные выходы (при заданном debug_output_dir)
 
-- container_bbox.png — контейнер формы
-- rows.png — границы строк
-- rows_with_types.png — строки с цветом по row_type
-- skipped_rows.png — пропущенные bbox (header)
-- textarea_rows.png — строки типа TEXTAREA
-- rows_debug.png — row_y_from_visual и ocr_considered_for_label_only
-- slots.png — слоты по строкам
-- slot_assignments.png — назначения bbox слотам
-- form_graph.png — граф (bbox и связи label→input)
+### Основные
+
+- `container_bbox.png` — контейнер формы
+- `rows.png` — границы строк
+- `rows_with_types.png` — строки с цветом по row_type (усиленная визуализация)
+- `skipped_rows.png` — пропущенные bbox (header)
+- `textarea_rows.png` — строки типа TEXTAREA
+- `rows_debug.png` — row_y_from_visual и ocr_considered_for_label_only
+- `slots.png` — слоты по строкам
+- `slot_assignments.png` — назначения bbox слотам
+- `form_graph.png` — граф (bbox и связи label→input)
+
+### Диагностика визуальных элементов (NEW)
+
+- `elements_enhanced.png` — усиленная контрастная визуализация всех элементов:
+  - HEADER: толстая синяя рамка 4px
+  - INPUT: зелёная заливка 40%
+  - TEXTAREA: оранжевая заливка 40%, пунктирная рамка
+  - ACTION: красная заливка 60%
+  - CHECKBOX: рамка + крестик
+  - RADIO: рамка + кружок
+  - Подписи: type, confidence, source
+- `detection_diagnostics.txt` — текстовая диагностика детекции
+- `elements_nesting.png` — визуализация вложенности элементов (если есть)
+- `elements_overlaps.png` — визуализация пересечений (если есть)
+
+### Диагностика при ошибках (NEW)
+
+- `atoms_zero_diagnostics.txt` — детальный отчёт при atoms=0
+- `atoms_zero_diagnostics.json` — JSON для программного анализа
+- `no_container_found.txt` — маркер при остановке пайплайна
+
+### LeafDetection
+
+- `leaf_detection.png` — строки с цветом по типу кандидата + confidence
+- `container_leaf_detection.png` — элементы вне строк (Stage 1.1)
+
+---
+
+---
+
+## Новые модули диагностики и визуализации
+
+### detection_diagnostics.py
+
+Сбор статистики и диагностика детекции:
+
+- `DetectionDiagnostics` — dataclass со статистикой: container, visual_candidates, by_type, nested_elements, overlapping_pairs, suppression_reasons, atoms_by_type
+- `compute_iou()` — расчёт IoU двух bbox
+- `bbox_contains()` — проверка вложенности
+- `analyze_nesting()` — анализ вложенности и пересечений элементов
+- `diagnose_visual_candidates()` — сбор диагностики
+- `apply_suppression_with_log()` — NMS с логированием причин удаления
+- `separate_containers_and_leaves()` — разделение контейнеров и leaf
+- `log_diagnostics()` / `print_diagnostics()` — вывод диагностики
+
+### enhanced_visualization.py
+
+Усиленная контрастная визуализация:
+
+- Цвета по типам: HEADER (синий), INPUT (зелёный), TEXTAREA (оранжевый), ACTION (красный), CHECKBOX/RADIO (пурпурный), LABEL (голубой)
+- `draw_filled_rect()` — прямоугольник с прозрачной заливкой
+- `draw_dashed_rect()` — пунктирная рамка
+- `draw_checkbox_marker()` / `draw_radio_marker()` — специальные маркеры
+- `draw_element()` — полная визуализация элемента с подписью
+- `visualize_elements_enhanced()` — создание изображения со всеми элементами и легендой
+- `visualize_nesting()` — визуализация вложенности стрелками
+- `visualize_overlaps()` — визуализация пересечений
 
 ---
 
@@ -248,3 +367,11 @@
 1. Внести правки в код в `src/infrastructure/atoms_v2/experimental_v2/`.
 2. Обновить этот файл (`docs/FORM_CONTAINER_FIRST_PIPELINE.md`): соответствующие шаги, таблицы, инварианты.
 3. При необходимости обновить секцию 5.1 и ссылки в `docs/PIPELINE_ARCHITECTURE.md`.
+
+---
+
+## История изменений
+
+| Дата | Изменение |
+|------|-----------|
+| 2026-02-03 | Добавлены этапы 0.5 (расширенная визуальная детекция) и 4.1 (диагностика atoms=0). Новые модули: detection_diagnostics.py, enhanced_visualization.py. Смягчены инварианты валидации контейнера. Добавлены новые debug-файлы. |

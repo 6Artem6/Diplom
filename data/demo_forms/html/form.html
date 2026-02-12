@@ -2,8 +2,8 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=1600, height=2400">
-  <title>Demo forms</title>
+  <meta name="viewport" content="width=1600, height=6000">
+  <title>UI Detection Test Stand</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -17,7 +17,7 @@
     }
     .page {
       width: 1600px;
-      height: 2400px;
+      min-height: 6000px;
       background: #3c3c41;
       position: relative;
     }
@@ -32,77 +32,324 @@
       padding: 54px 40px 40px;
     }
     .form-container[hidden] { display: none !important; }
+    
+    /* === Base styles === */
     .title {
       font-size: 48px;
       color: #141419;
       margin-bottom: 56px;
       font-weight: 600;
     }
-    .field {
-      margin-bottom: 56px;
+    .section-title {
+      font-size: 36px;
+      color: #333;
+      margin: 48px 0 24px;
+      padding-bottom: 12px;
+      border-bottom: 3px solid #ddd;
     }
+    .subsection {
+      margin: 24px 0;
+      padding: 20px;
+      background: #f9f9f9;
+      border: 2px solid #e0e0e0;
+    }
+    .subsection-title {
+      font-size: 24px;
+      color: #555;
+      margin-bottom: 16px;
+      font-weight: 500;
+    }
+    
+    /* === Field base === */
     .field {
-      background: #f7f7f7;
+      margin-bottom: 32px;
     }
     .field label {
       display: block;
-      font-size: 40px;
+      font-size: 28px;
       color: #141419;
-      margin-bottom: 18px;
+      margin-bottom: 12px;
     }
-    .field input,
-    .field textarea {
-      width: 85%;
-      max-width: 100%;
+    .field input[type="text"],
+    .field input[type="password"],
+    .field input[type="email"],
+    .field input[type="number"],
+    .field textarea,
+    .field select {
+      width: 100%;
+      max-width: 600px;
       display: block;
-      height: 84px;
-      border: 5px solid #343438;
+      height: 64px;
+      border: 3px solid #343438;
       border-radius: 0;
-      font-size: 32px;
+      font-size: 24px;
       padding: 0 16px;
       margin: 0;
       color: #141419;
       background: #fff;
-      /* Центрирование однострочного текста и placeholder по вертикали */
-      line-height: 84px;
+      line-height: 64px;
     }
     .field input::placeholder,
     .field textarea::placeholder {
       color: #8c8c91;
     }
     .field textarea {
-      height: 200px;
+      height: 160px;
       line-height: 1.4;
       padding: 12px 16px;
       resize: none;
-      line-height: 1.5;
     }
-    .field textarea::placeholder {
-      /* многострочный placeholder выравниваем по верху, т.к. вертикальный центр не так важен */
+    .field select {
+      cursor: pointer;
     }
-    .btn-wrap { margin-top: 24px; text-align: center; }
+    .field input:disabled,
+    .field textarea:disabled,
+    .field select:disabled {
+      background: #e9e9e9;
+      color: #999;
+      cursor: not-allowed;
+    }
+    
+    /* === Radio & Checkbox base === */
+    .radio-group,
+    .checkbox-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .radio-group.horizontal,
+    .checkbox-group.horizontal {
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 24px;
+    }
+    .radio-item,
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 24px;
+      cursor: pointer;
+    }
+    .radio-item input[type="radio"],
+    .checkbox-item input[type="checkbox"] {
+      width: 24px;
+      height: 24px;
+      margin: 0;
+      cursor: pointer;
+    }
+    .radio-item.disabled,
+    .checkbox-item.disabled {
+      color: #999;
+      cursor: not-allowed;
+    }
+    .radio-item.disabled input,
+    .checkbox-item.disabled input {
+      cursor: not-allowed;
+    }
+    
+    /* === Size variants === */
+    .size-small input[type="radio"],
+    .size-small input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+    }
+    .size-small .radio-item,
+    .size-small .checkbox-item {
+      font-size: 18px;
+      gap: 8px;
+    }
+    .size-large input[type="radio"],
+    .size-large input[type="checkbox"] {
+      width: 32px;
+      height: 32px;
+    }
+    .size-large .radio-item,
+    .size-large .checkbox-item {
+      font-size: 32px;
+      gap: 16px;
+    }
+    
+    /* === Buttons === */
+    .btn-wrap { 
+      margin-top: 24px; 
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
     .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      height: 96px;
-      min-width: 200px;
-      padding: 0 32px;
-      font-size: 40px;
+      height: 64px;
+      min-width: 160px;
+      padding: 0 24px;
+      font-size: 28px;
       color: #fff;
       background: #4682c8;
-      border: none;
-      cursor: default;
+      border: 3px solid #4682c8;
+      cursor: pointer;
       font-family: inherit;
       border-radius: 0;
-      /* текст кнопки строго по центру */
       line-height: 1;
+    }
+    .btn:hover {
+      background: #3a6db0;
+    }
+    .btn:disabled {
+      background: #b0b0b0;
+      border-color: #b0b0b0;
+      cursor: not-allowed;
+    }
+    .btn.outline {
+      background: transparent;
+      color: #4682c8;
+    }
+    .btn.outline:hover {
+      background: #e8f0f8;
+    }
+    .btn.small {
+      height: 48px;
+      min-width: 120px;
+      font-size: 20px;
+      padding: 0 16px;
+    }
+    .btn.large {
+      height: 80px;
+      min-width: 200px;
+      font-size: 36px;
+      padding: 0 32px;
+    }
+    .btn.danger {
+      background: #dc3545;
+      border-color: #dc3545;
+    }
+    .btn.success {
+      background: #28a745;
+      border-color: #28a745;
+    }
+    .btn .icon {
+      margin-right: 8px;
+      font-size: 1.2em;
+    }
+    
+    /* === Grid layouts === */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 24px;
+    }
+    .grid-auto {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+    }
+    
+    /* === File input === */
+    .file-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .file-input-wrap input[type="file"] {
+      font-size: 20px;
+    }
+    .custom-file-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 48px;
+      padding: 0 20px;
+      font-size: 20px;
+      color: #fff;
+      background: #666;
+      border: none;
+      cursor: pointer;
+    }
+    .custom-file-input {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    
+    /* === Size scale sections === */
+    .scale-small {
+      font-size: 14px;
+    }
+    .scale-small label { font-size: 18px; }
+    .scale-small input,
+    .scale-small select,
+    .scale-small textarea {
+      height: 40px;
+      font-size: 14px;
+      line-height: 40px;
+    }
+    .scale-small textarea {
+      height: 80px;
+      line-height: 1.4;
+    }
+    
+    .scale-medium {
+      font-size: 16px;
+    }
+    .scale-medium label { font-size: 22px; }
+    .scale-medium input,
+    .scale-medium select,
+    .scale-medium textarea {
+      height: 52px;
+      font-size: 18px;
+      line-height: 52px;
+    }
+    .scale-medium textarea {
+      height: 120px;
+      line-height: 1.4;
+    }
+    
+    .scale-large {
+      font-size: 20px;
+    }
+    .scale-large label { font-size: 32px; }
+    .scale-large input,
+    .scale-large select,
+    .scale-large textarea {
+      height: 72px;
+      font-size: 26px;
+      line-height: 72px;
+    }
+    .scale-large textarea {
+      height: 180px;
+      line-height: 1.4;
+    }
+    
+    /* === Inline label+input === */
+    .inline-field {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .inline-field label {
+      margin-bottom: 0;
+      white-space: nowrap;
+    }
+    .inline-field input,
+    .inline-field select {
+      flex: 1;
     }
   </style>
 </head>
 <body>
   <div class="page">
-    <!-- Form 01: Регистрация -->
+    
+    <!-- ============================================== -->
+    <!-- Form 01: Регистрация (оригинальная) -->
+    <!-- ============================================== -->
     <div class="form-container" id="form-01" data-form="01">
       <h1 class="title">Регистрация пользователя</h1>
       <div class="field">
@@ -122,7 +369,9 @@
       </div>
     </div>
 
+    <!-- ============================================== -->
     <!-- Form 02: Вход -->
+    <!-- ============================================== -->
     <div class="form-container" id="form-02" data-form="02" hidden>
       <h1 class="title">Вход</h1>
       <div class="field">
@@ -138,7 +387,9 @@
       </div>
     </div>
 
+    <!-- ============================================== -->
     <!-- Form 03: Обратная связь -->
+    <!-- ============================================== -->
     <div class="form-container" id="form-03" data-form="03" hidden>
       <h1 class="title">Обратная связь</h1>
       <div class="field">
@@ -154,7 +405,9 @@
       </div>
     </div>
 
+    <!-- ============================================== -->
     <!-- Form 04: Профиль -->
+    <!-- ============================================== -->
     <div class="form-container" id="form-04" data-form="04" hidden>
       <h1 class="title">Профиль</h1>
       <div class="field">
@@ -170,7 +423,9 @@
       </div>
     </div>
 
+    <!-- ============================================== -->
     <!-- Form 05: Быстрая форма -->
+    <!-- ============================================== -->
     <div class="form-container" id="form-05" data-form="05" hidden>
       <h1 class="title">Быстрая форма</h1>
       <div class="field">
@@ -185,7 +440,841 @@
         <button type="button" class="btn">OK</button>
       </div>
     </div>
+
+    <!-- ============================================== -->
+    <!-- Form 10: RADIO GROUPS TEST -->
+    <!-- ============================================== -->
+    <div class="form-container" id="form-10" data-form="10" hidden>
+      <h1 class="title">Radio Groups Test</h1>
+      
+      <!-- Vertical Radio -->
+      <h2 class="section-title">1. Vertical Radio (вертикальное расположение)</h2>
+      <div class="subsection">
+        <div class="subsection-title">Выберите способ доставки</div>
+        <div class="radio-group">
+          <label class="radio-item">
+            <input type="radio" name="delivery1" value="pickup" checked>
+            <span>Самовывоз</span>
+          </label>
+          <label class="radio-item">
+            <input type="radio" name="delivery1" value="courier">
+            <span>Курьер</span>
+          </label>
+          <label class="radio-item">
+            <input type="radio" name="delivery1" value="post">
+            <span>Почта России</span>
+          </label>
+          <label class="radio-item disabled">
+            <input type="radio" name="delivery1" value="express" disabled>
+            <span>Экспресс-доставка (недоступно)</span>
+          </label>
+        </div>
+      </div>
+      
+      <!-- Horizontal Radio -->
+      <h2 class="section-title">2. Horizontal Radio (горизонтальное)</h2>
+      <div class="subsection">
+        <div class="subsection-title">Gender / Пол</div>
+        <div class="radio-group horizontal">
+          <label class="radio-item">
+            <input type="radio" name="gender" value="male">
+            <span>Male / Мужской</span>
+          </label>
+          <label class="radio-item">
+            <input type="radio" name="gender" value="female" checked>
+            <span>Female / Женский</span>
+          </label>
+          <label class="radio-item">
+            <input type="radio" name="gender" value="other">
+            <span>Other / Другое</span>
+          </label>
+        </div>
+      </div>
+      
+      <!-- Small Radio -->
+      <h2 class="section-title">3. Small Radio (маленькие)</h2>
+      <div class="subsection size-small">
+        <div class="subsection-title">Приоритет</div>
+        <div class="radio-group horizontal">
+          <label class="radio-item">
+            <input type="radio" name="priority" value="low">
+            <span>Низкий</span>
+          </label>
+          <label class="radio-item">
+            <input type="radio" name="priority" value="normal" checked>
+            <span>Обычный</span>
+          </label>
+          <label class="radio-item">
+            <input type="radio" name="priority" value="high">
+            <span>Высокий</span>
+          </label>
+        </div>
+      </div>
+      
+      <!-- Large Radio -->
+      <h2 class="section-title">4. Large Radio (крупные)</h2>
+      <div class="subsection size-large">
+        <div class="subsection-title">Тарифный план</div>
+        <div class="radio-group">
+          <label class="radio-item">
+            <input type="radio" name="plan" value="free">
+            <span>Бесплатный</span>
+          </label>
+          <label class="radio-item">
+            <input type="radio" name="plan" value="pro" checked>
+            <span>Профессиональный</span>
+          </label>
+          <label class="radio-item">
+            <input type="radio" name="plan" value="enterprise">
+            <span>Корпоративный</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- Form 11: CHECKBOX GROUPS TEST -->
+    <!-- ============================================== -->
+    <div class="form-container" id="form-11" data-form="11" hidden>
+      <h1 class="title">Checkbox Groups Test</h1>
+      
+      <!-- Single Checkbox -->
+      <h2 class="section-title">1. Single Checkbox (одиночные)</h2>
+      <div class="subsection">
+        <label class="checkbox-item">
+          <input type="checkbox" checked>
+          <span>Я согласен с условиями использования</span>
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox">
+          <span>Подписаться на рассылку</span>
+        </label>
+        <label class="checkbox-item disabled">
+          <input type="checkbox" disabled checked>
+          <span>Обязательное согласие (disabled)</span>
+        </label>
+      </div>
+      
+      <!-- Checkbox List -->
+      <h2 class="section-title">2. Checkbox List (вертикальный список)</h2>
+      <div class="subsection">
+        <div class="subsection-title">Выберите интересы</div>
+        <div class="checkbox-group">
+          <label class="checkbox-item">
+            <input type="checkbox" checked>
+            <span>Технологии</span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" checked>
+            <span>Наука</span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox">
+            <span>Искусство</span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox">
+            <span>Спорт</span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox">
+            <span>Музыка</span>
+          </label>
+        </div>
+      </div>
+      
+      <!-- Horizontal Checkbox -->
+      <h2 class="section-title">3. Horizontal Checkbox</h2>
+      <div class="subsection">
+        <div class="subsection-title">Дни недели</div>
+        <div class="checkbox-group horizontal">
+          <label class="checkbox-item">
+            <input type="checkbox" checked>
+            <span>Пн</span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" checked>
+            <span>Вт</span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox">
+            <span>Ср</span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox">
+            <span>Чт</span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" checked>
+            <span>Пт</span>
+          </label>
+          <label class="checkbox-item disabled">
+            <input type="checkbox" disabled>
+            <span>Сб</span>
+          </label>
+          <label class="checkbox-item disabled">
+            <input type="checkbox" disabled>
+            <span>Вс</span>
+          </label>
+        </div>
+      </div>
+      
+      <!-- Size variants -->
+      <h2 class="section-title">4. Size Variants</h2>
+      <div class="subsection size-small">
+        <div class="subsection-title">Small checkboxes</div>
+        <div class="checkbox-group horizontal">
+          <label class="checkbox-item"><input type="checkbox" checked><span>Option A</span></label>
+          <label class="checkbox-item"><input type="checkbox"><span>Option B</span></label>
+          <label class="checkbox-item"><input type="checkbox"><span>Option C</span></label>
+        </div>
+      </div>
+      <div class="subsection size-large">
+        <div class="subsection-title">Large checkboxes</div>
+        <div class="checkbox-group">
+          <label class="checkbox-item"><input type="checkbox" checked><span>Большой вариант 1</span></label>
+          <label class="checkbox-item"><input type="checkbox"><span>Большой вариант 2</span></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- Form 12: SELECT TEST -->
+    <!-- ============================================== -->
+    <div class="form-container" id="form-12" data-form="12" hidden>
+      <h1 class="title">Select / Dropdown Test</h1>
+      
+      <!-- Basic Select -->
+      <h2 class="section-title">1. Basic Select</h2>
+      <div class="subsection">
+        <div class="field">
+          <label>Страна</label>
+          <select>
+            <option value="">Выберите страну</option>
+            <option value="ru">Россия</option>
+            <option value="us">США</option>
+            <option value="de">Германия</option>
+            <option value="fr">Франция</option>
+          </select>
+        </div>
+      </div>
+      
+      <!-- Select with many options -->
+      <h2 class="section-title">2. Select with 15+ options</h2>
+      <div class="subsection">
+        <div class="field">
+          <label>Город</label>
+          <select>
+            <option value="">-- Select city --</option>
+            <option value="msk">Москва</option>
+            <option value="spb">Санкт-Петербург</option>
+            <option value="nsk">Новосибирск</option>
+            <option value="ekb">Екатеринбург</option>
+            <option value="kzn">Казань</option>
+            <option value="nnov">Нижний Новгород</option>
+            <option value="sam">Самара</option>
+            <option value="omsk">Омск</option>
+            <option value="che">Челябинск</option>
+            <option value="rnd">Ростов-на-Дону</option>
+            <option value="ufa">Уфа</option>
+            <option value="vgd">Волгоград</option>
+            <option value="perm">Пермь</option>
+            <option value="krn">Красноярск</option>
+            <option value="vrn">Воронеж</option>
+          </select>
+        </div>
+      </div>
+      
+      <!-- Select with placeholder -->
+      <h2 class="section-title">3. Select with placeholder (disabled option)</h2>
+      <div class="subsection">
+        <div class="field">
+          <label>Category</label>
+          <select>
+            <option value="" disabled selected>Please select a category...</option>
+            <option value="tech">Technology</option>
+            <option value="health">Health</option>
+            <option value="finance">Finance</option>
+          </select>
+        </div>
+      </div>
+      
+      <!-- Disabled Select -->
+      <h2 class="section-title">4. Disabled Select</h2>
+      <div class="subsection">
+        <div class="field">
+          <label>Регион (заблокировано)</label>
+          <select disabled>
+            <option value="msk" selected>Московская область</option>
+            <option value="spb">Ленинградская область</option>
+          </select>
+        </div>
+      </div>
+      
+      <!-- Multiple selects in row -->
+      <h2 class="section-title">5. Multiple selects (grid)</h2>
+      <div class="subsection">
+        <div class="grid-3">
+          <div class="field">
+            <label>Год</label>
+            <select>
+              <option>2020</option>
+              <option>2021</option>
+              <option>2022</option>
+              <option selected>2023</option>
+              <option>2024</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Месяц</label>
+            <select>
+              <option>Январь</option>
+              <option>Февраль</option>
+              <option>Март</option>
+              <option selected>Апрель</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>День</label>
+            <select>
+              <option>1</option>
+              <option>2</option>
+              <option selected>15</option>
+              <option>30</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- Form 13: BUTTONS TEST -->
+    <!-- ============================================== -->
+    <div class="form-container" id="form-13" data-form="13" hidden>
+      <h1 class="title">Buttons Test</h1>
+      
+      <!-- Basic Buttons -->
+      <h2 class="section-title">1. Basic Buttons</h2>
+      <div class="subsection">
+        <div class="btn-wrap">
+          <button type="button" class="btn">Кнопка</button>
+          <button type="submit" class="btn">Submit</button>
+          <button type="button" class="btn success">Сохранить</button>
+          <button type="button" class="btn danger">Удалить</button>
+        </div>
+      </div>
+      
+      <!-- Outline Buttons -->
+      <h2 class="section-title">2. Outline Buttons</h2>
+      <div class="subsection">
+        <div class="btn-wrap">
+          <button type="button" class="btn outline">Outline</button>
+          <button type="button" class="btn outline" style="color: #28a745; border-color: #28a745;">Success</button>
+          <button type="button" class="btn outline" style="color: #dc3545; border-color: #dc3545;">Danger</button>
+        </div>
+      </div>
+      
+      <!-- Size variants -->
+      <h2 class="section-title">3. Size Variants</h2>
+      <div class="subsection">
+        <div class="btn-wrap">
+          <button type="button" class="btn small">Small</button>
+          <button type="button" class="btn">Normal</button>
+          <button type="button" class="btn large">Large</button>
+        </div>
+      </div>
+      
+      <!-- Disabled -->
+      <h2 class="section-title">4. Disabled Buttons</h2>
+      <div class="subsection">
+        <div class="btn-wrap">
+          <button type="button" class="btn" disabled>Disabled</button>
+          <button type="button" class="btn success" disabled>Disabled Success</button>
+          <button type="button" class="btn outline" disabled>Disabled Outline</button>
+        </div>
+      </div>
+      
+      <!-- With Icons -->
+      <h2 class="section-title">5. Buttons with Icons (text icons)</h2>
+      <div class="subsection">
+        <div class="btn-wrap">
+          <button type="button" class="btn"><span class="icon">+</span> Добавить</button>
+          <button type="button" class="btn danger"><span class="icon">×</span> Удалить</button>
+          <button type="button" class="btn success"><span class="icon">✓</span> Готово</button>
+          <button type="button" class="btn outline"><span class="icon">↓</span> Скачать</button>
+        </div>
+      </div>
+      
+      <!-- Full width -->
+      <h2 class="section-title">6. Full Width Buttons</h2>
+      <div class="subsection">
+        <button type="button" class="btn" style="width: 100%; margin-bottom: 16px;">Войти в систему</button>
+        <button type="button" class="btn outline" style="width: 100%;">Зарегистрироваться</button>
+      </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- Form 14: INPUT TYPES TEST -->
+    <!-- ============================================== -->
+    <div class="form-container" id="form-14" data-form="14" hidden>
+      <h1 class="title">Input Types Test</h1>
+      
+      <!-- Text inputs -->
+      <h2 class="section-title">1. Text Inputs</h2>
+      <div class="subsection">
+        <div class="field">
+          <label>Text</label>
+          <input type="text" placeholder="Обычный текст">
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input type="password" placeholder="Введите пароль">
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input type="email" placeholder="user@example.com">
+        </div>
+        <div class="field">
+          <label>Number</label>
+          <input type="number" placeholder="0" min="0" max="100">
+        </div>
+      </div>
+      
+      <!-- Textarea -->
+      <h2 class="section-title">2. Textarea</h2>
+      <div class="subsection">
+        <div class="field">
+          <label>Описание</label>
+          <textarea placeholder="Введите подробное описание..."></textarea>
+        </div>
+        <div class="field">
+          <label>Comment (disabled)</label>
+          <textarea disabled placeholder="Комментарии отключены"></textarea>
+        </div>
+      </div>
+      
+      <!-- File inputs -->
+      <h2 class="section-title">3. File Inputs</h2>
+      <div class="subsection">
+        <div class="field">
+          <label>Стандартный file input</label>
+          <div class="file-input-wrap">
+            <input type="file">
+          </div>
+        </div>
+        <div class="field">
+          <label>Multiple files</label>
+          <div class="file-input-wrap">
+            <input type="file" multiple>
+          </div>
+        </div>
+        <div class="field">
+          <label>Кастомная кнопка загрузки</label>
+          <div class="file-input-wrap">
+            <label class="custom-file-btn">
+              Выбрать файл
+              <input type="file" class="custom-file-input">
+            </label>
+            <span style="color: #666; font-size: 18px;">Файл не выбран</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Disabled inputs -->
+      <h2 class="section-title">4. Disabled Inputs</h2>
+      <div class="subsection">
+        <div class="field">
+          <label>Disabled text</label>
+          <input type="text" value="Нередактируемое значение" disabled>
+        </div>
+        <div class="field">
+          <label>Readonly</label>
+          <input type="text" value="Только для чтения" readonly>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- Form 15: GRID LAYOUTS TEST -->
+    <!-- ============================================== -->
+    <div class="form-container" id="form-15" data-form="15" hidden>
+      <h1 class="title">Grid Layouts Test</h1>
+      
+      <!-- Single column -->
+      <h2 class="section-title">1. Single Column (1 колонка)</h2>
+      <div class="subsection">
+        <div class="field">
+          <label>Поле 1</label>
+          <input type="text" placeholder="Значение">
+        </div>
+        <div class="field">
+          <label>Поле 2</label>
+          <input type="text" placeholder="Значение">
+        </div>
+      </div>
+      
+      <!-- Two columns -->
+      <h2 class="section-title">2. Two Columns (2 колонки)</h2>
+      <div class="subsection">
+        <div class="grid-2">
+          <div class="field">
+            <label>Имя</label>
+            <input type="text" placeholder="Имя">
+          </div>
+          <div class="field">
+            <label>Фамилия</label>
+            <input type="text" placeholder="Фамилия">
+          </div>
+          <div class="field">
+            <label>Email</label>
+            <input type="email" placeholder="email@example.com">
+          </div>
+          <div class="field">
+            <label>Телефон</label>
+            <input type="text" placeholder="+7 (___) ___-__-__">
+          </div>
+        </div>
+      </div>
+      
+      <!-- Three columns -->
+      <h2 class="section-title">3. Three Columns (3 колонки)</h2>
+      <div class="subsection">
+        <div class="grid-3">
+          <div class="field">
+            <label>Страна</label>
+            <select><option>Россия</option><option>США</option></select>
+          </div>
+          <div class="field">
+            <label>Город</label>
+            <input type="text" placeholder="Город">
+          </div>
+          <div class="field">
+            <label>Индекс</label>
+            <input type="text" placeholder="123456">
+          </div>
+        </div>
+      </div>
+      
+      <!-- Auto-fit grid -->
+      <h2 class="section-title">4. Auto-fit Grid (адаптивный)</h2>
+      <div class="subsection">
+        <div class="grid-auto">
+          <div class="field">
+            <label>Field A</label>
+            <input type="text" placeholder="A">
+          </div>
+          <div class="field">
+            <label>Field B</label>
+            <input type="text" placeholder="B">
+          </div>
+          <div class="field">
+            <label>Field C</label>
+            <input type="text" placeholder="C">
+          </div>
+          <div class="field">
+            <label>Field D</label>
+            <input type="text" placeholder="D">
+          </div>
+        </div>
+      </div>
+      
+      <!-- Inline labels -->
+      <h2 class="section-title">5. Inline Labels (label в строке с input)</h2>
+      <div class="subsection">
+        <div class="inline-field">
+          <label>Имя:</label>
+          <input type="text" placeholder="Введите имя">
+        </div>
+        <div class="inline-field">
+          <label>Email:</label>
+          <input type="email" placeholder="email@example.com">
+        </div>
+        <div class="inline-field">
+          <label>Статус:</label>
+          <select>
+            <option>Активен</option>
+            <option>Неактивен</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- Form 16: MIXED LANGUAGE TEST -->
+    <!-- ============================================== -->
+    <div class="form-container" id="form-16" data-form="16" hidden>
+      <h1 class="title">Mixed Language Test</h1>
+      
+      <!-- Russian labels -->
+      <h2 class="section-title">1. Russian Labels (русские)</h2>
+      <div class="subsection">
+        <div class="field">
+          <label>Фамилия</label>
+          <input type="text" placeholder="Введите фамилию">
+        </div>
+        <div class="field">
+          <label>Отчество</label>
+          <input type="text" placeholder="Введите отчество">
+        </div>
+        <div class="field">
+          <label>Дата рождения</label>
+          <input type="text" placeholder="дд.мм.гггг">
+        </div>
+      </div>
+      
+      <!-- English labels -->
+      <h2 class="section-title">2. English Labels</h2>
+      <div class="subsection">
+        <div class="field">
+          <label>First Name</label>
+          <input type="text" placeholder="Enter first name">
+        </div>
+        <div class="field">
+          <label>Last Name</label>
+          <input type="text" placeholder="Enter last name">
+        </div>
+        <div class="field">
+          <label>Date of Birth</label>
+          <input type="text" placeholder="mm/dd/yyyy">
+        </div>
+      </div>
+      
+      <!-- Mixed labels -->
+      <h2 class="section-title">3. Mixed Labels (смешанные)</h2>
+      <div class="subsection">
+        <div class="field">
+          <label>Email / Электронная почта</label>
+          <input type="email" placeholder="user@example.com">
+        </div>
+        <div class="field">
+          <label>Phone / Телефон</label>
+          <input type="text" placeholder="+7 (___) ___-__-__">
+        </div>
+        <div class="field">
+          <label>Address / Адрес доставки</label>
+          <textarea placeholder="Enter your full address / Введите полный адрес"></textarea>
+        </div>
+      </div>
+      
+      <!-- Bilingual form -->
+      <h2 class="section-title">4. Bilingual Form</h2>
+      <div class="subsection">
+        <div class="grid-2">
+          <div class="field">
+            <label>Имя / Name</label>
+            <input type="text" placeholder="Иван / John">
+          </div>
+          <div class="field">
+            <label>Город / City</label>
+            <input type="text" placeholder="Москва / Moscow">
+          </div>
+        </div>
+        <div class="checkbox-group" style="margin-top: 16px;">
+          <label class="checkbox-item">
+            <input type="checkbox">
+            <span>Согласен с условиями / I agree to terms</span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox">
+            <span>Подписка / Newsletter subscription</span>
+          </label>
+        </div>
+        <div class="btn-wrap">
+          <button type="button" class="btn">Отправить / Submit</button>
+          <button type="button" class="btn outline">Отмена / Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- Form 17: SIZE SCALE TEST -->
+    <!-- ============================================== -->
+    <div class="form-container" id="form-17" data-form="17" hidden>
+      <h1 class="title">Size Scale Test</h1>
+      
+      <!-- Small scale (~14px) -->
+      <h2 class="section-title">1. Small Scale (~14px)</h2>
+      <div class="subsection scale-small">
+        <div class="grid-2">
+          <div class="field">
+            <label>Имя</label>
+            <input type="text" placeholder="Введите имя">
+          </div>
+          <div class="field">
+            <label>Email</label>
+            <input type="email" placeholder="email@example.com">
+          </div>
+        </div>
+        <div class="field">
+          <label>Комментарий</label>
+          <textarea placeholder="Текст..."></textarea>
+        </div>
+        <div class="checkbox-group horizontal" style="margin-top: 12px;">
+          <label class="checkbox-item"><input type="checkbox" checked><span>Опция 1</span></label>
+          <label class="checkbox-item"><input type="checkbox"><span>Опция 2</span></label>
+        </div>
+        <div class="btn-wrap">
+          <button type="button" class="btn small">Сохранить</button>
+          <button type="button" class="btn small outline">Отмена</button>
+        </div>
+      </div>
+      
+      <!-- Medium scale (~16px) -->
+      <h2 class="section-title">2. Medium Scale (~16-18px)</h2>
+      <div class="subsection scale-medium">
+        <div class="grid-2">
+          <div class="field">
+            <label>Имя</label>
+            <input type="text" placeholder="Введите имя">
+          </div>
+          <div class="field">
+            <label>Email</label>
+            <input type="email" placeholder="email@example.com">
+          </div>
+        </div>
+        <div class="field">
+          <label>Комментарий</label>
+          <textarea placeholder="Текст..."></textarea>
+        </div>
+        <div class="checkbox-group horizontal" style="margin-top: 12px;">
+          <label class="checkbox-item"><input type="checkbox" checked><span>Опция 1</span></label>
+          <label class="checkbox-item"><input type="checkbox"><span>Опция 2</span></label>
+        </div>
+        <div class="btn-wrap">
+          <button type="button" class="btn">Сохранить</button>
+          <button type="button" class="btn outline">Отмена</button>
+        </div>
+      </div>
+      
+      <!-- Large scale (~20px) -->
+      <h2 class="section-title">3. Large Scale (~20-26px)</h2>
+      <div class="subsection scale-large">
+        <div class="grid-2">
+          <div class="field">
+            <label>Имя</label>
+            <input type="text" placeholder="Введите имя">
+          </div>
+          <div class="field">
+            <label>Email</label>
+            <input type="email" placeholder="email@example.com">
+          </div>
+        </div>
+        <div class="field">
+          <label>Комментарий</label>
+          <textarea placeholder="Текст..."></textarea>
+        </div>
+        <div class="checkbox-group horizontal" style="margin-top: 12px;">
+          <label class="checkbox-item"><input type="checkbox" checked><span>Опция 1</span></label>
+          <label class="checkbox-item"><input type="checkbox"><span>Опция 2</span></label>
+        </div>
+        <div class="btn-wrap">
+          <button type="button" class="btn large">Сохранить</button>
+          <button type="button" class="btn large outline">Отмена</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- Form 18: COMPLEX FORM TEST -->
+    <!-- ============================================== -->
+    <div class="form-container" id="form-18" data-form="18" hidden>
+      <h1 class="title">Complex Form (все типы элементов)</h1>
+      
+      <div class="subsection">
+        <div class="subsection-title">Персональные данные</div>
+        <div class="grid-2">
+          <div class="field">
+            <label>Имя</label>
+            <input type="text" placeholder="Иван">
+          </div>
+          <div class="field">
+            <label>Фамилия</label>
+            <input type="text" placeholder="Иванов">
+          </div>
+          <div class="field">
+            <label>Email</label>
+            <input type="email" placeholder="ivan@example.com">
+          </div>
+          <div class="field">
+            <label>Телефон</label>
+            <input type="text" placeholder="+7 (___) ___-__-__">
+          </div>
+        </div>
+      </div>
+      
+      <div class="subsection">
+        <div class="subsection-title">Пол и возраст</div>
+        <div class="grid-2">
+          <div>
+            <label style="font-size: 24px; margin-bottom: 12px; display: block;">Пол</label>
+            <div class="radio-group horizontal">
+              <label class="radio-item"><input type="radio" name="sex" value="m"><span>Мужской</span></label>
+              <label class="radio-item"><input type="radio" name="sex" value="f"><span>Женский</span></label>
+            </div>
+          </div>
+          <div class="field">
+            <label>Возраст</label>
+            <select>
+              <option value="">Выберите</option>
+              <option>18-25</option>
+              <option>26-35</option>
+              <option>36-45</option>
+              <option>46+</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      
+      <div class="subsection">
+        <div class="subsection-title">Интересы</div>
+        <div class="checkbox-group horizontal">
+          <label class="checkbox-item"><input type="checkbox" checked><span>Технологии</span></label>
+          <label class="checkbox-item"><input type="checkbox"><span>Спорт</span></label>
+          <label class="checkbox-item"><input type="checkbox" checked><span>Путешествия</span></label>
+          <label class="checkbox-item"><input type="checkbox"><span>Музыка</span></label>
+          <label class="checkbox-item"><input type="checkbox"><span>Кино</span></label>
+        </div>
+      </div>
+      
+      <div class="subsection">
+        <div class="subsection-title">О себе</div>
+        <div class="field">
+          <label>Расскажите о себе</label>
+          <textarea placeholder="Напишите несколько слов о себе..."></textarea>
+        </div>
+      </div>
+      
+      <div class="subsection">
+        <div class="subsection-title">Загрузка файлов</div>
+        <div class="field">
+          <label>Аватар</label>
+          <input type="file" accept="image/*">
+        </div>
+        <div class="field">
+          <label>Резюме (PDF)</label>
+          <input type="file" accept=".pdf">
+        </div>
+      </div>
+      
+      <div class="subsection">
+        <label class="checkbox-item">
+          <input type="checkbox">
+          <span>Я согласен с условиями обработки персональных данных</span>
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" checked>
+          <span>Подписаться на новости</span>
+        </label>
+      </div>
+      
+      <div class="btn-wrap">
+        <button type="submit" class="btn success large">Отправить заявку</button>
+        <button type="button" class="btn outline large">Сбросить</button>
+      </div>
+    </div>
+
   </div>
+  
   <script>
     (function() {
       var p = new URLSearchParams(location.search);

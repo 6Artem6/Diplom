@@ -46,6 +46,8 @@ from src.infrastructure.atoms_v2.experimental_v2.demo_mode_utils import (
     save_demo_artifacts,
     validate_demo_pipeline,
     visualize_demo,
+    visualize_leaf_detection,
+    visualize_container_leaf_detection,
 )
 
 logger = logging.getLogger(__name__)
@@ -76,6 +78,136 @@ def _remove_failure_marker(debug_output_dir: str) -> None:
 
 
 MIN_INPUT_WIDTH_RATIO_INVARIANT = 0.4
+
+
+def _diagnose_zero_atoms(
+    debug_output_dir: str,
+    container: FormContainer,
+    skeleton: FormSkeleton,
+    row_slots: List[RowSlots],
+    assignments: List[Any],
+    visual_elements: Optional[List[Dict[str, Any]]],
+    visual_candidates: List[List[float]],
+    demo_errors: List[str],
+    log_lines: List[str],
+) -> None:
+    """
+    Диагностика причин atoms=0.
+    Выводит детальный отчёт с причинами и статистикой.
+    """
+    import os
+    import json
+    
+    diag_lines = ["=== ATOMS=0 DIAGNOSTICS ===\n"]
+    
+    # 1. Контейнер
+    if len(container.bbox) >= 4:
+        container_w = container.bbox[2] - container.bbox[0]
+        container_h = container.bbox[3] - container.bbox[1]
+        diag_lines.append(f"Container: {container_w:.0f}x{container_h:.0f}, area={container_w*container_h:.0f}")
+    
+    # 2. Строки и слоты
+    diag_lines.append(f"\nRows: {len(skeleton.rows)}")
+    for row in skeleton.rows:
+        rw = row.x_max - row.x_min
+        rh = row.y_max - row.y_min
+        has_input = "YES" if row.input_bbox else "NO"
+        diag_lines.append(f"  Row {row.row_index}: type={row.row_type}, size={rw:.0f}x{rh:.0f}, input={has_input}")
+    
+    diag_lines.append(f"\nSlots: {len(row_slots)}")
+    for rs in row_slots:
+        diag_lines.append(f"  Row {rs.row_index}: {len(rs.slots)} slots")
+        for slot in rs.slots:
+            diag_lines.append(f"    Slot {slot.slot_id}: role={slot.role}")
+    
+    # 3. Assignments
+    diag_lines.append(f"\nAssignments: {len(assignments)}")
+    filled = 0
+    for a in assignments:
+        if hasattr(a, 'bbox') and a.bbox:
+            filled += 1
+            diag_lines.append(f"  Slot {a.slot_id}: bbox present, width={a.bbox[2]-a.bbox[0]:.0f}")
+        else:
+            diag_lines.append(f"  Slot {a.slot_id}: NO bbox")
+    diag_lines.append(f"Filled slots: {filled}/{len(assignments)}")
+    
+    # 4. Visual elements
+    if visual_elements:
+        diag_lines.append(f"\nVisual elements: {len(visual_elements)}")
+        type_counts = {}
+        for e in visual_elements:
+            etype = e.get("element_type", "unknown")
+            type_counts[etype] = type_counts.get(etype, 0) + 1
+        diag_lines.append(f"By type: {type_counts}")
+        
+        containers = [e for e in visual_elements if e.get("is_container")]
+        diag_lines.append(f"Containers (excluded): {len(containers)}")
+    
+    # 5. Visual candidates
+    diag_lines.append(f"\nVisual candidates: {len(visual_candidates)}")
+    if visual_candidates:
+        for i, vc in enumerate(visual_candidates[:10]):
+            w = vc[2] - vc[0]
+            h = vc[3] - vc[1]
+            container_w = container.bbox[2] - container.bbox[0] if len(container.bbox) >= 4 else 1000
+            width_pct = w / container_w * 100
+            diag_lines.append(f"  [{i}]: {w:.0f}x{h:.0f} ({width_pct:.1f}% width)")
+    
+    # 6. Demo errors
+    diag_lines.append(f"\nDemo validation errors: {len(demo_errors)}")
+    for e in demo_errors:
+        diag_lines.append(f"  - {e}")
+    
+    # 7. Анализ причин
+    diag_lines.append("\n=== LIKELY CAUSES ===")
+    
+    # Проверка ширины элементов
+    narrow_elements = 0
+    for a in assignments:
+        if hasattr(a, 'bbox') and a.bbox:
+            w = a.bbox[2] - a.bbox[0]
+            container_w = container.bbox[2] - container.bbox[0] if len(container.bbox) >= 4 else 1000
+            if w / container_w < MIN_INPUT_WIDTH_RATIO_INVARIANT:
+                narrow_elements += 1
+    if narrow_elements > 0:
+        diag_lines.append(f"- {narrow_elements} elements narrower than {MIN_INPUT_WIDTH_RATIO_INVARIANT*100:.0f}% container width")
+    
+    # Проверка перекрытия slots
+    overlap_errors = [e for e in demo_errors if "overlap" in e.lower()]
+    if overlap_errors:
+        diag_lines.append(f"- {len(overlap_errors)} slot overlap errors")
+    
+    # Проверка несоответствия типов
+    type_errors = [e for e in demo_errors if "FIELD row count" in e or "type" in e.lower()]
+    if type_errors:
+        diag_lines.append(f"- {len(type_errors)} type mismatch errors")
+    
+    # Сохраняем диагностику
+    if debug_output_dir:
+        os.makedirs(debug_output_dir, exist_ok=True)
+        diag_path = os.path.join(debug_output_dir, "atoms_zero_diagnostics.txt")
+        with open(diag_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(diag_lines))
+        
+        # Также сохраняем как JSON для программного анализа
+        diag_json = {
+            "container_bbox": list(container.bbox) if container.bbox else [],
+            "rows_count": len(skeleton.rows),
+            "slots_count": len(row_slots),
+            "assignments_count": len(assignments),
+            "filled_assignments": filled,
+            "visual_elements_count": len(visual_elements) if visual_elements else 0,
+            "visual_candidates_count": len(visual_candidates),
+            "demo_errors": demo_errors,
+        }
+        with open(os.path.join(debug_output_dir, "atoms_zero_diagnostics.json"), "w") as f:
+            json.dump(diag_json, f, indent=2)
+    
+    # Логируем ключевые причины
+    log_lines.append("atoms=0 diagnosis: %d rows, %d slots, %d filled, %d visual_elements, %d candidates" % (
+        len(skeleton.rows), len(row_slots), filled, 
+        len(visual_elements) if visual_elements else 0, len(visual_candidates)
+    ))
 
 
 def _validate_form_invariants(
@@ -177,12 +309,15 @@ def run_form_container_first_inference(
 
     ocr_inside = _ocr_inside(container.bbox)
 
-    if not validate_container_with_ocr(container.bbox, ocr_inside):
+    # В demo_mode без OCR пропускаем валидацию (для тестирования на скриншотах без OCR-данных)
+    if not demo_mode and not validate_container_with_ocr(container.bbox, ocr_inside):
         log_lines.append("form_container_first: container rejected (I1: need >= 2 OCR in different Y)")
         if debug_output_dir:
             os.makedirs(debug_output_dir, exist_ok=True)
             _mark_no_container(debug_output_dir, "I1: need >= 2 OCR in different Y")
         return [], log_lines, None
+    elif demo_mode and not ocr_inside:
+        log_lines.append("form_container_first: demo_mode without OCR, skipping OCR validation")
 
     # Визуальные кандидаты до layout: строки строятся из CV, OCR только для label/helper
     visual_candidates: List[List[float]] = []
@@ -193,6 +328,78 @@ def run_form_container_first_inference(
     except Exception as e:
         log_lines.append("form_container_first: visual_scan failed %s" % e)
 
+    # Fallback: используем расширенный детектор всех элементов с пост-обработкой
+    visual_elements: Optional[List[Dict[str, Any]]] = None
+    try:
+        from src.infrastructure.atoms_v2.visual_field_scanner import (
+            scan_all_visual_elements,
+            postprocess_visual_elements,
+            detect_checkbox_radio_priority,
+        )
+        
+        # 1. Приоритетная детекция checkbox/radio
+        checkbox_radio = detect_checkbox_radio_priority(image_path, container.bbox, dark_theme=dark_theme)
+        
+        # 2. Основная детекция всех элементов
+        all_elements, elem_stats = scan_all_visual_elements(image_path, container.bbox, dark_theme=dark_theme)
+        
+        # 3. Объединяем checkbox/radio с остальными (checkbox/radio имеют приоритет)
+        combined = checkbox_radio + [e for e in all_elements if e.get("element_type") not in ("checkbox", "radio")]
+        
+        # 4. Пост-обработка: разделение контейнеров и leaf, NMS
+        processed_elements, postprocess_logs = postprocess_visual_elements(
+            combined, container.bbox, median_text_height=20.0
+        )
+        log_lines.extend(postprocess_logs)
+        
+        visual_elements = processed_elements
+        
+        # Извлекаем bbox из обработанных элементов
+        # ВАЖНО: для валидации контейнера включаем ВСЕ элементы (включая is_container)
+        # Исключение контейнеров делается только для построения строк
+        extra_candidates = [e["bbox"] for e in processed_elements if e.get("bbox")]
+        
+        # Также сохраняем leaf-only кандидаты для layout
+        leaf_candidates = [
+            e["bbox"] for e in processed_elements 
+            if e.get("bbox") and not e.get("is_container")
+        ]
+        
+        log_lines.append(
+            "form_container_first: scan_all found %d, checkbox_radio=%d, processed=%d, candidates=%d (leaf=%d)"
+            % (len(all_elements), len(checkbox_radio), len(processed_elements), len(extra_candidates), len(leaf_candidates))
+        )
+        
+        # Статистика по типам
+        type_counts = {}
+        for e in processed_elements:
+            etype = e.get("element_type", "unknown")
+            type_counts[etype] = type_counts.get(etype, 0) + 1
+        log_lines.append(f"form_container_first: element_types={type_counts}")
+        
+        # Объединяем с visual_candidates (убираем дубликаты по IoU)
+        for ec in extra_candidates:
+            is_dup = False
+            for vc in visual_candidates:
+                ix1 = max(ec[0], vc[0])
+                iy1 = max(ec[1], vc[1])
+                ix2 = min(ec[2], vc[2])
+                iy2 = min(ec[3], vc[3])
+                if ix2 > ix1 and iy2 > iy1:
+                    inter = (ix2 - ix1) * (iy2 - iy1)
+                    area_a = (ec[2] - ec[0]) * (ec[3] - ec[1])
+                    area_b = (vc[2] - vc[0]) * (vc[3] - vc[1])
+                    iou = inter / max(1, area_a + area_b - inter)
+                    if iou > 0.4:  # Более строгий порог
+                        is_dup = True
+                        break
+            if not is_dup:
+                visual_candidates.append(ec)
+        log_lines.append("form_container_first: merged visual_candidates=%d" % len(visual_candidates))
+        
+    except Exception as e:
+        log_lines.append("form_container_first: scan_all_visual_elements failed %s" % e)
+
     if not demo_mode and visual_candidates and not validate_container_with_visual(container.bbox, visual_candidates):
         log_lines.append("form_container_first: container rejected by visual invariants (min rows/inputs)")
         if debug_output_dir:
@@ -200,10 +407,22 @@ def run_form_container_first_inference(
             _mark_no_container(debug_output_dir, "visual invariants: min rows/inputs not met")
         return [], log_lines, None
 
+    # Stage 1.1 — ContainerLeafDetection (диагностика ДО row segmentation)
+    from src.infrastructure.atoms_v2.experimental_v2.container_leaf_detector import (
+        run_container_leaf_detection,
+        update_container_leaf_with_rows,
+    )
+    container_leaf_result = run_container_leaf_detection(
+        container.bbox, image_path, ocr_inside,
+        rows=None,  # rows ещё не построены
+        median_input_height=None,
+    )
+
     # Level 1 — FormInnerLayout (в demo_mode: одна строка = один input, FIELD_VERTICAL, без grid)
     skeleton, layout_diag = build_form_inner_layout(
         image_path, container, ocr_inside,
         visual_candidates=visual_candidates or None,
+        visual_elements=visual_elements,
         demo_mode=demo_mode,
     )
     if not skeleton:
@@ -214,6 +433,14 @@ def run_form_container_first_inference(
         return [], log_lines, None
 
     log_lines.append("form_container_first: rows=%d layout=%s" % (layout_diag.get("n_rows", 0), layout_diag.get("layout_type", "")))
+
+    # Stage 1.1 — обновить ContainerLeafDetection после построения rows
+    container_leaf_result = update_container_leaf_with_rows(container_leaf_result, skeleton.rows)
+    container.metadata["container_leaf"] = container_leaf_result
+    if container_leaf_result.get("outside_rows"):
+        log_lines.append(
+            "form_container_first: container_leaf outside_rows=%d" % len(container_leaf_result["outside_rows"])
+        )
 
     if debug_output_dir:
         visualize_rows(image_path, container, skeleton.rows, os.path.join(debug_output_dir, "rows.png"))
@@ -237,6 +464,84 @@ def run_form_container_first_inference(
             layout_diag.get("rows_debug", []),
             os.path.join(debug_output_dir, "rows_debug.png"),
         )
+        # LeafElementDetection visualization (Stage 1 diagnostic)
+        visualize_leaf_detection(
+            image_path,
+            skeleton,
+            os.path.join(debug_output_dir, "leaf_detection.png"),
+        )
+        # ContainerLeafDetection visualization (Stage 1.1 diagnostic)
+        visualize_container_leaf_detection(
+            image_path,
+            container.bbox,
+            container_leaf_result,
+            skeleton.rows,
+            os.path.join(debug_output_dir, "container_leaf_detection.png"),
+        )
+        
+        # Усиленная визуализация всех элементов
+        if visual_elements:
+            try:
+                from src.infrastructure.atoms_v2.experimental_v2.enhanced_visualization import (
+                    visualize_elements_enhanced,
+                    visualize_nesting,
+                    visualize_overlaps,
+                )
+                from src.infrastructure.atoms_v2.experimental_v2.detection_diagnostics import (
+                    diagnose_visual_candidates,
+                    print_diagnostics,
+                )
+                
+                # Добавляем row_type из skeleton к элементам для визуализации
+                elements_for_vis = []
+                for e in visual_elements:
+                    e_copy = e.copy()
+                    # Находим соответствующую строку по bbox
+                    eb = e.get("bbox", [])
+                    if len(eb) >= 4:
+                        for row in skeleton.rows:
+                            if row.input_bbox and len(row.input_bbox) >= 4:
+                                ib = row.input_bbox
+                                # Проверяем совпадение
+                                if (abs(eb[0] - ib[0]) < 10 and abs(eb[1] - ib[1]) < 10 and
+                                    abs(eb[2] - ib[2]) < 10 and abs(eb[3] - ib[3]) < 10):
+                                    e_copy["row_type"] = row.row_type
+                                    break
+                    elements_for_vis.append(e_copy)
+                
+                visualize_elements_enhanced(
+                    image_path,
+                    elements_for_vis,
+                    os.path.join(debug_output_dir, "elements_enhanced.png"),
+                    title=f"Elements: {len(elements_for_vis)}",
+                )
+                
+                # Диагностика
+                diag = diagnose_visual_candidates(visual_elements, container.bbox)
+                diag_text = print_diagnostics(diag, os.path.basename(image_path))
+                with open(os.path.join(debug_output_dir, "detection_diagnostics.txt"), "w") as f:
+                    f.write(diag_text)
+                
+                # Визуализация вложенности
+                if diag.nested_elements:
+                    visualize_nesting(
+                        image_path,
+                        visual_elements,
+                        diag.nested_elements,
+                        os.path.join(debug_output_dir, "elements_nesting.png"),
+                    )
+                
+                # Визуализация пересечений
+                if diag.overlapping_pairs:
+                    visualize_overlaps(
+                        image_path,
+                        visual_elements,
+                        diag.overlapping_pairs,
+                        os.path.join(debug_output_dir, "elements_overlaps.png"),
+                    )
+                    
+            except Exception as e:
+                log_lines.append(f"form_container_first: enhanced visualization failed: {e}")
 
     # Level 2 — SlotDetector
     row_slots, slot_diag = build_slot_layout(skeleton, raw_ocr_boxes)
@@ -290,11 +595,31 @@ def run_form_container_first_inference(
             image_path, container, skeleton, row_slots,
             os.path.join(debug_output_dir, "demo_visualization.png"),
         )
+        # LeafElementDetection visualization — отдельное изображение
+        visualize_leaf_detection(
+            image_path, skeleton,
+            os.path.join(debug_output_dir, "leaf_detection.png"),
+        )
+        # ContainerLeafDetection visualization (Stage 1.1)
+        visualize_container_leaf_detection(
+            image_path,
+            container.bbox,
+            container_leaf_result,
+            skeleton.rows,
+            os.path.join(debug_output_dir, "container_leaf_detection.png"),
+        )
         ok, demo_errors = validate_demo_pipeline(container, skeleton, row_slots, assignments, graph)
         if not ok:
             for e in demo_errors:
                 log_lines.append("demo_validation: %s" % e)
                 logger.warning("demo_validation: %s", e)
+            
+            # Диагностика atoms=0
+            _diagnose_zero_atoms(
+                debug_output_dir, container, skeleton, row_slots, assignments, 
+                visual_elements, visual_candidates, demo_errors, log_lines
+            )
+            
             log_lines.append("form_container_first: demo_validation failed, BPG build stopped")
             return [], log_lines, None
 

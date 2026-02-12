@@ -100,10 +100,95 @@ def detect_form_containers(
 
     candidates: List[Tuple[float, List[float]]] = []
 
+    # 0) НОВОЕ: Поиск формы через контраст с фоном
+    # Используем адаптивный порог OTSU для бимодального распределения (тёмный фон + светлая форма)
+    blurred_init = cv2.GaussianBlur(gray, (7, 7), 0)
+    otsu_thresh, otsu_mask = cv2.threshold(blurred_init, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    
+    # Морфологическое закрытие для объединения близких светлых областей
+    kernel_large = cv2.getStructuringElement(cv2.MORPH_RECT, (25, 25))
+    light_closed = cv2.morphologyEx(otsu_mask, cv2.MORPH_CLOSE, kernel_large)
+    # Заполнить внутренние дыры
+    light_filled = light_closed.copy()
+    contours_fill, _ = cv2.findContours(light_closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    for c in contours_fill:
+        cv2.drawContours(light_filled, [c], -1, 255, -1)
+    
+    # Найти контуры светлых областей
+    contours_light, _ = cv2.findContours(light_filled, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    for c in contours_light:
+        area = cv2.contourArea(c)
+        if area < MIN_CONTAINER_AREA or area > page_area * MAX_CONTAINER_AREA_RATIO:
+            continue
+        x, y, rw, rh = cv2.boundingRect(c)
+        x2, y2 = x + rw, y + rh
+        if rw < 100 or rh < 100:
+            continue
+        # Важно: форма должна иметь хотя бы немного отступа от краёв
+        # но не слишком строго (форма может занимать почти всю страницу)
+        if x < 5 and y < 5 and w - x2 < 5 and h - y2 < 5:
+            continue  # полностью на краях — это вся страница, не форма
+        aspect = rw / rh if rh else 0
+        if aspect > MAX_ASPECT or aspect < MIN_ASPECT:
+            continue
+        bbox = [float(x), float(y), float(x2), float(y2)]
+        sc = _score_container(gray, bbox, page_mean)
+        # Бонус за большую светлую область
+        area_ratio = area / page_area
+        sc = min(1.0, sc + 0.2 * min(1.0, area_ratio / 0.3))
+        if sc >= MIN_CONFIDENCE:
+            candidates.append((sc, bbox))
+    
+    # Дополнительно: найти форму через инверсию (тёмные области = фон)
+    # Ищем большой светлый прямоугольник, окружённый тёмным
+    dark_mask = cv2.bitwise_not(otsu_mask)
+    kernel_small = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+    dark_opened = cv2.morphologyEx(dark_mask, cv2.MORPH_OPEN, kernel_small)
+    contours_dark, _ = cv2.findContours(dark_opened, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    # Если есть тёмные области (фон вокруг формы), то форма = область внутри
+    if contours_dark:
+        # Находим bounding box тёмных областей
+        all_dark_points = np.vstack([c for c in contours_dark if c.size > 0])
+        if all_dark_points.size > 0:
+            dx, dy, dw, dh = cv2.boundingRect(all_dark_points)
+            # Форма = внутренняя область (светлая часть внутри тёмной рамки)
+            # Но это требует, чтобы тёмная область была по краям
+            # Проверяем, есть ли тёмные полосы сверху/снизу/слева/справа
+            dark_left = np.sum(dark_opened[:, :w//10]) > 0
+            dark_right = np.sum(dark_opened[:, -w//10:]) > 0  
+            dark_top = np.sum(dark_opened[:h//10, :]) > 0
+            dark_bottom = np.sum(dark_opened[-h//10:, :]) > 0
+            
+            if (dark_left or dark_right) and (dark_top or dark_bottom):
+                # Есть тёмная рамка — форма внутри
+                # Найти светлую область внутри
+                inner_light, _ = cv2.findContours(otsu_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                for c in inner_light:
+                    area = cv2.contourArea(c)
+                    if area < MIN_CONTAINER_AREA or area > page_area * MAX_CONTAINER_AREA_RATIO:
+                        continue
+                    x, y, rw, rh = cv2.boundingRect(c)
+                    x2, y2 = x + rw, y + rh
+                    if rw < 200 or rh < 200:  # форма должна быть достаточно большой
+                        continue
+                    aspect = rw / rh if rh else 0
+                    if aspect > MAX_ASPECT or aspect < MIN_ASPECT:
+                        continue
+                    bbox = [float(x), float(y), float(x2), float(y2)]
+                    sc = _score_container(gray, bbox, page_mean)
+                    area_ratio = area / page_area
+                    sc = min(1.0, sc + 0.3 * min(1.0, area_ratio / 0.3))  # бонус за рамку
+                    if sc >= MIN_CONFIDENCE:
+                        candidates.append((sc, bbox))
+
     # 1) Контуры из бинаризации: замкнутые прямоугольники
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
     _, thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # Морфологическое закрытие для объединения разрывов
+    kernel_small = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
+    thresh_closed = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel_small)
+    contours, _ = cv2.findContours(thresh_closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     for c in contours:
         area = cv2.contourArea(c)
@@ -125,7 +210,9 @@ def detect_form_containers(
 
     # 2) Контуры из Canny (границы карточки)
     edges = cv2.Canny(blurred, 50, 150)
-    contours2, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # Дилатация для соединения разрывов в границах
+    edges_dilated = cv2.dilate(edges, kernel_small, iterations=1)
+    contours2, _ = cv2.findContours(edges_dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     for c in contours2:
         area = cv2.contourArea(c)
         if area < MIN_CONTAINER_AREA or area > page_area * MAX_CONTAINER_AREA_RATIO:

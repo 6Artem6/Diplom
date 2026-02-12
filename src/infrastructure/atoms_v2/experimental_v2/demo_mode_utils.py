@@ -23,12 +23,51 @@ from src.infrastructure.atoms_v2.experimental_v2.models import (
 
 logger = logging.getLogger(__name__)
 
-# Цвета для demo_visualization (BGR): тёмные, чтобы внутренняя обводка была видна на светлом фоне; на тёмном видна белая гало
-DEMO_COLOR_CONTAINER = (180, 0, 0)       # тёмно-синий
-DEMO_COLOR_ROWS = (0, 180, 180)         # тёмно-жёлтый
-DEMO_COLOR_LABEL_SLOT = (180, 140, 0)   # тёмно-голубой
-DEMO_COLOR_INPUT_SLOT = (0, 100, 200)   # тёмно-оранжевый
-DEMO_COLOR_ACTION = (180, 0, 100)       # тёмно-фиолетовый
+# Цвета для demo_visualization (BGR): контрастные для разных типов элементов
+DEMO_COLOR_CONTAINER = (180, 0, 0)       # синий — контейнер
+DEMO_COLOR_ROWS = (0, 180, 180)          # жёлтый — строки (по умолчанию)
+DEMO_COLOR_LABEL_SLOT = (255, 180, 0)    # голубой — label
+DEMO_COLOR_INPUT_SLOT = (0, 200, 0)      # зелёный — input
+DEMO_COLOR_ACTION = (0, 0, 255)          # красный — button/action
+DEMO_COLOR_TEXTAREA = (0, 140, 255)      # оранжевый — textarea
+DEMO_COLOR_CHECKBOX = (200, 0, 200)      # пурпурный — checkbox/radio
+DEMO_COLOR_HEADER = (255, 100, 0)        # голубой яркий — header
+DEMO_COLOR_SECTION = (150, 150, 150)     # серый — section
+
+# Цвета для LeafElementDetection (BGR) — контрастные
+LEAF_COLOR_BUTTON = (0, 0, 255)          # красный
+LEAF_COLOR_INPUT = (0, 200, 0)           # зелёный
+LEAF_COLOR_TEXTAREA = (0, 140, 255)      # оранжевый
+LEAF_COLOR_CHECKBOX = (200, 0, 200)      # пурпурный
+LEAF_COLOR_RADIO = (200, 0, 200)         # пурпурный (как checkbox)
+LEAF_COLOR_LABEL = (255, 180, 0)         # голубой
+LEAF_COLOR_SECTION = (150, 150, 150)     # серый
+LEAF_COLOR_ELEMENT = (100, 100, 100)     # тёмно-серый
+
+LEAF_COLORS = {
+    "button": LEAF_COLOR_BUTTON,
+    "input": LEAF_COLOR_INPUT,
+    "field": LEAF_COLOR_INPUT,           # field → input цвет
+    "textarea": LEAF_COLOR_TEXTAREA,
+    "checkbox": LEAF_COLOR_CHECKBOX,
+    "radio": LEAF_COLOR_RADIO,
+    "label": LEAF_COLOR_LABEL,
+    "section": LEAF_COLOR_SECTION,
+    "element": LEAF_COLOR_ELEMENT,
+}
+
+# Маппинг row_type → цвет для визуализации
+ROW_TYPE_COLORS = {
+    "HEADER": DEMO_COLOR_HEADER,
+    "TEXT": DEMO_COLOR_LABEL_SLOT,
+    "FIELD": DEMO_COLOR_INPUT_SLOT,
+    "FIELD_HORIZONTAL": DEMO_COLOR_INPUT_SLOT,
+    "FIELD_VERTICAL": DEMO_COLOR_INPUT_SLOT,
+    "FIELD_INPUT_ONLY": (0, 180, 100),   # зелёный светлый
+    "TEXTAREA": DEMO_COLOR_TEXTAREA,
+    "ACTION": DEMO_COLOR_ACTION,
+    "SPACER": DEMO_COLOR_SECTION,
+}
 
 
 def _slot_to_dict(s: Slot) -> Dict[str, Any]:
@@ -44,7 +83,7 @@ def _slot_to_dict(s: Slot) -> Dict[str, Any]:
 
 
 def _row_to_dict(r: FormRow) -> Dict[str, Any]:
-    return {
+    result = {
         "row_index": r.row_index,
         "y_min": r.y_min, "y_max": r.y_max, "x_min": r.x_min, "x_max": r.x_max,
         "column_count": r.column_count,
@@ -53,6 +92,13 @@ def _row_to_dict(r: FormRow) -> Dict[str, Any]:
         "label_bbox": list(r.label_bbox) if r.label_bbox else None,
         "vertical_separators": r.vertical_separators,
     }
+    # Добавить leaf_candidates если есть
+    if hasattr(r, "metadata") and r.metadata:
+        if "leaf_candidates" in r.metadata:
+            result["leaf_candidates"] = r.metadata["leaf_candidates"]
+        if "ocr_orientation" in r.metadata:
+            result["ocr_orientation"] = r.metadata["ocr_orientation"]
+    return result
 
 
 def save_demo_artifacts(
@@ -66,8 +112,13 @@ def save_demo_artifacts(
     """Сохраняет demo_container.json, demo_rows.json, demo_slots.json, demo_slot_assignments.json, demo_form_graph.json."""
     import os
     os.makedirs(debug_output_dir, exist_ok=True)
+    container_data = {"bbox": list(container.bbox), "confidence": container.confidence}
+    # Добавить container_leaf если есть
+    if hasattr(container, "metadata") and container.metadata:
+        if "container_leaf" in container.metadata:
+            container_data["container_leaf"] = container.metadata["container_leaf"]
     with open(os.path.join(debug_output_dir, "demo_container.json"), "w", encoding="utf-8") as f:
-        json.dump({"bbox": list(container.bbox), "confidence": container.confidence}, f, indent=2)
+        json.dump(container_data, f, indent=2)
     with open(os.path.join(debug_output_dir, "demo_rows.json"), "w", encoding="utf-8") as f:
         json.dump([_row_to_dict(r) for r in skeleton.rows], f, indent=2, ensure_ascii=False)
     slots_data = []
@@ -193,5 +244,239 @@ def visualize_demo(
                 (0, 0, 0),
                 1,
             )
+    # LeafElementDetection: показать кандидатов справа от строки
+    for r in skeleton.rows:
+        if not hasattr(r, "metadata") or not r.metadata:
+            continue
+        candidates = r.metadata.get("leaf_candidates", [])
+        if not candidates:
+            continue
+        # Позиция текста — справа от строки
+        text_x = int(r.x_max) + 5
+        text_y = int(r.y_min) + 12
+        for i, cand in enumerate(candidates):
+            ctype = cand.get("type", "?")
+            conf = cand.get("confidence", 0.0)
+            color = LEAF_COLORS.get(ctype, (100, 100, 100))
+            label = f"[L]{ctype}:{conf:.2f}"
+            putText_visible(
+                out,
+                label,
+                (text_x, text_y + i * 14),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.35,
+                color,
+                (255, 255, 255),
+                1,
+            )
     cv2.imwrite(output_path, out)
     logger.debug("demo_mode: saved %s", output_path)
+
+
+def visualize_leaf_detection(
+    image_path: str,
+    skeleton: FormSkeleton,
+    output_path: str,
+) -> None:
+    """
+    Отдельная визуализация LeafElementDetection.
+    Показывает строки и leaf_candidates с подробной информацией.
+    """
+    import cv2
+    from src.infrastructure.debug_draw import putText_visible, rectangle_visible
+
+    img = cv2.imread(str(image_path))
+    if img is None:
+        return
+    out = img.copy()
+
+    for r in skeleton.rows:
+        # Рисуем границы строки
+        rx1, ry1 = int(r.x_min), int(r.y_min)
+        rx2, ry2 = int(r.x_max), int(r.y_max)
+
+        # Получаем leaf_candidates
+        candidates = []
+        leaf_debug = {}
+        if hasattr(r, "metadata") and r.metadata:
+            candidates = r.metadata.get("leaf_candidates", [])
+            leaf_debug = r.metadata.get("leaf_debug", {})
+
+        # Цвет строки зависит от наличия кандидатов
+        if candidates:
+            # Есть leaf-кандидаты — подсветить строку цветом лучшего кандидата
+            best = max(candidates, key=lambda c: c.get("confidence", 0))
+            row_color = LEAF_COLORS.get(best.get("type"), DEMO_COLOR_ROWS)
+            rectangle_visible(out, (rx1, ry1), (rx2, ry2), row_color, 2)
+        else:
+            # Нет кандидатов — серая обводка
+            rectangle_visible(out, (rx1, ry1), (rx2, ry2), (120, 120, 120), 1)
+
+        # Подпись row_type слева
+        putText_visible(
+            out,
+            f"r{r.row_index}:{r.row_type}",
+            (rx1 + 2, ry1 + 12),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.35,
+            (255, 255, 255),
+            (0, 0, 0),
+            1,
+        )
+
+        # Leaf candidates справа
+        text_x = rx2 + 5
+        text_y = ry1 + 12
+        if candidates:
+            for i, cand in enumerate(candidates):
+                ctype = cand.get("type", "?")
+                conf = cand.get("confidence", 0.0)
+                color = LEAF_COLORS.get(ctype, (100, 100, 100))
+                label = f"{ctype}:{conf:.2f}"
+                putText_visible(
+                    out,
+                    label,
+                    (text_x, text_y + i * 14),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.4,
+                    color,
+                    (255, 255, 255),
+                    1,
+                )
+        else:
+            # Показать причину отсутствия
+            detectors = leaf_debug.get("detectors", {})
+            reasons = []
+            for dtype, info in detectors.items():
+                reason = info.get("reason", "")
+                if reason and reason != "detected":
+                    reasons.append(f"{dtype[:3]}:{reason[:15]}")
+            if reasons:
+                for i, reason in enumerate(reasons[:3]):  # max 3
+                    putText_visible(
+                        out,
+                        reason,
+                        (text_x, text_y + i * 12),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.3,
+                        (100, 100, 100),
+                        (255, 255, 255),
+                        1,
+                    )
+
+    cv2.imwrite(output_path, out)
+    logger.debug("leaf_detection: saved %s", output_path)
+
+
+# Цвета для ContainerLeafDetection
+CONTAINER_LEAF_COLOR_INSIDE = (100, 180, 100)   # зелёный (внутри rows)
+CONTAINER_LEAF_COLOR_OUTSIDE = (0, 0, 220)      # красный (вне rows — потерянные)
+
+
+def visualize_container_leaf_detection(
+    image_path: str,
+    container_bbox: List[float],
+    container_leaf_result: Dict[str, Any],
+    rows: Optional[List[FormRow]] = None,
+    output_path: str = "",
+) -> None:
+    """
+    Визуализация ContainerLeafDetection (Stage 1.1).
+
+    Показывает:
+    - Container bbox (синий)
+    - Rows (жёлтые пунктиры)
+    - Candidates inside_rows (зелёные)
+    - Candidates outside_rows (красные — потерянные элементы)
+    """
+    import cv2
+    from src.infrastructure.debug_draw import putText_visible, rectangle_visible
+
+    img = cv2.imread(str(image_path))
+    if img is None:
+        return
+    out = img.copy()
+
+    # Container bbox
+    if len(container_bbox) >= 4:
+        cx1, cy1 = int(container_bbox[0]), int(container_bbox[1])
+        cx2, cy2 = int(container_bbox[2]), int(container_bbox[3])
+        rectangle_visible(out, (cx1, cy1), (cx2, cy2), DEMO_COLOR_CONTAINER, 2)
+
+    # Rows (пунктиром)
+    if rows:
+        for r in rows:
+            rx1, ry1 = int(r.x_min), int(r.y_min)
+            rx2, ry2 = int(r.x_max), int(r.y_max)
+            # Пунктирная линия эмулируется рисованием сегментов
+            for x in range(rx1, rx2, 8):
+                cv2.line(out, (x, ry1), (min(x + 4, rx2), ry1), DEMO_COLOR_ROWS, 1)
+                cv2.line(out, (x, ry2), (min(x + 4, rx2), ry2), DEMO_COLOR_ROWS, 1)
+            for y in range(ry1, ry2, 8):
+                cv2.line(out, (rx1, y), (rx1, min(y + 4, ry2)), DEMO_COLOR_ROWS, 1)
+                cv2.line(out, (rx2, y), (rx2, min(y + 4, ry2)), DEMO_COLOR_ROWS, 1)
+
+    if not container_leaf_result:
+        cv2.imwrite(output_path, out)
+        return
+
+    # Inside rows — зелёные
+    inside_rows = container_leaf_result.get("inside_rows", [])
+    for cand in inside_rows:
+        bbox = cand.get("bbox", [])
+        if len(bbox) >= 4:
+            bx1, by1 = int(bbox[0]), int(bbox[1])
+            bx2, by2 = int(bbox[2]), int(bbox[3])
+            rectangle_visible(out, (bx1, by1), (bx2, by2), CONTAINER_LEAF_COLOR_INSIDE, 1)
+            ctype = cand.get("type", "?")
+            conf = cand.get("confidence", 0.0)
+            putText_visible(
+                out,
+                f"[in]{ctype}:{conf:.2f}",
+                (bx1 + 2, by1 + 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.3,
+                CONTAINER_LEAF_COLOR_INSIDE,
+                (255, 255, 255),
+                1,
+            )
+
+    # Outside rows — красные (потерянные)
+    outside_rows = container_leaf_result.get("outside_rows", [])
+    for cand in outside_rows:
+        bbox = cand.get("bbox", [])
+        if len(bbox) >= 4:
+            bx1, by1 = int(bbox[0]), int(bbox[1])
+            bx2, by2 = int(bbox[2]), int(bbox[3])
+            rectangle_visible(out, (bx1, by1), (bx2, by2), CONTAINER_LEAF_COLOR_OUTSIDE, 2)
+            ctype = cand.get("type", "?")
+            conf = cand.get("confidence", 0.0)
+            putText_visible(
+                out,
+                f"[LOST]{ctype}:{conf:.2f}",
+                (bx1 + 2, by1 + 12),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.35,
+                CONTAINER_LEAF_COLOR_OUTSIDE,
+                (255, 255, 255),
+                1,
+            )
+
+    # Статистика внизу
+    n_all = len(container_leaf_result.get("all_candidates", []))
+    n_inside = len(inside_rows)
+    n_outside = len(outside_rows)
+    stats_text = f"ContainerLeaf: all={n_all} inside={n_inside} LOST={n_outside}"
+    putText_visible(
+        out,
+        stats_text,
+        (10, out.shape[0] - 10),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.5,
+        (255, 255, 255),
+        (0, 0, 0),
+        1,
+    )
+
+    cv2.imwrite(output_path, out)
+    logger.debug("container_leaf_detection: saved %s", output_path)

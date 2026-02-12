@@ -50,7 +50,7 @@ def main() -> None:
             )
             page = context.new_page()
 
-            for i in range(1, 6):
+            for i in list(range(1, 6)) + list(range(10, 19)):
                 form_id = "%02d" % i
                 page.goto(url + "?form=" + form_id, wait_until="networkidle")
                 out_path = os.path.join(out_dir, "demo_form_%s.png" % form_id)
