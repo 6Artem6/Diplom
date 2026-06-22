@@ -28,6 +28,7 @@ from .bpg_edges import (
     RoleEdge,
 )
 from .provenance import Provenance, Confidence, InferenceMethod
+from .detected_element import DetectedElement
 from .view import View
 from .embedded_manifestation import EmbeddedManifestation
 from .ui_structure import (
@@ -69,6 +70,7 @@ __all__ = [
     "InferenceMethod",
     # View
     "View",
+    "DetectedElement",
     # Embedded Manifestation
     "EmbeddedManifestation",
     # UI Structure Recovery

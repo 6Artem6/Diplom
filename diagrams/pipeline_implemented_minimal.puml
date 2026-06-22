@@ -1,0 +1,88 @@
+@startuml pipeline_implemented_minimal
+!theme plain
+top to bottom direction
+skinparam linetype ortho
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam defaultFontSize 12
+skinparam packageStyle rectangle
+skinparam rectangle {
+  BackgroundColor #FAFAFA
+  BorderColor #455A64
+}
+
+title Pipeline построения BPG (реализованный PoC)
+
+rectangle "Screenshots\n(каждый = View)" as IN
+
+rectangle "FastAPI" as API
+
+package "параллельно" as PERC {
+  rectangle "Ultralytics YOLO\nGUI element detection" as YOLO
+  rectangle "Tesseract\nOCR (независимо от UI)" as OCR
+}
+
+rectangle "GUIBlock\n(UI + text-line)" as BLOCKS
+
+package "параллельно" as MOD {
+  rectangle "CLIP (transformers)\nvisual embedding" as CLIP
+  rectangle "Sentence-Transformers\nall-MiniLM-L6-v2\ntext embedding" as ST
+  rectangle "Layout features\nbbox на экране" as LAY
+}
+
+rectangle "Multimodal embedding\n+ GUIManifestation" as EMB
+
+rectangle "Within-view clustering\nChromaDB, cosine" as WV
+
+rectangle "Cross-view linking\nChromaDB, cosine\nCrossViewEdge" as CV
+
+rectangle "EntityInstance" as ENT
+
+rectangle "BPG\nBusinessProcessGraph" as BPG
+
+IN -down-> API
+API -down-> YOLO
+API -down-> OCR
+YOLO -down-> BLOCKS
+OCR -down-> BLOCKS
+BLOCKS -down-> CLIP
+BLOCKS -down-> ST
+BLOCKS -down-> LAY
+CLIP -down-> EMB
+ST -down-> EMB
+LAY -down-> EMB
+EMB -down-> WV
+WV -down-> CV
+CV -down-> ENT
+ENT -down-> BPG
+
+note right of OCR
+  Текст по всему кадру
+  (text-line blocks),
+  плюс OCR в crop UI-блоков.
+end note
+
+note right of ST
+  Для similarity в Chroma
+  используется text embedding.
+  CLIP — visual канал.
+end note
+
+note right of WV
+  Похожие GUIManifestation
+  на одном View → кластер.
+end note
+
+note right of CV
+  Связь между разными View;
+  одинаковый class;
+  cosine ≥ порог.
+end note
+
+legend bottom
+  Backend по умолчанию: yolo_clip.
+  Docker: PaddleOCR и Qdrant — эксперименты;
+  рабочий pipeline: Tesseract + ChromaDB.
+endlegend
+
+@enduml

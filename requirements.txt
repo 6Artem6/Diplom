@@ -23,6 +23,7 @@ torchvision>=0.15.0  # For image transforms
 ultralytics>=8.1
   # YOLO
 transformers>=4.35.0  # CLIP
+sentence-transformers>=2.2.0  # MiniLM text embeddings (cleaned OCR + class)
 numpy>=1.24,<2  # Pin <2 for Paddle/compat
 huggingface_hub>=0.22.0  # For Hugging Face models
 

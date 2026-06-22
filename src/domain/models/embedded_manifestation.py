@@ -30,9 +30,8 @@ class EmbeddedManifestation(BaseModel):
     @classmethod
     def validate_embedding_not_empty(cls, v: MultimodalEmbedding) -> MultimodalEmbedding:
         """Validate that embedding is not empty."""
-        # For cross-view matching, visual_embedding is required (CLIP)
         if not v.visual_embedding or len(v.visual_embedding) == 0:
-            raise ValueError("EmbeddedManifestation: visual_embedding cannot be empty (required for CLIP cross-view matching)")
+            raise ValueError("EmbeddedManifestation: visual_embedding cannot be empty")
         return v
 
     def to_chroma_metadata(self, phase: str) -> dict:
@@ -54,9 +53,12 @@ class EmbeddedManifestation(BaseModel):
         }
 
     def get_embedding_vector(self) -> list[float]:
-        """Get visual embedding vector for similarity search (CLIP)."""
-        # Use visual embedding for cross-view matching (CLIP)
-        if self.embedding.visual_embedding:
-            return self.embedding.visual_embedding
-        # Fallback to text embedding if visual not available
-        return self.embedding.text_embedding
+        """
+        Text embedding from class-aware cleaned text (sentence-transformer).
+
+        Visual CLIP is not used for cross-view similarity.
+        """
+        text_emb = self.embedding.text_embedding or []
+        if text_emb and any(v != 0.0 for v in text_emb):
+            return text_emb
+        return self.embedding.visual_embedding or text_emb

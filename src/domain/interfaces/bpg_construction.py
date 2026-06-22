@@ -13,10 +13,12 @@ from pydantic import BaseModel, Field
 from ..models.bpg_models import (
     EntityType,
     EntityInstance,
+    GUIManifestation,
     Action,
     PatternNode,
     Rule,
 )
+from ..models.detected_element import DetectedElement
 from ..models.bpg_edges import (
     FunctionalEdge,
     TemporalEdge,
@@ -53,6 +55,14 @@ class BusinessProcessGraph(BaseModel):
     cross_view_edges: List[CrossViewEdge] = Field(
         default_factory=list,
         description="Cross-view edges linking manifestations of same entities",
+    )
+    detected_elements: List[DetectedElement] = Field(
+        default_factory=list,
+        description="Primary detection layer: class, bbox, text per GUI element",
+    )
+    gui_manifestations: List[GUIManifestation] = Field(
+        default_factory=list,
+        description="GUI manifestations with embeddings and layout features",
     )
     created_at: datetime = Field(
         default_factory=datetime.now,

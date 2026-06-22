@@ -87,6 +87,12 @@ class BuildBPGUseCase:
         backend = get_gui_analysis_backend()
         logger.info("BuildBPG: backend=%s, detected %d GUI block(s)", backend, len(all_blocks))
 
+        # Step 2b: OCR normalization (raw → cleaned; never feed raw OCR to embeddings)
+        from src.application.ocr.block_ocr_pipeline import normalize_blocks_ocr
+
+        normalize_blocks_ocr(all_blocks)
+        logger.info("BuildBPG: OCR normalization applied to %d block(s)", len(all_blocks))
+
         # Step 3: Representation
         embeddings = await self.representation.generate_embeddings(all_blocks)
         logger.info(f"BuildBPG: Generated {len(embeddings)} embedding(s)")
@@ -121,12 +127,53 @@ class BuildBPGUseCase:
         
         # Step 4c: Create entity instances from clusters and cross-view edges
         manifestations = [emb_man.manifestation for emb_man in embedded_manifestations]
-        entity_instances = await self.linking.create_entity_instances(
+        entity_instances, man_to_entity = await self.linking.create_entity_instances(
             manifestations, cross_view_edges, within_view_clusters
         )
 
+        from src.application.detection.element_builder import (
+            build_detected_element,
+            assign_entity_ids_to_elements,
+        )
+
+        detected_elements = []
+        for block, embedding, emb_man in zip(
+            all_blocks, embeddings, embedded_manifestations
+        ):
+            view = views_by_screenshot.get(block.screenshot_id) or next(
+                (
+                    v
+                    for v in views_by_screenshot.values()
+                    if Path(v.screenshot_path).stem == block.screenshot_id
+                ),
+                None,
+            )
+            if not view:
+                continue
+            man_id = emb_man.manifestation.id
+            detected_elements.append(
+                build_detected_element(
+                    block,
+                    view,
+                    man_id,
+                    embedding.layout_features,
+                )
+            )
+
+        detected_elements = assign_entity_ids_to_elements(
+            detected_elements, man_to_entity
+        )
+
+        manifestations = [
+            man.model_copy(
+                update={"entity_instance_id": man_to_entity[man.id]},
+            )
+            if man.id in man_to_entity
+            else man
+            for man in manifestations
+        ]
+
         # Step 5: BPG Construction
-        # Extract actions from blocks (placeholder logic)
         actions = self._extract_actions(all_blocks)
 
         bpg = await self.bpg_construction.build_bpg(
@@ -134,6 +181,13 @@ class BuildBPGUseCase:
             actions=actions,
             clickstream_data=request.clickstream_data,
             cross_view_edges=cross_view_edges,
+        )
+
+        bpg = bpg.model_copy(
+            update={
+                "detected_elements": detected_elements,
+                "gui_manifestations": manifestations,
+            }
         )
 
         logger.info(

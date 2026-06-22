@@ -437,6 +437,28 @@ def run_state_machine_pipeline(
             )
         result.s2_result = s2_result
         logger.debug(f"S2 completed: {len(s2_result.ocr_blocks)} OCR blocks")
+        # #region agent log — OCR bboxes for verification
+        _log_path = os.environ.get("DEBUG_BBOX_LOG")
+        if _log_path:
+            import json
+            import time
+            _dir = os.path.dirname(_log_path)
+            if _dir:
+                os.makedirs(_dir, exist_ok=True)
+            _payload = {
+                "timestamp": int(time.time() * 1000),
+                "source": "ocr",
+                "image_path": image_path,
+                "stage": "S2",
+                "message": "ocr_bboxes",
+                "data": {
+                    "count": len(s2_result.ocr_blocks),
+                    "bboxes": [{"bbox": list(b.bbox), "text": b.text[:80]} for b in s2_result.ocr_blocks],
+                },
+            }
+            with open(_log_path, "a", encoding="utf-8") as _f:
+                _f.write(json.dumps(_payload, ensure_ascii=False) + "\n")
+        # #endregion
     except Exception as e:
         logger.error(f"S2 failed: {e}")
         result.error = str(e)
@@ -456,7 +478,28 @@ def run_state_machine_pipeline(
         )
         result.s1_result = s1_result
         logger.debug(f"S1 completed: {len(s1_result.visual_elements)} visual elements")
-        
+        # #region agent log — CV bboxes for verification
+        _log_path = os.environ.get("DEBUG_BBOX_LOG")
+        if _log_path:
+            import json
+            import time
+            _payload = {
+                "timestamp": int(time.time() * 1000),
+                "source": "cv",
+                "image_path": image_path,
+                "stage": "S1",
+                "message": "cv_bboxes",
+                "data": {
+                    "count": len(s1_result.visual_elements),
+                    "bboxes": [
+                        {"bbox": list(e.bbox), "element_type": e.element_type}
+                        for e in s1_result.visual_elements
+                    ],
+                },
+            }
+            with open(_log_path, "a", encoding="utf-8") as _f:
+                _f.write(json.dumps(_payload, ensure_ascii=False) + "\n")
+        # #endregion
         if not s1_result.visual_elements:
             logger.warning("S1 found no visual elements")
     except Exception as e:

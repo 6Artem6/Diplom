@@ -32,7 +32,9 @@ class GUIBlock(BaseModel):
     screenshot_id: str
     bounding_box: dict  # {'x','y','width','height'} and/or {'x1','y1','x2','y2'}
     element_types: List[str]  # e.g. ['button'], ['text'], ['card']
-    ocr_text: str  # label / aggregated text
-    visual_features: List[float]
+    ocr_text: str = ""  # cleaned text (post-normalization)
+    ocr_text_raw: str = ""  # raw Tesseract output
+    ocr_noisy: bool = False  # True if normalization marked noisy OCR
+    visual_features: List[float] = []
     screenshot_path: Optional[str] = None
     children: Optional[List["GUIBlock"]] = None  # nested elements (card → text, buttons)

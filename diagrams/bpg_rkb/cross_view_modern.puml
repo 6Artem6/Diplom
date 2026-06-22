@@ -2,8 +2,10 @@
 
 title Modern Cross-View Entity Linking: Foundation Models + Layout Understanding
 
-scale 1024 width
-skinparam dpi 150
+' Safer rendering settings for large diagrams (avoid clipping in previews)
+scale max 1800 width
+skinparam dpi 120
+skinparam wrapWidth 240
 
 start
 

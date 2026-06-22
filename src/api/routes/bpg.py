@@ -37,6 +37,8 @@ class BuildBPGResponse(BaseModel):
     rules_count: int
     edges_count: int
     cross_view_edges_count: int
+    detected_elements_count: int
+    detected_elements: List[dict]
     message: str
 
 
@@ -62,6 +64,10 @@ async def build_bpg(
         )
         bpg = await use_case.execute(bpg_request)
         bpg_id = await storage.save(bpg)
+        detected = [
+            el.model_dump(mode="json", by_alias=True)
+            for el in bpg.detected_elements
+        ]
         return BuildBPGResponse(
             bpg_id=str(bpg_id),
             entity_types_count=len(bpg.entity_types),
@@ -71,6 +77,8 @@ async def build_bpg(
             rules_count=len(bpg.rules),
             edges_count=len(bpg.edges),
             cross_view_edges_count=len(bpg.cross_view_edges),
+            detected_elements_count=len(detected),
+            detected_elements=detected,
             message="BPG built successfully",
         )
     except RuntimeError as e:
@@ -95,7 +103,7 @@ async def get_bpg(
                 status_code=404,
                 detail=f"BPG not found: {bpg_id}",
             )
-        return bpg.model_dump()
+        return bpg.model_dump(mode="json", by_alias=True)
     except ValueError:
         raise HTTPException(
             status_code=400,

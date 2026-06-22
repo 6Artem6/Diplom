@@ -10,13 +10,14 @@ Critical semantics:
 - Uses EmbeddedManifestation to guarantee 1:1 correspondence
 """
 
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from uuid import UUID, uuid4
 from collections import defaultdict
 import logging
 import os
 import numpy as np
 
+from src.application.ocr.ocr_normalizer import normalize_class_for_matching
 from src.domain.interfaces.linking import EntityLinkingService
 from src.domain.models.bpg_models import EntityInstance, GUIManifestation
 from src.domain.models.bpg_edges import CrossViewEdge
@@ -47,6 +48,24 @@ class EntityLinkingServiceImpl(EntityLinkingService):
             vector_store: Chroma vector store for similarity search
         """
         self.vector_store = vector_store
+
+    @staticmethod
+    def _manifestation_class(man: GUIManifestation) -> str:
+        return normalize_class_for_matching(
+            str(man.layout_features.get("class_label", "unknown"))
+        )
+
+    @staticmethod
+    def _cleaned_text(man: GUIManifestation) -> str:
+        return str(man.layout_features.get("cleaned_text", "")).strip()
+
+    @staticmethod
+    def _embedding_input(man: GUIManifestation) -> str:
+        return str(man.layout_features.get("embedding_input_text", "")).strip()
+
+    @staticmethod
+    def _vector_usable(vec: List[float]) -> bool:
+        return bool(vec) and any(v != 0.0 for v in vec)
 
     async def cluster_within_views(
         self,
@@ -82,8 +101,9 @@ class EntityLinkingServiceImpl(EntityLinkingService):
                 phase="within_view",
             )
 
-            # Find clusters using similarity (skeleton: threshold-based)
-            similarity_threshold = 0.7
+            similarity_threshold = float(
+                os.getenv("WITHIN_VIEW_SIMILARITY_THRESHOLD", "0.75")
+            )
             clusters: List[List[UUID]] = []
             processed = set()
 
@@ -92,7 +112,7 @@ class EntityLinkingServiceImpl(EntityLinkingService):
                 if man_id in processed:
                     continue
 
-                # Find similar manifestations in same view
+                source_class = self._manifestation_class(emb_man.manifestation)
                 similar = await self.vector_store.search_similar(
                     query_embedding=emb_man.get_embedding_vector(),
                     top_k=len(embedded_manifestations),
@@ -100,26 +120,32 @@ class EntityLinkingServiceImpl(EntityLinkingService):
                     phase="within_view",
                 )
 
-                # Create cluster from similar manifestations
                 cluster = [man_id]
                 processed.add(man_id)
 
                 for similar_block in similar:
-                    if similar_block["similarity"] >= similarity_threshold:
-                        similar_man_id = UUID(similar_block["metadata"]["manifestation_id"])
-                        similar_view_id = UUID(similar_block["metadata"]["view_id"])
-                        
-                        # CRITICAL: Ensure same view
-                        if similar_view_id != view_id:
-                            logger.error(
-                                f"EntityLinking: Found manifestation from different view in within-view search! "
-                                f"Expected view_id={view_id}, got {similar_view_id}"
-                            )
-                            continue
-
-                        if similar_man_id not in processed:
-                            cluster.append(similar_man_id)
-                            processed.add(similar_man_id)
+                    if similar_block["similarity"] < similarity_threshold:
+                        continue
+                    similar_man_id = UUID(similar_block["metadata"]["manifestation_id"])
+                    similar_view_id = UUID(similar_block["metadata"]["view_id"])
+                    if similar_view_id != view_id:
+                        logger.error(
+                            "EntityLinking: within-view search returned other view %s (expected %s)",
+                            similar_view_id,
+                            view_id,
+                        )
+                        continue
+                    target_emb = next(
+                        (e for e in embedded_manifestations if e.manifestation.id == similar_man_id),
+                        None,
+                    )
+                    if target_emb is None:
+                        continue
+                    if self._manifestation_class(target_emb.manifestation) != source_class:
+                        continue
+                    if similar_man_id not in processed:
+                        cluster.append(similar_man_id)
+                        processed.add(similar_man_id)
 
                 clusters.append(cluster)
 
@@ -158,112 +184,162 @@ class EntityLinkingServiceImpl(EntityLinkingService):
         # Create mapping: manifestation_id -> EmbeddedManifestation
         emb_man_map = {emb_man.manifestation.id: emb_man for emb_man in embedded_manifestations}
 
-        # Find cross-view links using cosine similarity
-        edges = []
-        # Configurable threshold (default 0.78 for better recall)
-        similarity_threshold = float(os.getenv("CROSS_VIEW_SIMILARITY_THRESHOLD", "0.78"))
-        processed_pairs = set()
-        
-        # Track similarity distribution and unmatched cross-view pairs for diagnostics
-        all_similarities = []
-        similarities_above_threshold = []
+        edges: List[CrossViewEdge] = []
+        similarity_threshold = float(os.getenv("CROSS_VIEW_SIMILARITY_THRESHOLD", "0.72"))
+        max_per_source_view = int(os.getenv("CROSS_VIEW_MAX_PER_SOURCE_VIEW", "1"))
+
+        all_similarities: List[float] = []
+        similarities_above_threshold: List[float] = []
         unmatched_pairs: List[tuple] = []
         rejected_reasons = {
             "same_view": 0,
+            "class_mismatch": 0,
+            "empty_embedding": 0,
             "below_threshold": 0,
-            "class_mismatch_penalty": 0,
         }
         top_k_unmatched = int(os.getenv("CROSS_VIEW_LOG_TOP_K_UNMATCHED", "10"))
 
-        # Compute cosine similarity directly (CLIP embeddings are L2-normalized)
+        # Collect candidates; apply top-K per (source, target_view) after filtering
+        candidates: List[tuple] = []
+
         for i, source_emb_man in enumerate(embedded_manifestations):
             source_man = source_emb_man.manifestation
             source_view_id = source_man.view_id
             source_embedding = source_emb_man.get_embedding_vector()
-            source_class = source_man.layout_features.get("class_label", "")
+            source_class = self._manifestation_class(source_man)
 
-            # Compare with all other manifestations in DIFFERENT views
+            if not self._vector_usable(source_embedding):
+                continue
+
             for j, target_emb_man in enumerate(embedded_manifestations):
-                if i >= j:  # Avoid duplicate comparisons
+                if i >= j:
                     continue
-                
+
                 target_man = target_emb_man.manifestation
                 target_view_id = target_man.view_id
-                
-                # CRITICAL: Only compare different views
+
                 if source_view_id == target_view_id:
                     rejected_reasons["same_view"] += 1
                     continue
-                
-                # Compute cosine similarity (embeddings are L2-normalized)
+
+                target_class = self._manifestation_class(target_man)
+                if source_class != target_class:
+                    rejected_reasons["class_mismatch"] += 1
+                    logger.debug(
+                        "EntityLinking: rejected class mismatch %s vs %s "
+                        "(src=%s tgt=%s)",
+                        source_class,
+                        target_class,
+                        self._embedding_input(source_man)[:60],
+                        self._embedding_input(target_man)[:60],
+                    )
+                    continue
+
                 target_embedding = target_emb_man.get_embedding_vector()
+                if not self._vector_usable(target_embedding):
+                    rejected_reasons["empty_embedding"] += 1
+                    continue
+
                 similarity = self._cosine_similarity(source_embedding, target_embedding)
                 all_similarities.append(similarity)
-                
-                # Class match bonus (weakened check: bonus instead of strict filter)
-                target_class = target_man.layout_features.get("class_label", "")
-                class_bonus = 0.0
-                if source_class and target_class:
-                    if source_class == target_class:
-                        class_bonus = 0.05  # Small bonus for matching classes
-                    else:
-                        # Don't reject, but log for analysis
-                        rejected_reasons["class_mismatch_penalty"] += 1
-                        logger.debug(
-                            f"EntityLinking: Class mismatch: {source_class} vs {target_class}, "
-                            f"similarity={similarity:.3f}"
-                        )
-                
-                # Apply class bonus
-                adjusted_similarity = similarity + class_bonus
-                
-                if adjusted_similarity >= similarity_threshold:
-                    similarities_above_threshold.append(adjusted_similarity)
-                    # Avoid duplicate edges
-                    pair = tuple(sorted([source_man.id, target_man.id]))
-                    if pair not in processed_pairs:
-                        processed_pairs.add(pair)
-                        # Confidence.score must be in [0, 1]; adjusted_similarity can exceed 1 (similarity + class_bonus)
-                        confidence_score = min(1.0, max(0.0, adjusted_similarity))
-                        edge = CrossViewEdge(
-                            id=uuid4(),
-                            source_id=source_man.id,
-                            target_id=target_man.id,
-                            similarity_score=similarity,
-                            confidence=Confidence(
-                                score=confidence_score,
-                                method=InferenceMethod.MULTIMODAL_SIMILARITY,
-                            ),
-                            provenance=Provenance(
-                                evidence_sources=[source_man.screenshot_id, target_man.screenshot_id],
-                                inference_method=InferenceMethod.MULTIMODAL_SIMILARITY,
-                                metadata={
-                                    "source_view_id": str(source_view_id),
-                                    "target_view_id": str(target_view_id),
-                                    "phase": "cross_view",
-                                    "method": "clip_cosine",
-                                    "source_view": str(source_view_id),
-                                    "target_view": str(target_view_id),
-                                    "base_similarity": similarity,
-                                    "adjusted_similarity": adjusted_similarity,
-                                    "class_bonus": class_bonus,
-                                    "source_class": source_class,
-                                    "target_class": target_class,
-                                },
-                            ),
-                        )
-                        edges.append(edge)
-                        logger.info(
-                            "EntityLinking: Created cross-view edge %s (view=%s, class=%s) → %s (view=%s, class=%s), similarity=%.3f",
-                            source_man.id, source_view_id, source_class,
-                            target_man.id, target_view_id, target_class,
+
+                if similarity >= similarity_threshold:
+                    similarities_above_threshold.append(similarity)
+                    candidates.append(
+                        (
                             similarity,
+                            source_man,
+                            target_man,
+                            source_view_id,
+                            target_view_id,
+                            source_class,
                         )
+                    )
                 else:
                     rejected_reasons["below_threshold"] += 1
                     unmatched_pairs.append(
-                        (str(source_view_id), str(target_view_id), similarity, source_class, target_class)
+                        (
+                            str(source_view_id),
+                            str(target_view_id),
+                            similarity,
+                            source_class,
+                            target_class,
+                        )
                     )
+
+        # Top-1 (or K) match per (source_id, target_view_id)
+        best_by_pair: Dict[tuple, tuple] = {}
+        for cand in candidates:
+            sim, src_man, tgt_man, src_vid, tgt_vid, cls = cand
+            key = (src_man.id, tgt_vid)
+            if key not in best_by_pair or sim > best_by_pair[key][0]:
+                best_by_pair[key] = cand
+
+        selected = sorted(best_by_pair.values(), key=lambda c: c[0], reverse=True)
+        if max_per_source_view > 0:
+            trimmed: List[tuple] = []
+            per_key_count: Dict[tuple, int] = defaultdict(int)
+            for cand in selected:
+                key = (cand[1].id, cand[4])
+                if per_key_count[key] >= max_per_source_view:
+                    continue
+                per_key_count[key] += 1
+                trimmed.append(cand)
+            selected = trimmed
+
+        processed_pairs: set = set()
+        for (
+            similarity,
+            source_man,
+            target_man,
+            source_view_id,
+            target_view_id,
+            source_class,
+        ) in selected:
+            pair = tuple(sorted([source_man.id, target_man.id]))
+            if pair in processed_pairs:
+                continue
+            processed_pairs.add(pair)
+
+            edge = CrossViewEdge(
+                id=uuid4(),
+                source_id=source_man.id,
+                target_id=target_man.id,
+                similarity_score=similarity,
+                confidence=Confidence(
+                    score=min(1.0, max(0.0, similarity)),
+                    method=InferenceMethod.MULTIMODAL_SIMILARITY,
+                ),
+                provenance=Provenance(
+                    evidence_sources=[source_man.screenshot_id, target_man.screenshot_id],
+                    inference_method=InferenceMethod.MULTIMODAL_SIMILARITY,
+                    metadata={
+                        "source_view_id": str(source_view_id),
+                        "target_view_id": str(target_view_id),
+                        "source_detected_element_id": str(source_man.id),
+                        "target_detected_element_id": str(target_man.id),
+                        "phase": "cross_view",
+                        "method": "sentence_transformer_class_constrained",
+                        "source_class": source_class,
+                        "target_class": source_class,
+                        "source_cleaned_text": self._cleaned_text(source_man),
+                        "target_cleaned_text": self._cleaned_text(target_man),
+                        "source_embedding_input": self._embedding_input(source_man),
+                        "target_embedding_input": self._embedding_input(target_man),
+                        "class_constraint": True,
+                        "similarity": similarity,
+                    },
+                ),
+            )
+            edges.append(edge)
+            logger.info(
+                "EntityLinking: cross-view edge class=%s sim=%.3f "
+                "src_input=%r tgt_input=%r",
+                source_class,
+                similarity,
+                self._embedding_input(source_man)[:80],
+                self._embedding_input(target_man)[:80],
+            )
 
         # Log similarity distribution and top-K cross-view pair similarities
         top_k = int(os.getenv("CROSS_VIEW_LOG_TOP_K", "10"))
@@ -284,10 +360,11 @@ class EntityLinkingServiceImpl(EntityLinkingService):
             )
             logger.info(
                 "EntityLinking: Rejection reasons - "
-                "same_view=%d, below_threshold=%d, class_mismatch_penalty=%d",
+                "same_view=%d, class_mismatch=%d, empty_embedding=%d, below_threshold=%d",
                 rejected_reasons["same_view"],
+                rejected_reasons["class_mismatch"],
+                rejected_reasons["empty_embedding"],
                 rejected_reasons["below_threshold"],
-                rejected_reasons["class_mismatch_penalty"],
             )
             if unmatched_pairs:
                 top_unmatched = sorted(unmatched_pairs, key=lambda x: x[2], reverse=True)[:top_k_unmatched]
@@ -337,7 +414,7 @@ class EntityLinkingServiceImpl(EntityLinkingService):
         manifestations: List[GUIManifestation],
         cross_view_edges: List[CrossViewEdge],
         within_view_clusters: Dict[UUID, List[List[UUID]]],
-    ) -> List[EntityInstance]:
+    ) -> Tuple[List[EntityInstance], Dict[UUID, UUID]]:
         """
         Create EntityInstances from manifestations using cross_view edges and within-view clusters.
 
@@ -384,14 +461,17 @@ class EntityLinkingServiceImpl(EntityLinkingService):
 
         # Create EntityInstance for each component
         entity_instances = []
+        man_to_entity: Dict[UUID, UUID] = {}
         for component in components:
             component_manifestations = [man_map[mid] for mid in component if mid in man_map]
 
             # Extract attributes (simplified)
             view_ids_in_component = set(man.view_id for man in component_manifestations)
+            element_ids = [str(mid) for mid in component if mid in man_map]
             attributes = {
                 "component_size": len(component_manifestations),
                 "view_count": len(view_ids_in_component),
+                "element_ids": element_ids,
             }
 
             instance = EntityInstance(
@@ -408,6 +488,9 @@ class EntityLinkingServiceImpl(EntityLinkingService):
                 ),
             )
             entity_instances.append(instance)
+            for mid in component:
+                if mid in man_map:
+                    man_to_entity[mid] = instance.id
 
             logger.debug(
                 f"EntityLinking: Created EntityInstance {instance.id} "
@@ -420,4 +503,4 @@ class EntityLinkingServiceImpl(EntityLinkingService):
             f"from {len(manifestations)} manifestations"
         )
 
-        return entity_instances
+        return entity_instances, man_to_entity

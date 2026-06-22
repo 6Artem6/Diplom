@@ -1,0 +1,211 @@
+@startuml pipeline_tech_full_cycle
+!theme plain
+skinparam linetype ortho
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontSize 11
+skinparam packageStyle rectangle
+
+title Полный технологический цикл BPG:\nдетекция → эмбеддинги → кластеризация → cross-view → граф
+
+' ─── Color legend ───
+skinparam rectangle {
+  BackgroundColor<<input>> #E8F4FD
+  BackgroundColor<<detect>> #FFF3E0
+  BackgroundColor<<ocr>> #F3E5F5
+  BackgroundColor<<embed>> #E8F5E9
+  BackgroundColor<<fusion>> #FFFDE7
+  BackgroundColor<<store>> #ECEFF1
+  BackgroundColor<<compare>> #FCE4EC
+  BackgroundColor<<cluster>> #E0F2F1
+  BackgroundColor<<cross>> #EDE7F6
+  BackgroundColor<<bpg>> #E3F2FD
+  BorderColor #37474F
+}
+
+' ═══════════════════════════════════════════════════════════════
+' PHASE 0 — Orchestration
+' ═══════════════════════════════════════════════════════════════
+package "0. Оркестрация (FastAPI)" as P0 {
+  rectangle "**FastAPI**\n`POST /bpg/build`\nPydantic v2 request/response" as API <<input>>
+  rectangle "**BuildBPGUseCase**\n`bpg_pipeline.py`\nпоследовательный pipeline" as UC <<input>>
+  API --> UC
+}
+
+' ═══════════════════════════════════════════════════════════════
+' PHASE 1 — Input & preprocessing
+' ═══════════════════════════════════════════════════════════════
+package "1. Вход и предобработка" as P1 {
+  rectangle "**Screenshots**\nPNG / JPEG\n`screenshot_paths[]`" as SS <<input>>
+  rectangle "**Pillow (PIL)**\nзагрузка кадра\n`PreprocessingService`" as PIL <<input>>
+  SS --> PIL
+}
+
+' ═══════════════════════════════════════════════════════════════
+' PHASE 2 — GUI element detection
+' ═══════════════════════════════════════════════════════════════
+package "2. Детекция GUI-элементов" as P2 {
+  rectangle "**Ultralytics YOLO11**\n`YOLODetectorImpl`\nлокальный `.pt`, CPU/GPU" as YOLO <<detect>>
+  rectangle "**MacPaw UI model**\n`yolov11l-ui-elements-detection`\nbutton, input, text, card,\nlist-item, image, checkbox" as YOLOM <<detect>>
+  rectangle "**GUIBlock[]**\nbbox, class_label,\nconfidence, screenshot_id" as BLOCKS <<detect>>
+  YOLO -[hidden]-> YOLOM
+  YOLO --> BLOCKS
+  note bottom of YOLO
+    **Порог:** `DETECTION_CONFIDENCE_THRESHOLD`
+    default 0.15 (PoC) / ≥0.5 (метод)
+    **Выход:** crop по bbox → OCR + CLIP
+  end note
+}
+
+' ═══════════════════════════════════════════════════════════════
+' PHASE 3 — OCR & text normalization
+' ═══════════════════════════════════════════════════════════════
+package "3. Извлечение и нормализация текста" as P3 {
+  rectangle "**Tesseract OCR**\n`pytesseract`\nlang: eng+rus, PSM 6/7" as TESS <<ocr>>
+  rectangle "**OCR Normalizer**\n`ocr_normalizer.py`\nraw → cleaned_text\nлат/кир lookalike fix" as NORM <<ocr>>
+  rectangle "**Class-aware input**\nclass + cleaned_text\nraw OCR не в эмбеддинг" as CTXT <<ocr>>
+  TESS --> NORM
+  NORM --> CTXT
+  note right of TESS
+    **Метод (диссертация):** EasyOCR
+    **PoC (код):** Tesseract + bbox-crop
+  end note
+}
+
+' ═══════════════════════════════════════════════════════════════
+' PHASE 4 — Multimodal embeddings (parallel)
+' ═══════════════════════════════════════════════════════════════
+package "4. Мультимодальные эмбеддинги" as P4 {
+  together {
+    rectangle "**CLIP ViT**\n`transformers` + PyTorch\nPoC: `clip-vit-base-patch32` (512d)\nМетод: ViT-L/14 (768d)" as CLIP <<embed>>
+    rectangle "**Sentence-Transformers**\n`all-MiniLM-L6-v2` (384d)\nL2-normalized text vector" as ST <<embed>>
+    rectangle "**Layout features**\nнорм. bbox (x,y,w,h)\n+ class_label\nPython / NumPy" as LAY <<embed>>
+  }
+  rectangle "**MultimodalEmbedding**\n`visual | text | layout`" as MME <<embed>>
+  CLIP --> MME
+  ST --> MME
+  LAY --> MME
+}
+
+' ═══════════════════════════════════════════════════════════════
+' PHASE 5 — Fusion & domain binding
+' ═══════════════════════════════════════════════════════════════
+package "5. Объединение представлений" as P5 {
+  rectangle "**Композитный эмбеддинг (метод)**\n`e_i = α·ê_v + β·ê_t + γ·ê_l`\nα=0.5, β=0.35, γ=0.15\nê — L2-нормализованные компоненты" as COMP <<fusion>>
+  rectangle "**EmbeddedManifestation**\n`GUIManifestation` ↔ embedding\n1:1, provenance, confidence" as EMBM <<fusion>>
+  rectangle "**View / GUIManifestation**\nview_id, screenshot_id,\nlayout_features metadata" as MAN <<fusion>>
+  COMP --> EMBM
+  MME --> COMP
+  note bottom of COMP
+    PoC linking vector:
+    get_embedding_vector() -> text (MiniLM)
+    CLIP visual: debug / future fusion
+  end note
+}
+
+' ═══════════════════════════════════════════════════════════════
+' PHASE 6 — Storage (heterogeneous)
+' ═══════════════════════════════════════════════════════════════
+package "6. Хранение данных разных типов" as P6 {
+  together {
+    rectangle "**ChromaDB**\nколлекция `gui_blocks`\nHNSW + cosine distance\nmetadata: view_id, phase,\nmanifestation_id" as CHROMA <<store>>
+    rectangle "**Pydantic v2 models**\n`GUIBlock`, `DetectedElement`\n`EntityInstance`, `CrossViewEdge`\nin-memory graph (PoC)" as PYD <<store>>
+    rectangle "**PostgreSQL (target)**\n`cross_view_entities`\n`ui_element_representations`\nJSONB attributes / bbox" as PG <<store>>
+  }
+  note bottom of CHROMA
+    **phase:** `within_view` | `cross_view`
+    очистка коллекции между прогонами
+    (детерминизм PoC)
+  end note
+}
+
+' ═══════════════════════════════════════════════════════════════
+' PHASE 7 — Similarity principle
+' ═══════════════════════════════════════════════════════════════
+package "7. Принцип сравнения" as P7 {
+  rectangle "**Cosine similarity**\n`sim(u_i,u_j) = cos(e_i, e_j)`\n= dot(ê_i, ê_j) при L2-norm" as COS <<compare>>
+  rectangle "**Ограничения сопоставления**\n• class_label match\n• view_id filter (within-view)\n• view_id **≠** (cross-view)\n• non-empty embedding" as CONS <<compare>>
+  rectangle "**Пороги (PoC / env)**\nwithin-view: 0.75\n`WITHIN_VIEW_SIMILARITY_THRESHOLD`\ncross-view: 0.72\n`CROSS_VIEW_SIMILARITY_THRESHOLD`" as THR <<compare>>
+  COS --> CONS
+  CONS --> THR
+}
+
+' ═══════════════════════════════════════════════════════════════
+' PHASE 8 — Within-view clustering
+' ═══════════════════════════════════════════════════════════════
+package "8. Кластеризация (within-view)" as P8 {
+  rectangle "**Chroma ANN search**\n`search_similar(top_k)`\nfilter: view_id + phase" as ANN_W <<cluster>>
+  rectangle "**Greedy threshold clustering**\n`cluster_within_views()`\nобъединение по sim ≥ τ" as CLW <<cluster>>
+  rectangle "**Метод (диссертация)**\nAgglomerative Clustering\nили HDBSCAN (precomputed)" as CLM <<cluster>>
+  ANN_W --> CLW
+  note bottom of CLM
+    PoC: пороговая кластеризация
+    Исследование: иерархическая /
+    density-based на матрице sim
+  end note
+}
+
+' ═══════════════════════════════════════════════════════════════
+' PHASE 9 — Cross-view linking
+' ═══════════════════════════════════════════════════════════════
+package "9. Cross-view объединение" as P9 {
+  rectangle "**Chroma store**\nphase=`cross_view`" as CHX <<cross>>
+  rectangle "**Cross-view ANN + filter**\n`link_cross_view()`\nassert source.view ≠ target.view" as LNK <<cross>>
+  rectangle "**CrossViewEdge**\nconfidence, provenance\n`InferenceMethod.VECTOR_SIMILARITY`" as CVE <<cross>>
+  rectangle "**Entity resolution**\n`create_entity_instances()`\nграф: clusters ∪ cross-edges\n→ `EntityInstance`" as ENT <<cross>>
+  CHX --> LNK
+  LNK --> CVE
+  CVE --> ENT
+}
+
+' ═══════════════════════════════════════════════════════════════
+' PHASE 10 — BPG construction
+' ═══════════════════════════════════════════════════════════════
+package "10. Построение BPG" as P10 {
+  rectangle "**BPGConstructionService**\n`EntityType`, `EntityInstance`\n`GUIManifestation` (appears_in)" as BPGS <<bpg>>
+  rectangle "**Edges**\n`CrossViewEdge` (cross_view)\n`FunctionalEdge` (action→entity)\n`TemporalEdge` (clickstream, PM4Py*)" as EDGES <<bpg>>
+  rectangle "**BusinessProcessGraph**\nconfidence + provenance\nна каждом узле/ребре" as BPG <<bpg>>
+  BPGS --> EDGES
+  EDGES --> BPG
+  note bottom of EDGES
+    *PM4Py — future work (clickstream)
+    PoC: placeholder functional/temporal
+  end note
+}
+
+' ═══════════════════════════════════════════════════════════════
+' Main flow
+' ═══════════════════════════════════════════════════════════════
+UC --> PIL
+PIL --> YOLO
+BLOCKS --> TESS
+CTXT --> ST
+BLOCKS --> CLIP
+BLOCKS --> LAY
+EMBM --> MAN
+MAN --> CHROMA
+EMBM --> COS
+THR --> ANN_W
+CLW --> CHX
+ENT --> BPGS
+BPG --> PYD
+BPG ..> PG : persist (target)
+
+' ═══════════════════════════════════════════════════════════════
+' Data-type swimlane (bottom)
+' ═══════════════════════════════════════════════════════════════
+legend bottom left
+  |= Тип данных |= Технология |= Роль в cross-view |
+  | Скриншот | PNG/JPEG + PIL | источник наблюдений |
+  | Детекция | YOLO11 + Ultralytics | GUIBlock, bbox, class |
+  | Текст | Tesseract / EasyOCR* | cleaned_text → MiniLM |
+  | Визуал | CLIP (transformers) | e_v; PoC не primary для linking |
+  | Layout | NumPy bbox features | e_l; дезамбигуация |
+  | Вектор | Chroma HNSW | ANN + cosine similarity |
+  | Сущность | Pydantic / PostgreSQL | EntityInstance, manifests |
+  | Граф | BusinessProcessGraph | BPG для LLM runtime |
+  ----
+  *EasyOCR — в научном описании метода; PoC использует Tesseract.
+endlegend
+
+@enduml

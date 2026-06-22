@@ -78,6 +78,7 @@ def enrich_blocks_with_ocr(
             crop = img.crop((x1, y1, x2, y2))
             text = pytesseract.image_to_string(crop, lang=OCR_LANGS_TESSERACT, config=f"--psm {psm}").strip()
             if text:
+                block.ocr_text_raw = text
                 block.ocr_text = text
         except Exception as e:
             logger.debug("OCR enrichment: block %s crop failed: %s", block.id, e)
@@ -211,6 +212,7 @@ def get_ocr_line_blocks(
                 },
                 element_types=["text"],
                 ocr_text=text,
+                ocr_text_raw=text,
                 visual_features=[],
             )
         )

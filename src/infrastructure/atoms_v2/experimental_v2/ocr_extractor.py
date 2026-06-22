@@ -106,6 +106,7 @@ def detect_language(text: str) -> LanguageInfo:
     ru_ratio = ru_chars / total_alpha
     en_ratio = en_chars / total_alpha
     
+    # Русский — основной язык поиска (сначала ищем русские символы/паттерны)
     if ru_ratio > 0.7:
         primary = "ru"
         confidence = ru_ratio
@@ -113,10 +114,10 @@ def detect_language(text: str) -> LanguageInfo:
         primary = "en"
         confidence = en_ratio
     elif ru_ratio > 0.3 and en_ratio > 0.3:
-        primary = "mixed"
+        primary = "ru"  # при смеси — для поиска используем русский первым
         confidence = max(ru_ratio, en_ratio)
     else:
-        primary = "ru" if ru_ratio > en_ratio else "en"
+        primary = "ru" if ru_ratio >= en_ratio else "en"
         confidence = max(ru_ratio, en_ratio)
     
     return LanguageInfo(
@@ -377,6 +378,190 @@ def run_ocr(
 
 
 # =============================================================================
+# MERGE TEXT BLOCKS (by line: height as parameter for merge by width)
+# =============================================================================
+
+def merge_ocr_blocks(
+    blocks: List[OCRBlock],
+    median_line_height_px: float,
+) -> List[OCRBlock]:
+    """
+    Объединять только по горизонтали (одна линия). По вертикали не объединяем.
+    Проход 1: высота ±25%, center_y в пределах 0.5*median (одна строка).
+    Проход 2: текст разного размера на одной линии (0.5*max(ha,hb)).
+    """
+    if len(blocks) <= 1 or median_line_height_px <= 0:
+        return list(blocks)
+    sorted_blocks = sorted(blocks, key=lambda b: (b.bbox[0], b.bbox[1]))
+    merged: List[OCRBlock] = []
+    used = [False] * len(sorted_blocks)
+    height_ratio_lo, height_ratio_hi = 0.75, 1.25
+    # Только одна линия по вертикали (не объединяем разные строки)
+    max_center_y_dist = 0.5 * median_line_height_px
+
+    for i, a in enumerate(sorted_blocks):
+        if used[i]:
+            continue
+        bbox = list(a.bbox)
+        texts = [a.text]
+        conf_sum = a.confidence
+        ha = bbox[3] - bbox[1]
+        center_y_a = (bbox[1] + bbox[3]) / 2
+
+        for j in range(i + 1, len(sorted_blocks)):
+            if used[j]:
+                continue
+            b = sorted_blocks[j]
+            hb = b.bbox[3] - b.bbox[1]
+            if hb <= 0 or ha <= 0:
+                continue
+            if not (height_ratio_lo <= ha / hb <= height_ratio_hi):
+                continue
+            center_y_b = (b.bbox[1] + b.bbox[3]) / 2
+            if abs(center_y_a - center_y_b) > max_center_y_dist:
+                continue
+            gap = max(bbox[0], b.bbox[0]) - min(bbox[2], b.bbox[2])
+            if gap > 0:
+                wa = bbox[2] - bbox[0]
+                wb = b.bbox[2] - b.bbox[0]
+                if gap > max(80.0, 0.8 * min(wa, wb)):
+                    continue
+            used[j] = True
+            conf_sum += b.confidence
+            texts.append(b.text)
+            bbox[0] = min(bbox[0], b.bbox[0])
+            bbox[1] = min(bbox[1], b.bbox[1])
+            bbox[2] = max(bbox[2], b.bbox[2])
+            bbox[3] = max(bbox[3], b.bbox[3])
+            center_y_a = (bbox[1] + bbox[3]) / 2
+            ha = bbox[3] - bbox[1]
+
+        merged.append(OCRBlock(
+            text=" ".join(texts),
+            bbox=bbox,
+            confidence=conf_sum / len(texts),
+            line_height=bbox[3] - bbox[1],
+            is_label_hint=a.is_label_hint,
+            is_value_hint=a.is_value_hint,
+        ))
+
+    # Второй проход: объединение текста разного размера на одной линии (0.5*max(ha,hb), высота 0.5–2.0)
+    if len(merged) <= 1:
+        return merged
+    sorted_merged = sorted(merged, key=lambda b: (b.bbox[0], b.bbox[1]))
+    merged2: List[OCRBlock] = []
+    used2 = [False] * len(sorted_merged)
+    relaxed_height_lo, relaxed_height_hi = 0.5, 2.0
+
+    for i, a in enumerate(sorted_merged):
+        if used2[i]:
+            continue
+        bbox = list(a.bbox)
+        texts = [a.text]
+        conf_sum = a.confidence
+        ha = bbox[3] - bbox[1]
+        center_y_a = (bbox[1] + bbox[3]) / 2
+
+        for j in range(i + 1, len(sorted_merged)):
+            if used2[j]:
+                continue
+            b = sorted_merged[j]
+            hb = b.bbox[3] - b.bbox[1]
+            if hb <= 0 or ha <= 0:
+                continue
+            if not (relaxed_height_lo <= ha / hb <= relaxed_height_hi):
+                continue
+            center_y_b = (b.bbox[1] + b.bbox[3]) / 2
+            max_h = max(ha, hb)
+            if abs(center_y_a - center_y_b) > 0.5 * max_h:
+                continue
+            gap = max(bbox[0], b.bbox[0]) - min(bbox[2], b.bbox[2])
+            if gap > 0:
+                wa = bbox[2] - bbox[0]
+                wb = b.bbox[2] - b.bbox[0]
+                if gap > max(80.0, 0.8 * min(wa, wb)):
+                    continue
+            used2[j] = True
+            conf_sum += b.confidence
+            texts.append(b.text)
+            bbox[0] = min(bbox[0], b.bbox[0])
+            bbox[1] = min(bbox[1], b.bbox[1])
+            bbox[2] = max(bbox[2], b.bbox[2])
+            bbox[3] = max(bbox[3], b.bbox[3])
+            center_y_a = (bbox[1] + bbox[3]) / 2
+            ha = bbox[3] - bbox[1]
+
+        merged2.append(OCRBlock(
+            text=" ".join(texts),
+            bbox=bbox,
+            confidence=conf_sum / len(texts),
+            line_height=bbox[3] - bbox[1],
+            is_label_hint=a.is_label_hint,
+            is_value_hint=a.is_value_hint,
+        ))
+    return merged2
+
+
+def merge_ocr_blocks_in_row(
+    blocks: List[OCRBlock],
+    median_line_height_px: float,
+) -> List[OCRBlock]:
+    """
+    Объединить OCR-блоки в рамках одной строки (после S3, когда строка уже известна).
+    Соседи по X с высотой ±25% и малым зазором склеиваются в один блок.
+    См. docs/FORM_PIPELINE_STATE_MACHINE.md — «Объединение OCR-блоков (merge)», этап 2.
+    """
+    if len(blocks) <= 1 or median_line_height_px <= 0:
+        return list(blocks)
+    sorted_blocks = sorted(blocks, key=lambda b: (b.bbox[0], b.bbox[1]))
+    merged: List[OCRBlock] = []
+    used = [False] * len(sorted_blocks)
+    height_ratio_lo, height_ratio_hi = 0.75, 1.25
+
+    for i, a in enumerate(sorted_blocks):
+        if used[i]:
+            continue
+        bbox = list(a.bbox)
+        texts = [a.text]
+        conf_sum = a.confidence
+        ha = bbox[3] - bbox[1]
+
+        for j in range(i + 1, len(sorted_blocks)):
+            if used[j]:
+                continue
+            b = sorted_blocks[j]
+            hb = b.bbox[3] - b.bbox[1]
+            if hb <= 0 or ha <= 0:
+                continue
+            if not (height_ratio_lo <= ha / hb <= height_ratio_hi):
+                continue
+            gap = b.bbox[0] - bbox[2]
+            if gap > 0:
+                wa = bbox[2] - bbox[0]
+                wb = b.bbox[2] - b.bbox[0]
+                if gap > max(80.0, 0.8 * min(wa, wb)):
+                    continue
+            used[j] = True
+            conf_sum += b.confidence
+            texts.append(b.text)
+            bbox[0] = min(bbox[0], b.bbox[0])
+            bbox[1] = min(bbox[1], b.bbox[1])
+            bbox[2] = max(bbox[2], b.bbox[2])
+            bbox[3] = max(bbox[3], b.bbox[3])
+            ha = bbox[3] - bbox[1]
+
+        merged.append(OCRBlock(
+            text=" ".join(texts),
+            bbox=bbox,
+            confidence=conf_sum / len(texts),
+            line_height=bbox[3] - bbox[1],
+            is_label_hint=a.is_label_hint,
+            is_value_hint=a.is_value_hint,
+        ))
+    return merged
+
+
+# =============================================================================
 # MAIN ENTRY POINT
 # =============================================================================
 
@@ -483,12 +668,21 @@ def extract_ocr(
     
     diagnostics["total_blocks"] = len(ocr_blocks)
     
-    # Compute median line height
+    # Compute median line height (for merge and result)
     if line_heights:
         sorted_h = sorted(line_heights)
         median_line_height = sorted_h[len(sorted_h) // 2]
     else:
         median_line_height = 20.0
+    
+    # Merge text by line (height as parameter for merge by width → full text, not fragments)
+    ocr_blocks = merge_ocr_blocks(ocr_blocks, median_line_height)
+    diagnostics["blocks_after_merge"] = len(ocr_blocks)
+    if ocr_blocks:
+        merged_heights = [b.bbox[3] - b.bbox[1] for b in ocr_blocks if b.bbox[3] > b.bbox[1]]
+        if merged_heights:
+            merged_heights.sort()
+            median_line_height = merged_heights[len(merged_heights) // 2]
     
     # Full language detection
     all_text = " ".join(b.text for b in ocr_blocks)

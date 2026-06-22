@@ -94,6 +94,22 @@ class BPGQueryServiceImpl(BPGQueryService):
         ]
 
         # Create subgraph
+        element_ids = set()
+        for ei in filtered_instances:
+            for eid in ei.attributes.get("element_ids", []):
+                element_ids.add(str(eid))
+
+        filtered_detected = [
+            el
+            for el in bpg.detected_elements
+            if str(el.element_id) in element_ids
+        ]
+        filtered_manifestations = [
+            m
+            for m in bpg.gui_manifestations
+            if str(m.id) in element_ids
+        ]
+
         subgraph = BusinessProcessGraph(
             id=bpg.id,
             entity_types=filtered_entity_types,
@@ -103,6 +119,8 @@ class BPGQueryServiceImpl(BPGQueryService):
             rules=[],  # Simplified: rules not filtered in skeleton
             edges=filtered_edges,
             cross_view_edges=filtered_cross_view,
+            detected_elements=filtered_detected,
+            gui_manifestations=filtered_manifestations,
             created_at=bpg.created_at,
         )
 

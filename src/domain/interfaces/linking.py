@@ -10,7 +10,7 @@ Critical semantics:
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from uuid import UUID
 
 from ..models.bpg_models import EntityInstance, GUIManifestation
@@ -84,9 +84,12 @@ class EntityLinkingService(ABC):
         manifestations: List[GUIManifestation],
         cross_view_edges: List[CrossViewEdge],
         within_view_clusters: Dict[UUID, List[List[UUID]]],
-    ) -> List[EntityInstance]:
+    ) -> Tuple[List[EntityInstance], Dict[UUID, UUID]]:
         """
         Create EntityInstances from manifestations using cross_view edges and within-view clusters.
+
+        Returns:
+            Tuple of (entity_instances, manifestation_id -> entity_instance_id map)
 
         Architecture rationale:
         - Correct order: within-view clustering → cross-view linking → entity instances
@@ -97,8 +100,5 @@ class EntityLinkingService(ABC):
             manifestations: GUIManifestations to group
             cross_view_edges: Edges connecting manifestations ACROSS different views
             within_view_clusters: Clusters within each view (manifestations in same cluster = same entity)
-
-        Returns:
-            List of EntityInstances (one per connected component across views)
         """
         pass

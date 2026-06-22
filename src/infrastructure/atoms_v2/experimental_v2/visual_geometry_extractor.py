@@ -45,6 +45,7 @@ class ElementTypes:
     ACTION = "action"       # button
     CHECKBOX = "checkbox"
     RADIO = "radio"
+    SELECT = "select"       # dropdown: field-like + галочка в квадрате справа
     CONTAINER = "container"  # содержит другие элементы, не участвует в slot assignment
     DECORATION = "decoration"  # визуальный элемент без семантики
     LABEL = "label"
@@ -299,29 +300,128 @@ def has_visible_border(image, bbox: List[float], threshold: float = 0.04) -> boo
     
     edge_density = perimeter_edges / max(1, perimeter_pixels)
     
-    # #region agent log
-    import json, time
-    log_path = "/app/debug/debug.log"
-    border_log = {
-        "timestamp": int(time.time() * 1000),
-        "location": "has_visible_border",
-        "hypothesisId": "H7-border",
-        "message": "border_check",
-        "data": {
-            "bbox": [float(x) for x in bbox],
-            "edge_density": round(float(edge_density), 4),
-            "threshold": threshold,
-            "result": bool(edge_density >= threshold),
-            "strip_size": int(strip_size),
-            "perimeter_edges": int(perimeter_edges),
-            "perimeter_pixels": int(perimeter_pixels),
-        }
-    }
-    with open(log_path, "a") as f:
-        f.write(json.dumps(border_log) + "\n")
-    # #endregion
-    
     return edge_density >= threshold
+
+
+def has_rectangular_border(image, bbox: List[float], per_side_threshold: float = 0.03) -> bool:
+    """
+    Проверка ровной непрерывной границы: 4 стороны, 4 прямых под прямым углом.
+    INPUT должен иметь такую границу, иначе это просто текст.
+    """
+    import cv2
+    import numpy as np
+    
+    x1, y1, x2, y2 = int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3])
+    h, w = image.shape[:2]
+    x1, y1 = max(0, x1), max(0, y1)
+    x2, y2 = min(w, x2), min(h, y2)
+    if x2 <= x1 + 6 or y2 <= y1 + 6:
+        return False
+    
+    roi = image[y1:y2, x1:x2]
+    if roi.size == 0:
+        return False
+    if len(roi.shape) == 3:
+        gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+    else:
+        gray = roi
+    edges = cv2.Canny(gray, 30, 100)
+    rh, rw = edges.shape[:2]
+    strip = max(2, min(4, rw // 15, rh // 15))
+    
+    top = edges[:strip, :]
+    bottom = edges[-strip:, :]
+    left = edges[:, :strip]
+    right = edges[:, -strip:]
+    for name, side in [("top", top), ("bottom", bottom), ("left", left), ("right", right)]:
+        if side.size == 0:
+            return False
+        density = float(np.sum(side > 0)) / max(1, side.size)
+        if density < per_side_threshold:
+            return False
+    return True
+
+
+def _ocr_overlap_ratio(zone_bbox: List[float], ocr_blocks: List[Dict[str, Any]]) -> float:
+    """Доля площади зоны, перекрытая OCR (0..1)."""
+    if len(zone_bbox) < 4 or not ocr_blocks:
+        return 0.0
+    z_area = (zone_bbox[2] - zone_bbox[0]) * (zone_bbox[3] - zone_bbox[1])
+    if z_area <= 0:
+        return 0.0
+    inter_total = 0.0
+    for ocr in ocr_blocks:
+        ob = ocr.get("bbox", [])
+        if len(ob) < 4:
+            continue
+        ix1 = max(zone_bbox[0], ob[0])
+        iy1 = max(zone_bbox[1], ob[1])
+        ix2 = min(zone_bbox[2], ob[2])
+        iy2 = min(zone_bbox[3], ob[3])
+        if ix2 > ix1 and iy2 > iy1:
+            inter_total += (ix2 - ix1) * (iy2 - iy1)
+    return min(1.0, inter_total / z_area)
+
+
+def detect_select_indicator(
+    image,
+    bbox: List[float],
+    ocr_blocks: List[Dict[str, Any]],
+    ocr_overlap_max: float = 0.25,
+) -> bool:
+    """
+    SELECT: в правом квадрате (сторона = высота поля) не должно быть перекрытия OCR,
+    и в нём должна быть галочка (dropdown arrow/tick).
+    """
+    import cv2
+    import numpy as np
+    
+    if len(bbox) < 4:
+        return False
+    h = bbox[3] - bbox[1]
+    if h < 8:
+        return False
+    # Квадрат справа: ширина = высота
+    rx1 = bbox[2] - h
+    rx2 = bbox[2]
+    ry1 = bbox[1]
+    ry2 = bbox[3]
+    zone = [rx1, ry1, rx2, ry2]
+    if _ocr_overlap_ratio(zone, ocr_blocks) > ocr_overlap_max:
+        return False
+    
+    img_h, img_w = image.shape[:2]
+    x1 = max(0, int(rx1))
+    y1 = max(0, int(ry1))
+    x2 = min(img_w, int(rx2))
+    y2 = min(img_h, int(ry2))
+    if x2 <= x1 + 4 or y2 <= y1 + 4:
+        return False
+    roi = image[y1:y2, x1:x2]
+    if roi.size < 20:
+        return False
+    if len(roi.shape) == 3:
+        gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+    else:
+        gray = roi
+    std = float(np.std(gray))
+    if std < 12:
+        return False
+    # Галочка: маленький контур с 3 вершинами (треугольник) или компактная форма
+    _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    contours, _ = cv2.findContours(binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    for cnt in contours:
+        if cv2.contourArea(cnt) < 4:
+            continue
+        if cv2.contourArea(cnt) > (roi.shape[0] * roi.shape[1]) * 0.5:
+            continue
+        peri = cv2.arcLength(cnt, True)
+        if peri < 5:
+            continue
+        approx = cv2.approxPolyDP(cnt, 0.05 * peri, True)
+        if len(approx) == 3:
+            return True
+    return std >= 25
 
 
 def has_background_fill(image, bbox: List[float], threshold: float = 20) -> bool:
@@ -442,12 +542,7 @@ def find_parent_child_relations(raw_bboxes: List[RawBBox]) -> None:
     """
     T = RelativeThresholds
     n = len(raw_bboxes)
-    
-    # #region agent log
-    import json, time
-    log_path = "/app/debug/debug.log"
     relations_found = 0
-    # #endregion
     
     for i in range(n):
         parent_bbox = raw_bboxes[i].bbox
@@ -470,23 +565,6 @@ def find_parent_child_relations(raw_bboxes: List[RawBBox]) -> None:
                     if raw_bboxes[j].parent is None:
                         raw_bboxes[j].parent = i
                     relations_found += 1
-    
-    # #region agent log
-    parent_child_log = {
-        "timestamp": int(time.time() * 1000),
-        "location": "visual_geometry_extractor.py:find_parent_child_relations",
-        "hypothesisId": "H4-parent-child",
-        "message": "parent_child_relations",
-        "data": {
-            "total_bboxes": n,
-            "relations_found": relations_found,
-            "bboxes_with_children": sum(1 for r in raw_bboxes if r.children),
-            "bboxes_with_parent": sum(1 for r in raw_bboxes if r.parent is not None),
-        }
-    }
-    with open(log_path, "a") as f:
-        f.write(json.dumps(parent_child_log) + "\n")
-    # #endregion
 
 
 # =============================================================================
@@ -765,36 +843,6 @@ def classify_raw_bbox(
     # Pre-compute fill for reuse
     has_fill = has_background_fill(image, bbox)
     
-    # #region agent log
-    import json, time
-    log_path = "/app/debug/debug.log"
-    log_data = {
-        "timestamp": int(time.time() * 1000),
-        "location": "visual_geometry_extractor.py:classify_raw_bbox",
-        "hypothesisId": "H1-classification",
-        "message": "classify_raw_bbox_input",
-        "data": {
-            "idx": idx,
-            "bbox": [float(x) for x in bbox],
-            "w": float(w),
-            "h": float(h),
-            "aspect": round(float(aspect), 2),
-            "rel_width": round(float(rel_width), 3),
-            "rel_height": round(float(rel_height), 3),
-            "rel_area": round(float(rel_area), 3),
-            "rel_size": round(float(rel_size), 4),
-            "has_border": bool(raw.has_border),
-            "has_fill": bool(has_fill),
-            "has_children": bool(raw.children),
-            "contains_text": bool(raw.contains_text),
-            "median_input_height": float(ctx.median_input_height),
-            "median_input_area": float(ctx.median_input_area),
-        }
-    }
-    with open(log_path, "a") as f:
-        f.write(json.dumps(log_data) + "\n")
-    # #endregion
-    
     # ===========================================
     # RULE: ONLY border determines if element can be LABEL
     # has_fill is NOT reliable — page background gives false positives
@@ -805,139 +853,128 @@ def classify_raw_bbox(
     # ===========================================
     # 1. CHECKBOX/RADIO — small square elements
     # Aspect 0.8-1.2, small relative size
-    # STRICT: must have visible border (not just contrast!)
+    # STRICT: must have visible border AND not contain much text (OCR)
+    # This prevents letters from being classified as checkboxes
     # ===========================================
     if (T.CHECKBOX_ASPECT_MIN <= aspect <= T.CHECKBOX_ASPECT_MAX and
         T.CHECKBOX_SIZE_MIN_RATIO <= rel_size <= T.CHECKBOX_SIZE_MAX_RATIO):
-        # STRICT: require actual border, not just contrast
-        # This prevents letters from being classified as checkboxes
-        if raw.has_border:
+        if raw.has_border and not raw.contains_text:
+            # Checkbox without text inside
             return ElementTypes.CHECKBOX, 0.85
+        elif raw.has_border and rel_area < 0.5:
+            # Very small with border — still likely checkbox
+            return ElementTypes.CHECKBOX, 0.75
     
     # ===========================================
-    # 2. CONTAINER — EARLY CHECK!
-    # Large area (>= 2.5x median) AND has children
-    # Prevents large blocks from becoming TEXTAREA
+    # 2. CONTAINER — содержит элементы (field-like), не просто текст.
+    # Шире и/или выше детей, отличается цветом фона.
     # ===========================================
     if rel_area >= 2.5 and raw.children:
-        return ElementTypes.CONTAINER, 0.70
-    
-    # Also check very large elements without explicit children
-    if rel_area >= 4.0 and rel_height >= 2.0:
-        # Very large — likely container or decoration, not field
-        if raw.has_border:
-            return ElementTypes.DECORATION, 0.50
-    
-    # ===========================================
-    # 2c. LABEL — small text element (not a real field)
-    # Rule: OCR without real border = just text
-    # Small elements from color_segmentation are likely text (letters create edges)
-    # Criteria: small area + small width (not a wide input field)
-    # ===========================================
-    is_small_element = rel_area < 1.5  # small area relative to median
-    is_narrow = rel_width < 0.15  # narrow (< 15% of container width)
-    is_from_color_seg = raw.source == "color_segmentation"
-    
-    if is_small_element and is_narrow and is_from_color_seg and raw.contains_text:
-        # Small narrow text — likely label or navigation text, not input field
-        # Should be LABEL (will be filtered if not bound to INPUT)
-        return ElementTypes.LABEL, 0.60
+        n_field = count_field_like_children(raw, all_raw, ctx)
+        if n_field < 1:
+            pass  # только текст внутри — не контейнер
+        else:
+            # Контейнер строго шире и/или выше каждого ребёнка (отступ ~5%) и другой фон
+            pw, ph = w, h
+            margin_w = max(2.0, 0.05 * pw)
+            margin_h = max(2.0, 0.05 * ph)
+            all_children_smaller = True
+            for cidx in raw.children:
+                if 0 <= cidx < len(all_raw):
+                    cb = all_raw[cidx].bbox
+                    cw = cb[2] - cb[0]
+                    ch = cb[3] - cb[1]
+                    # хотя бы одно измерение: контейнер больше ребёнка
+                    if (pw - cw < margin_w) and (ph - ch < margin_h):
+                        all_children_smaller = False
+                        break
+            if all_children_smaller and has_fill:
+                return ElementTypes.CONTAINER, 0.70
     
     # ===========================================
-    # 3. INPUT — wide field with border
-    # aspect >= 2.5, border, typical height (0.5-1.8x)
-    # SKIP: small narrow elements (likely text)
+    # 3. DECORATION — very large sections/panels
+    # Must be wide (>= 70% container) AND tall (>= 3x median height) with border
+    # ===========================================
+    if raw.has_border and rel_width >= 0.7 and rel_height >= 3.0:
+        return ElementTypes.DECORATION, 0.50
+    
+    # ===========================================
+    # 4. SELECT — field-like + галочка в квадрате справа (высота×высота), без OCR в нём
+    # ===========================================
+    if (aspect >= 2.0 and
+        raw.has_border and
+        0.5 <= rel_height <= 2.0 and
+        detect_select_indicator(image, bbox, ctx.ocr_blocks)):
+        return ElementTypes.SELECT, 0.75
+    
+    # ===========================================
+    # 5. INPUT — wide field с ровной непрерывной границей (4 прямых под прямым углом)
+    # Без такой границы — не input, а текст.
     # ===========================================
     if (aspect >= 2.5 and
         raw.has_border and
-        0.5 <= rel_height <= 1.8 and
-        not (is_small_element and is_narrow)):  # exclude small text
+        has_rectangular_border(image, bbox) and
+        0.5 <= rel_height <= 2.0):
         return ElementTypes.INPUT, 0.80
     
     # ===========================================
-    # 3b. INPUT — wide field WITHOUT border (geometry-based)
-    # For input fields where border detection failed (light borders)
-    # STRICT: aspect >= 5 (very wide), from edge_detection, typical height
-    # This catches input text/placeholder that was detected instead of border
+    # 5b. INPUT — без границы (geometry fallback, ниже уверенность)
     # ===========================================
     if (aspect >= 5.0 and
         not raw.has_border and
-        raw.source == "edge_detection" and
         0.5 <= rel_height <= 2.5 and
-        rel_width >= 0.2):  # at least 20% of container width
-        return ElementTypes.INPUT, 0.65  # lower confidence
+        rel_width >= 0.15):
+        return ElementTypes.INPUT, 0.55
     
     # ===========================================
-    # 4. ACTION/BUTTON — has border OR has fill with proper geometry
-    # aspect 1.3-8, height 0.5-2.0x
-    # NOTE: allow has_fill for buttons that are filled (no border)
-    # SKIP: small narrow elements (likely text)
+    # 6. ACTION/BUTTON — with border
+    # aspect 1.3-8, height 0.5-2.5x
     # ===========================================
     if (raw.has_border and
         1.3 <= aspect <= 8.0 and
-        0.5 <= rel_height <= 2.0 and
-        not (is_small_element and is_narrow)):  # exclude small text
+        0.5 <= rel_height <= 2.5):
         return ElementTypes.ACTION, 0.75
     
     # ===========================================
-    # 4b. ACTION/BUTTON — filled button without border
+    # 6b. ACTION/BUTTON — filled button without border
     # For filled/colored buttons where border detection failed
-    # STRICT: has_fill, aspect 2-5, height 1.0-2.5x, contains_text
     # ===========================================
     if (has_fill and
         not raw.has_border and
         raw.contains_text and
-        2.0 <= aspect <= 5.0 and
-        1.0 <= rel_height <= 2.5):
+        1.5 <= aspect <= 6.0 and
+        0.8 <= rel_height <= 3.0):
         return ElementTypes.ACTION, 0.70
     
     # ===========================================
-    # 5. TEXTAREA — tall element
-    # height >= 2.0x median, border
-    # Removed aspect restriction — tall with border = textarea
+    # 7. TEXTAREA — tall element with border
+    # height >= 3.0x median (stricter than before)
+    # aspect < 8 (not too wide — that's input)
     # ===========================================
-    if (rel_height >= 2.0 and raw.has_border):
+    if (rel_height >= 3.0 and raw.has_border and aspect < 8.0):
         return ElementTypes.TEXTAREA, 0.70
     
     # ===========================================
-    # 6. DECORATION — very large (>= 70% container width), MUST have border
-    # Only truly large decorative elements
+    # 7b. TEXTAREA — tall element WITHOUT border
+    # For textareas with light/invisible borders
+    # Must be tall AND wide (not just text)
     # ===========================================
-    if raw.has_border and rel_width >= 0.7 and rel_height >= 1.5:
-        return ElementTypes.DECORATION, 0.40
+    if (rel_height >= 3.0 and 
+        not raw.has_border and
+        rel_width >= 0.2 and
+        aspect >= 2.0):
+        return ElementTypes.TEXTAREA, 0.60
     
     # ===========================================
-    # 7. LABEL — FALLBACK ONLY
-    # no border, no fill, has text
+    # 8. LABEL — text without border
+    # Fallback for text elements
     # ===========================================
     if can_be_label and raw.contains_text:
         return ElementTypes.LABEL, 0.50
     
     # ===========================================
-    # 8. UNKNOWN fallback
+    # 9. UNKNOWN fallback
     # ===========================================
-    # #region agent log
-    result_type = ElementTypes.UNKNOWN
-    log_result = {
-        "timestamp": int(time.time() * 1000),
-        "location": "visual_geometry_extractor.py:classify_result",
-        "hypothesisId": "H2-result",
-        "message": "classify_result",
-        "data": {
-            "idx": idx,
-            "result": result_type,
-            "reason": "fallback",
-            "aspect": round(float(aspect), 2),
-            "rel_height": round(float(rel_height), 3),
-            "has_border": bool(raw.has_border),
-            "has_fill": bool(has_fill),
-            "can_be_label": bool(can_be_label),
-            "contains_text": bool(raw.contains_text),
-        }
-    }
-    with open(log_path, "a") as f:
-        f.write(json.dumps(log_result) + "\n")
-    # #endregion
     return ElementTypes.UNKNOWN, 0.20
 
 
@@ -1374,6 +1411,46 @@ def apply_type_aware_nms(elements: List[VisualElement]) -> List[VisualElement]:
     return result
 
 
+# Types that can "contain" other elements (inner text/placeholder); inner is not output as separate
+STRUCTURAL_CONTAINER_TYPES: Tuple[str, ...] = (
+    ElementTypes.INPUT,
+    ElementTypes.ACTION,
+    ElementTypes.SELECT,
+    ElementTypes.TEXTAREA,
+    ElementTypes.CONTAINER,
+)
+
+
+def filter_nested_elements(elements: List[VisualElement], contain_threshold: float = 0.8) -> List[VisualElement]:
+    """
+    После присвоения типов: убрать элементы, которые целиком лежат внутри другого
+    структурного элемента (input/action/select/textarea/container). Тогда внутренний
+    текст не считается отдельным label/action, а граница — один элемент (input/action).
+    """
+    if not elements:
+        return []
+    # Сортируем по убыванию площади: сначала крупные
+    by_area = sorted(
+        elements,
+        key=lambda e: (e.bbox[2] - e.bbox[0]) * (e.bbox[3] - e.bbox[1]),
+        reverse=True,
+    )
+    kept: List[VisualElement] = []
+    for elem in by_area:
+        is_contained = False
+        for k in kept:
+            if k.element_type not in STRUCTURAL_CONTAINER_TYPES:
+                continue
+            if bbox_contains(k.bbox, elem.bbox, threshold=contain_threshold):
+                is_contained = True
+                break
+        if not is_contained:
+            kept.append(elem)
+    # Восстанавливаем порядок по y, затем x для стабильности downstream
+    kept.sort(key=lambda e: (e.bbox[1], e.bbox[0]))
+    return kept
+
+
 # =============================================================================
 # MEDIAN ESTIMATION
 # =============================================================================
@@ -1569,60 +1646,6 @@ def extract_visual_geometry(
         logger.debug(f"S1: no candidates, using fallback median: "
                     f"height={ctx.median_input_height:.1f}")
     
-    # #region agent log
-    import json, time
-    log_path = "/app/debug/debug.log"
-    
-    # Log all raw bboxes for analysis
-    all_raw_info = []
-    for raw in raw_bboxes:
-        bbox = raw.bbox
-        w = bbox[2] - bbox[0]
-        h = bbox[3] - bbox[1]
-        if w > 0 and h > 0:
-            all_raw_info.append({
-                "bbox": [float(x) for x in bbox],
-                "w": float(w),
-                "h": float(h),
-                "aspect": round(float(w/h), 2),
-                "h_ratio": round(float(h / container_h), 3),
-                "w_ratio": round(float(w / container_w), 3),
-                "has_border": bool(raw.has_border),
-                "source": raw.source,
-            })
-    
-    raw_bboxes_log = {
-        "timestamp": int(time.time() * 1000),
-        "location": "visual_geometry_extractor.py:raw_bboxes",
-        "hypothesisId": "H5-raw-bboxes",
-        "message": "all_raw_bboxes",
-        "data": {
-            "total": len(raw_bboxes),
-            "bboxes": all_raw_info[:20],  # first 20
-        }
-    }
-    with open(log_path, "a") as f:
-        f.write(json.dumps(raw_bboxes_log) + "\n")
-    
-    median_log = {
-        "timestamp": int(time.time() * 1000),
-        "location": "visual_geometry_extractor.py:estimate_median",
-        "hypothesisId": "H3-median",
-        "message": "median_estimation",
-        "data": {
-            "num_candidates": len(candidate_heights),
-            "median_input_height": float(ctx.median_input_height),
-            "median_input_width": float(ctx.median_input_width),
-            "median_input_area": float(ctx.median_input_area),
-            "container_height": float(container_h),
-            "container_width": float(container_w),
-            "candidate_heights": [float(h) for h in candidate_heights[:10]] if candidate_heights else [],
-        }
-    }
-    with open(log_path, "a") as f:
-        f.write(json.dumps(median_log) + "\n")
-    # #endregion
-    
     # =========================================================================
     # STEP 2: Symmetry recovery (BEFORE classification and NMS!)
     # =========================================================================
@@ -1668,31 +1691,6 @@ def extract_visual_geometry(
         
         classified.append(element)
     
-    # #region agent log — log ALL classification results
-    import json, time
-    log_path = "/app/debug/debug.log"
-    all_results = []
-    for i, elem in enumerate(classified):
-        all_results.append({
-            "idx": i,
-            "type": elem.element_type,
-            "bbox": [float(x) for x in elem.bbox],
-            "has_border": bool(elem.has_border),
-            "aspect": round(float(elem.aspect_ratio), 2),
-            "rel_height": round(float(elem.relative_height), 3),
-        })
-    
-    results_log = {
-        "timestamp": int(time.time() * 1000),
-        "location": "visual_geometry_extractor.py:classification_results",
-        "hypothesisId": "H6-all-results",
-        "message": "all_classification_results",
-        "data": {"results": all_results}
-    }
-    with open(log_path, "a") as f:
-        f.write(json.dumps(results_log) + "\n")
-    # #endregion
-    
     diagnostics["after_classification"] = len(classified)
     
     # =========================================================================
@@ -1707,9 +1705,17 @@ def extract_visual_geometry(
     # =========================================================================
     # STEP 6: Type-aware NMS
     # =========================================================================
-    final_elements = apply_type_aware_nms(classified)
-    diagnostics["after_nms"] = len(final_elements)
-    logger.debug(f"S1: after NMS {len(final_elements)} elements")
+    after_nms = apply_type_aware_nms(classified)
+    diagnostics["after_nms"] = len(after_nms)
+
+    # =========================================================================
+    # STEP 7: Filter nested elements (after types)
+    # Элементы, целиком лежащие внутри input/action/select/textarea/container,
+    # убираются — внутренний текст не считается отдельным label/action.
+    # =========================================================================
+    final_elements = filter_nested_elements(after_nms, contain_threshold=0.8)
+    diagnostics["after_nested_filter"] = len(final_elements)
+    logger.debug(f"S1: after NMS {len(after_nms)} elements, after nested filter {len(final_elements)}")
     
     # Count by type
     for elem in final_elements:

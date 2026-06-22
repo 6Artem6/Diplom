@@ -151,6 +151,10 @@ async def visualize_bpg(
             },
             "similarity_stats": similarity_summary,
             "visualization_files": png_files,
+            "detected_elements": [
+                el.model_dump(mode="json", by_alias=True)
+                for el in bpg.detected_elements
+            ],
         }
 
         return Response(

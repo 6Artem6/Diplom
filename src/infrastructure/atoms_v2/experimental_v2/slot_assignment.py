@@ -81,7 +81,7 @@ class RowSlots:
     
     @property
     def inputs(self) -> List[SlotAssignment]:
-        return [a for a in self.assignments if a.slot in ("INPUT", "TEXTAREA")]
+        return [a for a in self.assignments if a.slot in ("INPUT", "TEXTAREA", "SELECT")]
     
     @property
     def actions(self) -> List[SlotAssignment]:
@@ -207,6 +207,10 @@ def assign_slot_to_element(
     if elem_type in (ElementTypes.INPUT, "input"):
         return "INPUT", 0.8
     
+    # Select (dropdown)
+    if elem_type in (ElementTypes.SELECT, "select"):
+        return "SELECT", 0.8
+    
     # Label
     if elem_type in (ElementTypes.LABEL, "label"):
         return "LABEL", 0.7
@@ -265,7 +269,7 @@ def bind_labels_to_inputs(
     max_v_distance = ctx.median_input_height * 1.2  # allow ~1.2 input heights gap
     
     labels = [a for a in assignments if a.slot == "LABEL"]
-    inputs = [a for a in assignments if a.slot in ("INPUT", "TEXTAREA", "CHECKBOX", "RADIO")]
+    inputs = [a for a in assignments if a.slot in ("INPUT", "TEXTAREA", "SELECT", "CHECKBOX", "RADIO")]
     
     for label in labels:
         label_bbox = label.element.bbox
@@ -520,10 +524,8 @@ def get_form_atoms(s4_result: S4Result) -> List[Dict[str, Any]]:
     
     for rs in s4_result.row_slots:
         for a in rs.assignments:
-            if a.slot == "UNKNOWN":
-                continue
-            
             elem = a.element
+            # UNKNOWN по-прежнему включаем (объединённые текстовые блоки без явного типа)
             
             atom = {
                 "slot": a.slot,
@@ -537,12 +539,14 @@ def get_form_atoms(s4_result: S4Result) -> List[Dict[str, Any]]:
             if elem.ocr_block:
                 atom["text"] = elem.ocr_block.text
             
-            # Add visual element info
+            # Add visual element info; для элементов только из OCR (merged блок) — тип по слоту
             if elem.visual_element:
                 atom["element_type"] = elem.visual_element.element_type
                 atom["has_border"] = elem.visual_element.has_border
                 if elem.visual_element.is_checked is not None:
                     atom["is_checked"] = elem.visual_element.is_checked
+            else:
+                atom["element_type"] = a.slot.lower()  # LABEL → label, HEADER → header, UNKNOWN → unknown
             
             # Add binding info
             if a.bound_to:

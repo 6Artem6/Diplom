@@ -28,3 +28,11 @@ output_kvvb/*
 *.log.gz
 .env
 *.png
+*.docx
+*.pptx
+text/
+thesis_project/
+*.docx
+*.pptx
+text/
+thesis_project/

@@ -16,8 +16,8 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from .visual_geometry_extractor import VisualElement, GeometryContext
-from .ocr_extractor import OCRBlock, LanguageInfo
+from .visual_geometry_extractor import VisualElement, GeometryContext, bbox_contains
+from .ocr_extractor import OCRBlock, LanguageInfo, merge_ocr_blocks_in_row
 
 logger = logging.getLogger(__name__)
 
@@ -167,27 +167,22 @@ def cluster_into_rows(
     median_height: float,
 ) -> List[List[RowElement]]:
     """
-    Cluster elements into rows using Y-position.
-    
-    Algorithm:
-    1. Sort by Y center
-    2. Greedily assign to existing row or create new
-    3. Use relative gap threshold
+    Кластеризация по строкам. Только одна линия по вертикали: center_y в пределах 0.5*median.
+    По вертикали не объединяем — далёкий текст не должен попадать в одну строку.
     """
     if not elements:
         return []
     
-    # Sort by Y center
     sorted_elems = sorted(elements, key=lambda e: e.y_center)
-    
     rows: List[List[RowElement]] = []
-    
+    max_center_y_dist = 0.5 * max(1.0, median_height)  # одна строка, допуск ±25% по высоте
+
     for elem in sorted_elems:
         assigned = False
-        
         for row in rows:
-            # Check if element belongs to this row
             for row_elem in row:
+                if abs(elem.y_center - row_elem.y_center) > max_center_y_dist:
+                    continue
                 if elements_on_same_row(elem, row_elem):
                     if len(row) < RowThresholds.MAX_ELEMENTS_PER_ROW:
                         row.append(elem)
@@ -195,11 +190,8 @@ def cluster_into_rows(
                         break
             if assigned:
                 break
-        
         if not assigned:
-            # Create new row
             rows.append([elem])
-    
     return rows
 
 
@@ -332,17 +324,11 @@ def segment_into_rows(
             continue
         all_elements.append(RowElement(visual_element=ve))
     
-    # Add OCR blocks (if not overlapping with visual elements)
+    # Добавляем ВСЕ OCR-блоки, чтобы они попали в строки и участвовали в объединении.
+    # Иначе блоки, перекрывающие визуальные (заголовок, подписи), не попадали в кластер —
+    # объединение не срабатывало, замена на объединённый блок к S4 не проходила.
     for ocr in ocr_blocks:
-        # Check overlap with visual elements
-        overlaps_visual = False
-        for ve in visual_elements:
-            if compute_overlap(ocr.bbox, ve.bbox) > 0.5:
-                overlaps_visual = True
-                break
-        
-        if not overlaps_visual:
-            all_elements.append(RowElement(ocr_block=ocr))
+        all_elements.append(RowElement(ocr_block=ocr))
     
     logger.debug(f"S3: {len(all_elements)} elements to cluster")
     
@@ -353,25 +339,49 @@ def segment_into_rows(
     row_clusters = cluster_into_rows(all_elements, context.median_input_height)
     diagnostics["rows_before_merge"] = len(row_clusters)
     
-    # Convert to FormRow objects
+    # Convert to FormRow objects; внутри каждой строки объединяем OCR-блоки (merge после S3)
     rows = []
+    median_h = max(1.0, context.median_input_height)
     for i, cluster in enumerate(row_clusters):
         if not cluster:
             continue
         
-        y_min = min(e.bbox[1] for e in cluster)
-        y_max = max(e.bbox[3] for e in cluster)
+        visual_elements = [e for e in cluster if e.visual_element is not None]
+        ocr_elements = [e for e in cluster if e.ocr_block is not None]
+        if ocr_elements:
+            ocr_blocks = [e.ocr_block for e in ocr_elements]
+            merged_ocr = merge_ocr_blocks_in_row(ocr_blocks, median_h)
+            # Внешний поглощает внутренний: удаляем только те визуальные, чей bbox целиком внутри merged OCR
+            # (маленький label внутри зоны текста — удалить). Input/textarea снаружи не удаляем.
+            keep_visual = [
+                e for e in visual_elements
+                if not any(bbox_contains(m.bbox, e.visual_element.bbox, 0.8) for m in merged_ocr)
+            ]
+            # Merged OCR не добавляем как отдельный элемент, если он внутри визуального (placeholder внутри input)
+            merged_to_add = [
+                ob for ob in merged_ocr
+                if not any(
+                    bbox_contains(ve.visual_element.bbox, ob.bbox, 0.8)
+                    for ve in visual_elements
+                )
+            ]
+            new_elements = keep_visual + [RowElement(ocr_block=ob) for ob in merged_to_add]
+        else:
+            new_elements = cluster
+        
+        y_min = min(e.bbox[1] for e in new_elements)
+        y_max = max(e.bbox[3] for e in new_elements)
         
         row = FormRow(
-            elements=cluster,
+            elements=new_elements,
             y_min=y_min,
             y_max=y_max,
             row_index=i,
         )
         rows.append(row)
     
-    # Merge close rows
-    rows = merge_close_rows(rows, context.median_input_height)
+    # По вертикали строки не объединяем — только горизонтальное объединение блоков (внутри строки, допуск ±25%).
+    # merge_close_rows не вызываем, чтобы две отдельные строки (напр. два чекбокса) не склеивались в одну.
     diagnostics["rows_after_merge"] = len(rows)
     
     # Classify row types

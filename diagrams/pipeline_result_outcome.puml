@@ -1,0 +1,72 @@
+@startuml pipeline_result_outcome
+!theme plain
+top to bottom direction
+skinparam linetype ortho
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontSize 13
+skinparam packageStyle rectangle
+skinparam rectangle {
+  BackgroundColor #FAFAFA
+  BorderColor #455A64
+}
+
+title Итог работы: архитектура BPG + LLM\nдля улучшения RPA-автоматизации
+
+rectangle "Скриншоты GUI\n(без API, кода и БД)" as IN #E3F2FD
+
+rectangle "Сервис анализа интерфейса\nFastAPI + pipeline" as SVC #FFF3E0
+
+package "Построение структуры (реализовано)" as BUILD {
+  rectangle "Выделение UI и текста\nна каждом экране" as PERC
+  rectangle "Cross-view связывание\nEntity на разных экранах" as CV
+  rectangle "BPG\nграф сущностей и связей" as BPG #FFF8E1
+}
+
+rectangle "Контекст для LLM\nрелевантный subgraph BPG" as CTX #F3E5F5
+
+rectangle "Языковая модель (LLM)\nплан с учётом домена" as LLM #EDE7F6
+
+rectangle "RPA\nкоманды в интерфейсе\nавтоматизация процесса" as RPA #E0F2F1
+
+IN -down-> SVC
+SVC -down-> PERC
+PERC -down-> CV
+CV -down-> BPG
+BPG -down-> CTX
+CTX -down-> LLM
+LLM -down-> RPA
+
+note right of IN
+  Legacy-системы:
+  единственный канал
+  наблюдения — экран.
+end note
+
+note right of BUILD
+  Из GUI-only данных
+  формируется явная
+  модель предметной области,
+  а не набор селекторов.
+end note
+
+note right of CTX
+  API /bpg/{id}/context:
+  доменный контекст
+  вместо «слепого» промпта.
+end note
+
+note right of LLM
+  LLM понимает не только
+  картинку, но и роли
+  сущностей в процессе.
+end note
+
+note right of RPA
+  Более устойчивая
+  автоматизация:
+  осмысленные шаги,
+  а не хрупкие селекторы.
+end note
+
+@enduml
