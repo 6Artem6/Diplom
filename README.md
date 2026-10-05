@@ -1,144 +1,112 @@
-# GUI-only Business Process Graph for Domain-aware LLM Agents
+# Граф бизнес-процессов на основе GUI для доменно-ориентированных LLM-агентов
 
-## Overview
+## Обзор (Overview)
 
-This repository contains a research-oriented prototype developed as part of a
-master’s thesis.
+В данном репозитории представлен исследовательский прототип, разработанный в рамках магистерской диссертации.
 
-The goal is to make LLM-based agents **domain-aware** by providing them with an
-explicit representation of business logic inferred **only from GUI observations**.
+Ключевая цель проекта — сделать автономных LLM-агентов **доменно-ориентированными (domain-aware)** за счёт построения явного графа бизнес-логики, извлекаемого **исключительно из визуальных наблюдений интерфейса (GUI)**.
 
-No backend access.
-No APIs.
-No business documentation.
+Система работает в условиях полного «чёрного ящика» (Black-Box Environment):
+* ❌ Без доступа к бэкенду и внутренним API.
+* ❌ Без прямого доступа к исходному коду и структурам БД.
+* ❌ Без формальной сопроводительной документации.
 
-Only:
-- screenshots,
-- OCR,
-- clickstreams.
-
----
-
-## Motivation
-
-Modern LLM agents:
-- can interpret text and images,
-- but lack stable understanding of business constraints.
-
-As a result:
-- syntactically correct actions are often semantically invalid,
-- RPA pipelines are brittle and UI-dependent,
-- failures are hard to explain or recover from.
-
-This project addresses the problem by introducing a **Business Process Graph (BPG)**
-as a runtime knowledge base.
+Только:
+* ✔ Скриншоты и визуальные элементы GUI.
+* ✔ Распознавание текста и визуальных структур (OCR / VLM).
+* ✔ Наблюдаемые состояния и переходы интерфейса.
 
 ---
 
-## Core Idea
+## Проблематика (Motivation)
 
-> Explicit domain knowledge + adaptive LLM reasoning  
-> = robust, explainable automation
+Современные мультимодальные LLM-агенты успешно распознают элементы UI и умеют взаимодействовать с кнопками, но **не имеют фундаментального понимания предметной области и бизнес-ограничений системы**.
 
-BPG captures:
-- entities,
-- actions,
-- workflows,
-- constraints,
-- roles,
+Это приводит к системным проблемам:
+1. **Семантическая невалидность:** Агент совершает синтаксически корректные действия (кликнул на доступную кнопку), которые нарушают бизнес-логику процесса (например, проводит документ без заполнения обязательных полей).
+2. **Хрупкость традиционного RPA:** Сценарии ломаются при малейшем изменении UI, так как жёстко привязаны к координатам или селекторам.
+3. **Отсутствие объяснимости (Explainability):** При сбоях невозможно восстановить причинно-следственную связь и корректно обработать исключение (Edge Case).
 
-and exposes them to LLM agents at runtime.
+**Решение:** Введение **Графа бизнес-процессов (Business Process Graph, BPG)** в качестве динамической базы знаний (Runtime Knowledge Base) для планирования и оркестрации агентов.
 
 ---
 
-## System Scope
+## Практическая ценность и Бизнес-эффект (Value Proposition)
 
-### What the system CAN access
-- GUI screenshots
-- OCR text
-- User clickstreams / session traces
+> **Явные знания о предметной области + адаптивное планирование LLM = устойчивая и объяснимая автоматизация**
 
-### What the system CANNOT access
-- Backend APIs
-- Databases
-- DOM / HTML
-- Source code
-- Business documentation
+Внедрение BPG позволяет решить задачи автоматизации для легаси-систем (Enterprise Legacy Systems), где API отсутствуют или недоступны:
+* **Снижение TTM (Time-to-Market):** Быстрое развёртывание AI-агентов поверх существующих интерфейсов без дорогостоящей интеграции с бэкендом.
+* **Детерминированность действий:** Граф задаёт жёсткие рамки пред- и пост-условий (Guards & Rules), предотвращая галлюцинации и некорректные транзакции LLM.
+* **Прозрачность и аудит:** Каждое решение агента прослеживается по узлам и связям графа (Data Provenance).
 
 ---
 
-## High-level Pipeline
+## Архитектура системы (Core System Architecture)
 
-Screenshots + Clickstreams
-→ GUI element detection
-→ Multimodal representations
-→ Cross-view entity linking
-→ Action & pattern induction
-→ Business Process Graph (BPG)
-→ Runtime LLM context
+```mermaid
+flowchart TD
+    A[Визуальные наблюдения / GUI Screenshots] --> B[Детекция UI & OCR / VLM]
+    B --> C[Кросс-экранирование и Линкинг сущностей]
+    C --> D[Индукция правил, ролей и паттернов]
+    D --> E[(Business Process Graph / BPG)]
+    E --> F[Контекстный слой оркестрации LLM]
 
----
+```
 
-## Business Process Graph (BPG)
+### Границы доступа (System Scope)
 
-BPG is a graph-based knowledge representation with:
-
-- Nodes:
-    - EntityType
-    - EntityInstance
-    - GUIManifestation
-    - Action
-    - PatternNode
-    - Rule
-- Edges:
-    - cross_view
-    - functional
-    - temporal
-    - conditional
-    - compositional
-    - role
-
-Formal schema: see `BPG_SCHEMA.md`.
+* **Что система использует:** Скриншоты GUI, распознанный текст (OCR), пространственные координаты элементов, наблюдаемые визуальные состояния и экраны.
+* **Что изолировано:** Внутренний DOM/HTML, исходный код, API-эндпоинты, прямые SQL-запросы к БД.
 
 ---
 
-## Architecture & Documentation
+## Структура Графа Бизнес-Процессов (BPG Schema)
 
-- `PROJECT_CONTEXT.md` — problem statement and research framing
-- `ARCHITECTURE.md` — system modules and data flow
-- `BPG_SCHEMA.md` — formal graph schema
-- `TECH_STACK.md` — implementation technologies
-- `diagrams/bpg_rkb/` — architectural and schema diagrams
+BPG представляет собой направленный мультиграф, связывающий концептуальные сущности бизнеса с их визуальным проявлением в интерфейсе:
 
----
+### Основные типы узлов (Nodes):
 
-## Design Principles
+* **EntityType:** Абстрактные бизнес-сущности (например, *Заказ*, *Клиент*, *Счёт*).
+* **EntityInstance:** Конкретный экземпляр сущности в текущем контексте.
+* **GUIManifestation:** Элементы интерфейса, через которые сущность проявляется (форма, таблица, модальное окно).
+* **Action:** Допустимые атомарные операции (*Создать*, *Утвердить*, *Отправить*).
+* **PatternNode:** Повторяющиеся последовательности и сценарии.
+* **Rule:** Бизнес-ограничения, валидации и пред-условия.
 
-- GUI-only evidence
-- Explicit uncertainty (confidence scores)
-- Provenance for all inferred knowledge
-- Modular, research-friendly architecture
-- Explainability over performance
+### Типы связей (Edges):
 
-This is **not** a production RPA framework.
+* `cross_view` — связь элементов между разными экранами/модулями.
+* `functional` — функциональная зависимость действий.
+* `temporal` — хронологическая последовательность шагов.
+* `conditional` — логические условия выполнения (If-Then).
+* `compositional` — иерархическая структура (Parent-Child).
+* `role` — контекст ролевой модели (RBAC / разрешения).
 
----
-
-## Research Focus
-
-The project evaluates:
-- feasibility of GUI-only business logic extraction,
-- robustness of LLM planning with BPG context,
-- explainability and recovery behavior,
-- trade-offs between heuristic, ML, and LLM-assisted inference.
+*Подробная формальная схема описана в файле `BPG_SCHEMA.md`.*
 
 ---
 
-## Status
+## Инженерные принципы (Design Principles)
 
-Current focus:
-- minimal end-to-end PoC,
-- clear abstractions,
-- experimental evaluation.
+* **GUI-only Evidence:** Все гипотезы о бизнес-логике строятся исключительно на наблюдаемом визуальном поведении UI.
+* **Явная оценка неопределённости (Confidence Scores):** Каждый узел и связь графа имеют веса достоверности.
+* **Прослеживаемость (Provenance):** Любой вывод можно отследить до конкретного визуального элемента или интерфейсного состояния.
+* **Модульность:** Выделенный слой графа абстрагирован от конкретного LLM-провайдера или OCR-движка.
+* **Объяснимость в приоритете:** Архитектура ориентирована на интерпретируемость графа, а не на «слепое» исполнение промптов.
 
-The codebase prioritizes clarity and extensibility over optimization.
+---
+
+## Навигация по документации
+
+* `PROJECT_CONTEXT.md` — концептуальная постановка задачи и научный контекст.
+* `ARCHITECTURE.md` — детальное описание модулей системы и пайплайнов обработки данных.
+* `BPG_SCHEMA.md` — формальная спецификация графовой схемы и типов связей.
+* `TECH_STACK.md` — стек технологий, используемые библиотеки и фреймворки.
+* `diagrams/bpg_rkb/` — архитектурная документация и диаграммы графа.
+
+---
+
+## Статус проекта
+
+Проект находится в стадии **исследовательского PoC (Proof of Concept)**. Основной акцент сделан на чистоту архитектурных абстракций, строгость графовой схемы и возможность проведения воспроизводимых экспериментов.
