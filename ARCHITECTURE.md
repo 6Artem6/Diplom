@@ -1,14 +1,20 @@
-# Architecture
+# Архитектура системы
 
-## High-level pipeline
-GUI screenshots + clickstreams
-    → GUI blocks
-    → Cross-view entities
-    → Actions
-    → Business Process Graph
-    → Runtime LLM context
+## Верхнеуровневый пайплайн (High-level Pipeline)
 
-## Diagram mapping
-See diagrams/bpg_rkb:
-- gui_to_blocks.png → gui_detection/
-- entity_linking.png → linking/
+```mermaid
+flowchart TD
+    A[Скриншоты GUI / Визуальные наблюдения] --> B[Блоки и UI-элементы GUI]
+    B --> C[Кросс-экранирование и Линкинг сущностей]
+    C --> D[Действия и операции]
+    D --> E[(Граф бизнес-процессов / BPG)]
+    E --> F[Контекстный слой оркестрации LLM]
+
+```
+
+## Соответствие архитектурных диаграмм (Diagram Mapping)
+
+Материалы и графические схемы расположены в директории `diagrams/bpg_rkb/`:
+
+* `gui_to_blocks.png` → Модуль детекции интерфейса (`gui_detection/`)
+* `entity_linking.png` → Модуль линкинга и связывания сущностей (`linking/`)
